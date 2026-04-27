@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChartOfAccount extends Model
 {
-    protected $table = 'ChartOfAccount';
+    protected $table = 'chart_of_accounts';
+    public $timestamps = false;
     protected $fillable = ['kode', 'nama', 'tipe', 'saldo_normal'];
 }
