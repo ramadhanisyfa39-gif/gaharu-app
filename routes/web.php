@@ -10,6 +10,10 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\KaryawanController;
+use App\Http\Controllers\CoaController;
+use App\Http\Controllers\PenggajianController;
+use App\Http\Controllers\JurnalController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -33,6 +37,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('gudangs', GudangController::class);
     Route::resource('roles', RoleController::class);
     Route::resource('users', UserController::class);
+
+    // --- ROUTE CRUD KAMU ---
+    Route::resource('karyawan', KaryawanController::class);
+    Route::resource('coa', CoaController::class);
+    Route::resource('penggajian', PenggajianController::class);
+    Route::resource('jurnal', JurnalController::class);
 });
 
 
