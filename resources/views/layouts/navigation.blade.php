@@ -38,5 +38,20 @@
             COA
         </x-nav-link>
 
+        <x-nav-link :href="route('penggajian.index')" :active="request()->routeIs('penggajian.*')">
+            Penggajian
+        </x-nav-link>
+
+        <x-nav-link :href="route('jurnal.index')" :active="request()->routeIs('jurnal.*')">
+            Jurnal Umum
+        </x-nav-link>
+
+        <x-nav-link :href="route('pembelian.index')" :active="request()->routeIs('pembelian.*')">
+            Pembelian
+        </x-nav-link>
+
+        <x-nav-link :href="route('stok-gudang.index')" :active="request()->routeIs('stok-gudang.*')">
+            Stok Gudang
+        </x-nav-link>
     </div>
 </div>

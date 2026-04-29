@@ -118,4 +118,121 @@ class PembelianController extends Controller
 
         return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
+    public function edit(Pembelian $pembelian)
+    {
+        $pembelian->load('details');
+
+        $suppliers = Supplier::orderBy('nama')->get();
+        $gudangs = MasterGudang::orderBy('nama')->get();
+
+        $barangs = MasterBarang::query()
+            ->where('is_bahan_baku', true)
+            ->orWhere('is_operational', true)
+            ->orWhere('is_direct_consumption', true)
+            ->orderBy('nama')
+            ->get();
+
+        return view('pembelian.edit', compact(
+            'pembelian',
+            'suppliers',
+            'gudangs',
+            'barangs'
+        ));
+    }   
+    public function update(StorePembelianRequest $request, Pembelian $pembelian)
+    {
+        $data = $request->validated();
+
+        DB::transaction(function () use ($data, $pembelian) {
+            $pembelian->load('details');
+
+            // 1. Keluarkan stok lama
+            foreach ($pembelian->details as $detail) {
+                $this->stockService->stockOut([
+                    'gudang_id' => $pembelian->gudang_id,
+                    'barang_id' => $detail->barang_id,
+                    'qty' => $detail->qty,
+                    'total_harga' => $detail->qty * $detail->harga,
+
+                    'source_type' => 'edit_pembelian',
+                    'source_id' => $pembelian->id,
+
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
+            // 2. Hapus detail lama
+            $pembelian->details()->delete();
+
+            // 3. Hitung total baru
+            $total = collect($data['items'])->sum(function ($item) {
+                return (float) $item['qty'] * (float) $item['harga'];
+            });
+
+            // 4. Update header pembelian
+            $pembelian->update([
+                'supplier_id' => $data['supplier_id'],
+                'gudang_id' => $data['gudang_id'],
+                'tanggal' => $data['tanggal'],
+                'total' => $total,
+            ]);
+
+            // 5. Simpan detail baru dan masukkan stok baru
+            foreach ($data['items'] as $item) {
+                $pembelian->details()->create([
+                    'barang_id' => $item['barang_id'],
+                    'qty' => $item['qty'],
+                    'harga' => $item['harga'],
+                    'batch_number' => $item['batch_number'] ?? null,
+                ]);
+
+                $this->stockService->stockIn([
+                    'gudang_id' => $data['gudang_id'],
+                    'barang_id' => $item['barang_id'],
+                    'qty' => $item['qty'],
+                    'total_harga' => (float) $item['qty'] * (float) $item['harga'],
+
+                    'source_type' => 'edit_pembelian',
+                    'source_id' => $pembelian->id,
+
+                    'user_id' => auth()->id(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('pembelian.index')
+            ->with('success', 'Pembelian berhasil diperbarui dan stok berhasil disesuaikan.');
+    }
+        public function destroy(Pembelian $pembelian)
+    {
+        DB::transaction(function () use ($pembelian) {
+            $pembelian->load('details');
+
+            // 1. Keluarkan stok dari pembelian yang akan dihapus
+            foreach ($pembelian->details as $detail) {
+                $this->stockService->stockOut([
+                    'gudang_id' => $pembelian->gudang_id,
+                    'barang_id' => $detail->barang_id,
+                    'qty' => $detail->qty,
+                    'total_harga' => $detail->qty * $detail->harga,
+
+                    'source_type' => 'hapus_pembelian',
+                    'source_id' => $pembelian->id,
+
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
+            // 2. Hapus detail
+            $pembelian->details()->delete();
+
+            // 3. Hapus header
+            $pembelian->delete();
+        });
+
+        return redirect()
+            ->route('pembelian.index')
+            ->with('success', 'Pembelian berhasil dihapus dan stok berhasil dikurangi.');
+    }
 }

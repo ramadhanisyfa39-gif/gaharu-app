@@ -16,6 +16,8 @@ use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\CoaController;
 use App\Http\Controllers\PenggajianController;
 use App\Http\Controllers\JurnalController;
+use App\Http\Controllers\PembelianController;
+use App\Http\Controllers\StokGudangController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -45,7 +47,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('coa', CoaController::class)->names('coa');
     Route::resource('penggajian', PenggajianController::class);
     Route::resource('jurnal', JurnalController::class);
-});
+    Route::resource('pembelian', PembelianController::class) ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::get('/stok-gudang', [StokGudangController::class, 'index'])->name('stok-gudang.index');
+    });
 
 
 require __DIR__ . '/auth.php';

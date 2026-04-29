@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class FifoLayer extends Model
 {
     protected $table = 'fifo_layers';
+    public $timestamps = false;
     protected $fillable = [
         'barang_id',
         'gudang_id',

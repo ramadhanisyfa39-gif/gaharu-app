@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="container">
-        <h4>Tambah Pembelian</h4>
+        <h4>Edit Pembelian</h4>
 
         @if($errors->any())
             <div class="alert alert-danger">
@@ -12,8 +12,9 @@
             </div>
         @endif
 
-        <form action="{{ route('pembelian.store') }}" method="POST">
+        <form action="{{ route('pembelian.update', $pembelian->id) }}" method="POST">
             @csrf
+            @method('PUT')
 
             <div class="row mb-3">
                 <div class="col-md-4">
@@ -21,7 +22,8 @@
                     <select name="supplier_id" class="form-control" required>
                         <option value="">-- Pilih Supplier --</option>
                         @foreach($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}">
+                            <option value="{{ $supplier->id }}"
+                                {{ $pembelian->supplier_id == $supplier->id ? 'selected' : '' }}>
                                 {{ $supplier->nama }}
                             </option>
                         @endforeach
@@ -33,7 +35,8 @@
                     <select name="gudang_id" class="form-control" required>
                         <option value="">-- Pilih Gudang --</option>
                         @foreach($gudangs as $gudang)
-                            <option value="{{ $gudang->id }}">
+                            <option value="{{ $gudang->id }}"
+                                {{ $pembelian->gudang_id == $gudang->id ? 'selected' : '' }}>
                                 {{ $gudang->nama }}
                             </option>
                         @endforeach
@@ -46,7 +49,7 @@
                         type="date" 
                         name="tanggal" 
                         class="form-control" 
-                        value="{{ date('Y-m-d') }}" 
+                        value="{{ \Carbon\Carbon::parse($pembelian->tanggal)->format('Y-m-d') }}" 
                         required
                     >
                 </div>
@@ -68,52 +71,58 @@
                 </thead>
 
                 <tbody>
-                    <tr>
-                        <td>
-                            <select name="items[0][barang_id]" class="form-control" required>
-                                <option value="">-- Pilih Barang --</option>
-                                @foreach($barangs as $barang)
-                                    <option value="{{ $barang->id }}">
-                                        {{ $barang->kode_barang }} - {{ $barang->nama }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </td>
+                    @foreach($pembelian->details as $index => $detail)
+                        <tr>
+                            <td>
+                                <select name="items[{{ $index }}][barang_id]" class="form-control" required>
+                                    <option value="">-- Pilih Barang --</option>
+                                    @foreach($barangs as $barang)
+                                        <option value="{{ $barang->id }}"
+                                            {{ $detail->barang_id == $barang->id ? 'selected' : '' }}>
+                                            {{ $barang->kode_barang }} - {{ $barang->nama }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </td>
 
-                        <td>
-                            <input 
-                                type="number" 
-                                step="0.01" 
-                                name="items[0][qty]" 
-                                class="form-control" 
-                                required
-                            >
-                        </td>
+                            <td>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    name="items[{{ $index }}][qty]" 
+                                    class="form-control" 
+                                    value="{{ $detail->qty }}"
+                                    required
+                                >
+                            </td>
 
-                        <td>
-                            <input 
-                                type="number" 
-                                step="0.01" 
-                                name="items[0][harga]" 
-                                class="form-control" 
-                                required
-                            >
-                        </td>
+                            <td>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    name="items[{{ $index }}][harga]" 
+                                    class="form-control" 
+                                    value="{{ $detail->harga }}"
+                                    required
+                                >
+                            </td>
 
-                        <td>
-                            <input 
-                                type="text" 
-                                name="items[0][batch_number]" 
-                                class="form-control"
-                            >
-                        </td>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    name="items[{{ $index }}][batch_number]" 
+                                    class="form-control"
+                                    value="{{ $detail->batch_number }}"
+                                >
+                            </td>
 
-                        <td>
-                            <button type="button" class="btn btn-danger btn-sm btn-remove">
-                                X
-                            </button>
-                        </td>
-                    </tr>
+                            <td>
+                                <button type="button" class="btn btn-danger btn-sm btn-remove">
+                                    X
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
                 </tbody>
             </table>
 
@@ -122,7 +131,7 @@
             </button>
 
             <button type="submit" class="btn btn-primary">
-                Simpan Pembelian
+                Update Pembelian
             </button>
 
             <a href="{{ route('pembelian.index') }}" class="btn btn-light">
@@ -132,7 +141,7 @@
     </div>
 
     <script>
-        let rowIndex = 1;
+        let rowIndex = {{ $pembelian->details->count() }};
 
         document.getElementById('btn-add').addEventListener('click', function () {
             const tbody = document.querySelector('#table-items tbody');
@@ -196,6 +205,8 @@
 
                 if (rows.length > 1) {
                     e.target.closest('tr').remove();
+                } else {
+                    alert('Minimal harus ada 1 barang.');
                 }
             }
         });
