@@ -9,6 +9,13 @@ class ResepBtklBop extends Model
     protected $table = 'resep_btkl_bop';
     protected $fillable = ['produk_id', 'output_qty', 'satuan_output', 'btkl_per_batch', 'bop_per_batch'];
 
+    public $timestamps = false;
+
+    public function produk()
+{
+    return $this->belongsTo(MasterBarang::class, 'produk_id');
+}
+
     public function bahanBaku()
     {
         return $this->hasMany(ResepBahanBaku::class, 'resep_id');
