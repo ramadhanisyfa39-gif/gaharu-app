@@ -36,7 +36,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('customer', CustomerController::class)->names('customer');
     Route::resource('barang', BarangController::class)->names('barang');
     Route::resource('resep', ResepBtklBopController::class);
-    Route::resource('resep-bahan', ResepBahanBakuController::class);
+
+    Route::get('/resep-bahan/{id}', [ResepBahanBakuController::class, 'show'])
+        ->name('resep.bahan.show');
+
+    Route::post('/resep-bahan/{id}', [ResepBahanBakuController::class, 'store'])
+        ->name('resep.bahan.store');
+
+    Route::delete('/resep-bahan/{id}', [ResepBahanBakuController::class, 'destroy'])
+        ->name('resep.bahan.destroy');
 
     Route::resource('suppliers', SupplierController::class)->names('suppliers');
     Route::resource('gudangs', GudangController::class)->names('gudangs');
