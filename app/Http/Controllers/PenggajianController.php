@@ -24,16 +24,17 @@ class PenggajianController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'karyawan_id' => 'required|exists:karyawans,id',
-            'periode' => 'required|date',
+        $request->validate([
+            'karyawan_id' => 'required',
+            'periode_bulan_tahun' => 'required',
             'gaji_pokok' => 'required|numeric',
-            'tunjangan' => 'nullable|numeric',
-            'potongan' => 'nullable|numeric',
-            'total_gaji' => 'required|numeric',
+            'lembur' => 'numeric',
+            'potongan' => 'numeric',
+            'total_gaji_bersih' => 'required|numeric',
+            'tanggal_transfer' => 'required|date',
         ]);
 
-        Penggajian::create($validated);
+        Penggajian::create($request->all());
 
         return redirect()->route('penggajian.index')->with('success', 'Slip gaji berhasil dibuat.');
     }
