@@ -1,88 +1,106 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container">
 
-    <h2 class="mb-3">Data Barang</h2>
+<h3 class="mb-3">Data Barang</h3>
 
-    <a href="{{ route('barang.create') }}" class="btn btn-primary mb-3">
-        + Tambah Barang
-    </a>
+<a href="{{ route('barang.create') }}" class="btn btn-primary mb-3">
+    + Tambah Barang
+</a>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
+@if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
 
-    <div class="card">
-        <div class="card-body table-responsive">
+<div class="card shadow-sm">
+<div class="card-body">
 
-            <table class="table table-bordered table-striped align-middle">
-                <thead>
-                    <tr>
-                        <th width="110">Kode</th>
-                        <th>Barang</th>
-                        <th width="170">Jenis</th>
-                        <th width="200" class="text-end">Harga</th>
-                        <th width="120">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse($data as $d)
-                    <tr>
-                        <td>{{ $d->kode_barang }}</td>
-                        <td>
-                            <strong>{{ $d->nama }}</strong><br>
-                            <small class="text-muted">
-                                {{ $d->kategori->nama ?? '-' }} • {{ $d->satuan ?? '-' }}
-                            </small>
-                        </td>
+<table class="table table-bordered table-hover align-middle text-center">
 
-                        <td>
-                            @if($d->jenis_utama == 'BAHAN_BAKU')
-                                <span class="badge bg-primary">Bahan Baku</span>
-                            @elseif($d->jenis_utama == 'BARANG_JADI')
-                                <span class="badge bg-success">Barang Jadi</span>
-                            @else
-                                <span class="badge bg-warning text-dark">Operational</span>
-                            @endif
-                        </td>
+<thead class="table-light">
+<tr>
+    <th>Kode</th>
+    <th>Nama</th>
+    <th>Kategori</th>
+    <th>Satuan</th>
+    <th>Jenis</th>
+    <th>Harga B2B</th>
+    <th>Harga POS</th>
+    <th>HPP</th>
+    <th>Aksi</th>
+</tr>
+</thead>
 
-                        <td class="text-end">
-                            @if($d->harga_jual_b2b)
-                                <small>B2B:</small>
-                                Rp {{ number_format($d->harga_jual_b2b,0,',','.') }}<br>
-                            @endif
-                            @if($d->harga_jual_pos)
-                                <small>POS:</small>
-                                Rp {{ number_format($d->harga_jual_pos,0,',','.') }}<br>
-                            @endif
-                            @if($d->hpp_referensi)
-                                <small>HPP:</small>
-                                Rp {{ number_format($d->hpp_referensi,0,',','.') }}
-                            @endif
-                        </td>
+<tbody>
+@forelse($data as $d)
+<tr>
+    <td>{{ $d->kode_barang }}</td>
 
-                        <td>
-                            <a href="{{ route('barang.edit', $d->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                            <form action="{{ route('barang.destroy', $d->id) }}" method="POST" style="display:inline">
-                                @csrf
-                                @method('DELETE')
-                                <button class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus?')">
-                                    Hapus
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="text-center">Data belum ada</td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
+    <td class="text-start fw-semibold">
+        {{ $d->nama }}
+    </td>
+
+    <td>{{ $d->kategori->nama ?? '-' }}</td>
+
+    <td>{{ $d->satuan }}</td>
+
+    <td>
+        @if($d->is_bahan_baku)
+            <span class="badge bg-primary-subtle text-primary px-3 py-2">Bahan Baku</span>
+        @elseif($d->is_barang_jadi)
+            <span class="badge bg-success-subtle text-success px-3 py-2">Barang Jadi</span>
+        @elseif($d->is_operational)
+            <span class="badge bg-warning-subtle text-dark px-3 py-2">Operational</span>
+        @endif
+    </td>
+
+    <!-- B2B -->
+    <td class="fw-semibold">
+        {{ $d->is_barang_jadi ? 'Rp ' . number_format($d->harga_jual_b2b,0,',','.') : '-' }}
+    </td>
+
+    <!-- POS -->
+    <td class="fw-semibold">
+        {{ $d->is_barang_jadi ? 'Rp ' . number_format($d->harga_jual_pos,0,',','.') : '-' }}
+    </td>
+
+    <!-- HPP (SEMUA JENIS PUNYA) -->
+    <td class="fw-semibold">
+        Rp {{ number_format($d->hpp_referensi,0,',','.') }}
+    </td>
+
+    <td>
+        <div class="d-flex justify-content-center gap-1">
+
+            <a href="{{ route('barang.edit',$d->id) }}" class="btn btn-warning btn-sm">
+                Edit
+            </a>
+
+            <form action="{{ route('barang.destroy',$d->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <button onclick="return confirm('Yakin hapus data ini?')" class="btn btn-danger btn-sm">
+                    Hapus
+                </button>
+            </form>
 
         </div>
-    </div>
+    </td>
+</tr>
+
+@empty
+<tr>
+    <td colspan="9" class="text-center text-muted">
+        Data belum tersedia
+    </td>
+</tr>
+@endforelse
+
+</tbody>
+
+</table>
 
 </div>
-@endsection
+</div>
+
+</div>
+</x-app-layout>
