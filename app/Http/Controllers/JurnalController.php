@@ -28,7 +28,7 @@ class JurnalController extends Controller
             'tanggal' => 'required|date',
             'deskripsi' => 'required|string',
             'details' => 'required|array|min:2',
-            'details.*.coa_id' => 'required|exists:chart_of_accounts,id',
+            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
             'details.*.debit' => 'required|numeric|min:0',
             'details.*.kredit' => 'required|numeric|min:0',
         ]);
@@ -42,14 +42,14 @@ class JurnalController extends Controller
                 'deskripsi' => $request->deskripsi,
                 'no_ref' => $request->no_ref ?? 'JR-' . time(),
                 'source_type' => 'manual', // Karena diinput manual lewat CRUD
-                'source_id' => null,
+                'source_id' => 0,
                 'created_by' => Auth::id(), // Mengambil ID user yang sedang login
             ]);
 
             // Simpan Detail
             foreach ($request->details as $item) {
                 $jurnal->details()->create([
-                    'coa_id' => $item['coa_id'],
+                    'account_id' => $item['account_id'],
                     'debit'  => $item['debit'],
                     'kredit' => $item['kredit'],
                 ]);
@@ -66,5 +66,14 @@ class JurnalController extends Controller
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
+    }
+
+    public function show($id)
+    {
+        // Mengambil data jurnal beserta detailnya dan coa terkait (Eager Loading)
+        // Gunakan nama relasi 'details' dan 'coa' (atau 'account') sesuai model Anda
+        $jurnal = Journal::with(['details.coa'])->findOrFail($id);
+
+        return view('jurnal.show', compact('jurnal'));
     }
 }

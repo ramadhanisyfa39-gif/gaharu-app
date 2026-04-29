@@ -13,7 +13,6 @@
                         <tr class="bg-gray-100 border-b">
                             <th class="p-2 text-left">Nama Karyawan</th>
                             <th class="p-2 text-left">Jabatan</th>
-                            <th class="p-2 text-left">Gaji Pokok</th>
                             <th class="p-2 text-left">Aksi</th>
                         </tr>
                     </thead>
@@ -22,7 +21,6 @@
                         <tr class="border-b">
                             <td class="p-2">{{ $k->nama_karyawan }}</td>
                             <td class="p-2">{{ $k->jabatan }}</td>
-                            <td class="p-2">Rp {{ number_format($k->gaji_pokok, 0, ',', '.') }}</td>
                             <td class="p-2">
                                 <a href="{{ route('karyawan.edit', $k->id) }}" class="text-blue-600">Edit</a>
                                 <form action="{{ route('karyawan.destroy', $k->id) }}" method="POST" class="inline">
