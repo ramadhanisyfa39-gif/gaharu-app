@@ -2,34 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ChartOfAccount;
 use App\Models\Journal;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
 class JurnalController extends Controller
 {
-    public function index(): View
+    public function index()
     {
-        $jurnals = Journal::with('details.coa')->latest()->get();
+        $jurnals = Journal::with('details.coa')->orderBy('tanggal', 'desc')->get();
         return view('jurnal.index', compact('jurnals'));
     }
 
-    public function create(): View
+    public function create()
     {
-        $coas = ChartOfAccount::all();
+        $coas = ChartOfAccount::all(); // Mengambil daftar akun untuk dropdown
         return view('jurnal.create', compact('coas'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'tanggal' => 'required|date',
-            'keterangan' => 'required|string',
+            'deskripsi' => 'required|string',
             'details' => 'required|array|min:2',
-            'details.*.coa_id' => 'required|exists:coas,id',
+            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
             'details.*.debit' => 'required|numeric|min:0',
             'details.*.kredit' => 'required|numeric|min:0',
         ]);
@@ -37,39 +36,44 @@ class JurnalController extends Controller
         try {
             DB::beginTransaction();
 
+            // Simpan Header
             $jurnal = Journal::create([
                 'tanggal' => $request->tanggal,
-                'keterangan' => $request->keterangan,
-                'nomor_bukti' => 'JR-' . time(), // Contoh generate otomatis
+                'deskripsi' => $request->deskripsi,
+                'no_ref' => $request->no_ref ?? 'JR-' . time(),
+                'source_type' => 'manual', // Karena diinput manual lewat CRUD
+                'source_id' => 0,
+                'created_by' => Auth::id(), // Mengambil ID user yang sedang login
             ]);
 
-            foreach ($request->details as $detail) {
+            // Simpan Detail
+            foreach ($request->details as $item) {
                 $jurnal->details()->create([
-                    'coa_id' => $detail['coa_id'],
-                    'debit' => $detail['debit'],
-                    'kredit' => $detail['kredit'],
+                    'account_id' => $item['account_id'],
+                    'debit'  => $item['debit'],
+                    'kredit' => $item['kredit'],
                 ]);
             }
 
-            // Cek Keseimbangan (Balance)
-            $totalDebit = $jurnal->details->sum('debit');
-            $totalKredit = $jurnal->details->sum('kredit');
-
-            if ($totalDebit != $totalKredit) {
-                throw new \Exception('Jurnal tidak seimbang (Total Debit ≠ Total Kredit).');
+            // Validasi Balance
+            if ($jurnal->details->sum('debit') != $jurnal->details->sum('kredit')) {
+                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
             }
 
             DB::commit();
-            return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil disimpan.');
+            return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil disimpan!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
 
-    public function show(Journal $jurnal): View
+    public function show($id)
     {
-        $jurnal->load('details.coa');
+        // Mengambil data jurnal beserta detailnya dan coa terkait (Eager Loading)
+        // Gunakan nama relasi 'details' dan 'coa' (atau 'account') sesuai model Anda
+        $jurnal = Journal::with(['details.coa'])->findOrFail($id);
+
         return view('jurnal.show', compact('jurnal'));
     }
 }
