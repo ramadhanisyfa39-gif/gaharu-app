@@ -16,22 +16,45 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+    <div class="flex min-h-screen bg-gray-100">
 
-            <!-- Page Heading -->
-            @isset($header)
-                <header class="bg-white shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
-                    </div>
-                </header>
-            @endisset
+        <!-- SIDEBAR -->
+        @include('layouts.navigation')
 
-            <!-- Page Content -->
-            <main>
-            @yield('content')
+        <!-- CONTENT -->
+        <div class="flex-1 flex flex-col">
+
+            <!-- TOPBAR -->
+            <div class="bg-white border-b px-6 py-3 flex justify-end">
+                <x-dropdown align="right" width="48">
+                    <x-slot name="trigger">
+                        <button class="text-sm text-gray-600">
+                            {{ Auth::user()->name }}
+                        </button>
+                    </x-slot>
+
+                    <x-slot name="content">
+                        <x-dropdown-link :href="route('profile.edit')">
+                            Profile
+                        </x-dropdown-link>
+
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <x-dropdown-link :href="route('logout')"
+                                onclick="event.preventDefault(); this.closest('form').submit();">
+                                Log Out
+                            </x-dropdown-link>
+                        </form>
+                    </x-slot>
+                </x-dropdown>
+            </div>
+
+            <!-- MAIN CONTENT -->
+            <main class="p-6">
+                {{ $slot }}
             </main>
+
         </div>
-    </body>
+    </div>
+</body>
 </html>

@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\BarangController;
+use App\Http\Controllers\ResepBtklBopController;
+use App\Http\Controllers\ResepBahanBakuController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\GudangController;
 use App\Http\Controllers\RoleController;
@@ -28,19 +30,19 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('kategori', KategoriController::class);
-    Route::resource('customer', CustomerController::class);
-    Route::resource('barang', BarangController::class);
+    Route::resource('kategori', KategoriController::class)->names('kategori');
+    Route::resource('customer', CustomerController::class)->names('customer');
+    Route::resource('barang', BarangController::class)->names('barang');
+    Route::resource('resep', ResepBtklBopController::class);
+    Route::resource('resep-bahan', ResepBahanBakuController::class);
 
-
-    Route::resource('suppliers', SupplierController::class);
-    Route::resource('gudangs', GudangController::class);
+    Route::resource('suppliers', SupplierController::class)->names('suppliers');
+    Route::resource('gudangs', GudangController::class)->names('gudangs');
     Route::resource('roles', RoleController::class);
     Route::resource('users', UserController::class);
 
-    // --- ROUTE CRUD KAMU ---
-    Route::resource('karyawan', KaryawanController::class);
-    Route::resource('coa', CoaController::class);
+    Route::resource('karyawan', KaryawanController::class)->names('karyawan');
+    Route::resource('coa', CoaController::class)->names('coa');
     Route::resource('penggajian', PenggajianController::class);
     Route::resource('jurnal', JurnalController::class);
 });
