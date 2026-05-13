@@ -9,4 +9,9 @@ class ResepBahanBaku extends Model
     protected $table = 'resep_bahanbaku';
     protected $fillable = ['resep_id', 'bahan_id', 'qty_bahan', 'satuan'];
     public $timestamps = false;
+
+public function bahan()
+{
+    return $this->belongsTo(MasterBarang::class, 'bahan_id');
+}
 }

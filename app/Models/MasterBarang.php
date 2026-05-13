@@ -25,4 +25,13 @@ class MasterBarang extends Model
     {
         return $this->belongsTo(Kategori::class, 'kategori_id');
     }
+
+    // app/Models/MasterBarang.php atau Produk.php
+
+    public function resep()
+    {
+        // Asumsi: satu produk punya banyak bahan di tabel resep
+        // 'produk_id' adalah kolom di tabel resep yang menyambung ke sini
+        return $this->hasMany(ResepBahanBaku::class, 'resep_id'); 
+    }
 }

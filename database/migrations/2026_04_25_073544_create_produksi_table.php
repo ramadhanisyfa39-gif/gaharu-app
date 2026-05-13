@@ -13,13 +13,38 @@ return new class extends Migration
     {
         Schema::create('produksi', function (Blueprint $table) {
             $table->id();
+
             $table->string('kode_produksi')->unique();
+
+            // relasi ke pesanan B2B
+            $table->foreignId('pesanan_id')
+                  ->constrained('pesanan');
+
             $table->datetime('tanggal_mulai');
-            $table->datetime('tanggal_selesai')->nullable();
-            $table->string('status_produksi');
-            $table->foreignId('gudang_bahan_id')->constrained('master_gudang');
-            $table->foreignId('gudang_hasil_id')->constrained('master_gudang');
-            $table->foreignId('created_by')->constrained('users');
+
+            $table->datetime('tanggal_selesai')
+                  ->nullable();
+
+            $table->enum('status_produksi', [
+                'Pending',
+                'Diproses',
+                'Selesai',
+                'Batal'
+            ])->default('Pending');
+
+            // gudang bahan baku
+            $table->foreignId('gudang_bahan_id')
+                  ->constrained('master_gudang');
+
+            // gudang hasil produksi
+            $table->foreignId('gudang_hasil_id')
+                  ->constrained('master_gudang');
+
+            // user yang membuat produksi
+            $table->foreignId('created_by')
+                  ->constrained('users');
+
+            $table->timestamps();
         });
     }
 

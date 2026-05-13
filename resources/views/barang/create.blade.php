@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const inputs = document.querySelectorAll('.uang');
 
-    // 💰 FORMAT RUPIAH
+    //FORMAT RUPIAH
     inputs.forEach(input => {
         input.addEventListener('input', function() {
             let angka = this.value.replace(/\D/g, '');
@@ -121,14 +121,14 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // 🔥 BERSIHKAN SEBELUM SUBMIT
+    //BERSIHKAN SEBELUM SUBMIT
     document.querySelector("form").addEventListener("submit", function() {
         inputs.forEach(input => {
             input.value = input.value.replace(/\./g, '');
         });
     });
 
-    // 🎯 TOGGLE FORM
+    //TOGGLE FORM
     function toggleForm() {
 
         if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {

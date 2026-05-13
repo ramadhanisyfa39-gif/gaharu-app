@@ -3,6 +3,19 @@
 
 <h3>Tambah Resep</h3>
 
+@if(session('success'))
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="alert alert-danger">
+    {{ session('error') }}
+</div>
+@endif
+
 <form action="{{ route('resep.store') }}" method="POST">
 @csrf
 
@@ -34,13 +47,13 @@
 {{-- BTKL --}}
 <div class="mb-3">
 <label>BTKL per Batch</label>
-<input type="number" name="btkl_per_batch" class="form-control">
+<input type="integer" name="btkl_per_batch" class="form-control">
 </div>
 
 {{-- BOP --}}
 <div class="mb-3">
 <label>BOP per Batch</label>
-<input type="number" name="bop_per_batch" class="form-control">
+<input type="integer" name="bop_per_batch" class="form-control">
 </div>
 
 <hr>
@@ -83,8 +96,11 @@
 
 <button type="button" class="btn btn-secondary mb-3" id="add-row">+ Tambah Bahan</button>
 
-<br>
-<button class="btn btn-success">Simpan</button>
+
+<div class="mt-3">
+    <button class="btn btn-success">Simpan</button> 
+    <a href="{{ route('resep.index') }}" class="btn btn-primary">Kembali</a>
+</div>
 
 </form>
 
