@@ -44,24 +44,11 @@
                             Kategori <span class="text-danger">*</span>
                         </label>
 
-                        <select
-                            name="kategori"
-                            id="kategori"
-                            class="form-select @error('kategori') is-invalid @enderror"
-                        >
+                        <select name="kategori" class="form-select" required>
                             <option value="">-- Pilih Kategori --</option>
-                            <option value="Bahan Baku" {{ old('kategori') == 'Bahan Baku' ? 'selected' : '' }}>
-                                Bahan Baku
-                            </option>
-                            <option value="Barang Jadi" {{ old('kategori') == 'Barang Jadi' ? 'selected' : '' }}>
-                                Barang Jadi
-                            </option>
-                            <option value="Operasional" {{ old('kategori') == 'Operasional' ? 'selected' : '' }}>
-                                Operasional
-                            </option>
-                            <option value="Outlet" {{ old('kategori') == 'Outlet' ? 'selected' : '' }}>
-                                Outlet
-                            </option>
+                            <option value="Operasional">Operasional</option>
+                            <option value="Utama">Utama</option>
+                            <option value="Produksi">Produksi</option>
                         </select>
 
                         @error('kategori')
