@@ -23,8 +23,6 @@ use App\Http\Controllers\PesananController;
 use App\Http\Controllers\PenjualanPosController;
 use App\Http\Controllers\WorkOrderController;
 
-
-
 Route::get('/', function () {
     return view('welcome');
 });
@@ -82,7 +80,7 @@ Route::middleware('auth')->group(function () {
 
 
     Route::get('/work-order', [WorkOrderController::class, 'index'])
-    ->name('wo.index');
+        ->name('wo.index');
 
     Route::get('/work-order/create/{id}', [WorkOrderController::class, 'create'])
         ->name('wo.create');
