@@ -11,29 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pesanan', function (Blueprint $table) {
+        Schema::create('penjualan_pos', function (Blueprint $table) {
             $table->id();
-        
-            $table->string('kode_pesanan')->unique();
-        
-            $table->foreignId('customer_id')
-                  ->constrained('customers');
-        
+
+            $table->string('kode_transaksi')->unique();
+
             $table->dateTime('tanggal');
-        
-            $table->dateTime('estimasi_kirim');
-        
-            $table->decimal('total_pesanan', 15, 2)
+
+            $table->foreignId('gudang_id')
+                  ->constrained('master_gudang');
+
+            $table->decimal('total', 15, 2)
                   ->default(0);
-        
-            $table->string('status_pesanan')
-                  ->default('pending');
-        
+
             $table->foreignId('created_by')
                   ->nullable()
                   ->constrained('users')
                   ->nullOnDelete();
-        
+
             $table->timestamps();
         });
     }
@@ -43,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pesanan');
+        Schema::dropIfExists('penjualan_pos');
     }
 };

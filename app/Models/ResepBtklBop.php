@@ -12,11 +12,11 @@ class ResepBtklBop extends Model
     public $timestamps = false;
 
     public function produk()
-{
-    return $this->belongsTo(MasterBarang::class, 'produk_id');
-}
+    {
+        return $this->belongsTo(MasterBarang::class, 'produk_id');
+    }
 
-    public function bahanBaku()
+    public function bahanbaku()
     {
         return $this->hasMany(ResepBahanBaku::class, 'resep_id');
     }

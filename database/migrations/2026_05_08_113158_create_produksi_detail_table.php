@@ -11,21 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pesanan_detail', function (Blueprint $table) {
+        Schema::create('produksi_detail', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('pesanan_id')
-                  ->constrained('pesanan')
-                  ->cascadeOnDelete();
+            $table->foreignId('produksi_id')
+                  ->constrained('produksi');
 
             $table->foreignId('produk_id')
                   ->constrained('master_barang');
 
-            $table->decimal('qty', 15, 2);
-
-            $table->decimal('harga', 15, 2);
-
-            $table->decimal('subtotal', 15, 2);
+            $table->integer('qty');
 
             $table->timestamps();
         });
@@ -36,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pesanan_detail');
+        Schema::dropIfExists('produksi_detail');
     }
 };

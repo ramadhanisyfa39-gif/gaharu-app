@@ -33,4 +33,11 @@ class MasterBarang extends Model
             'barang_id'
         );
     }
+
+    public function resep()
+    {
+        // Asumsi: satu produk punya banyak bahan di tabel resep
+        // 'produk_id' adalah kolom di tabel resep yang menyambung ke sini
+        return $this->hasMany(ResepBahanBaku::class, 'resep_id'); 
+    }
 }

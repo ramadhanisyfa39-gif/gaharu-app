@@ -24,9 +24,11 @@ use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\PengeluaranBahanBakuController;
 
 
-    Route::get('/', function () {return view('welcome');});
-    Route::get('/dashboard', function () {return view('dashboard');})->middleware(['auth', 'verified'])->name('dashboard');
-    Route::middleware('auth')->group(function () {
+Route::get('/', function () {
+    return view('welcome'); });
+Route::get('/dashboard', function () {
+    return view('dashboard'); })->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -45,7 +47,7 @@ use App\Http\Controllers\PengeluaranBahanBakuController;
     Route::resource('coa', CoaController::class)->names('coa');
     Route::resource('penggajian', PenggajianController::class);
     Route::resource('jurnal', JurnalController::class);
-    Route::resource('pembelian', PembelianController::class) ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::resource('pembelian', PembelianController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::get('/stok-gudang', [StokGudangController::class, 'index'])->name('stok-gudang.index');
     Route::resource('pesanan', PesananController::class)->names('pesanan');
     Route::resource('pesanan-detail', PesananDetailController::class);
@@ -59,8 +61,12 @@ use App\Http\Controllers\PengeluaranBahanBakuController;
     Route::get('/work-order/show/{id}', [WorkOrderController::class, 'show'])->name('wo.show');
     Route::post('/work-order/massal/review', [App\Http\Controllers\WorkOrderController::class, 'reviewMassal'])->name('wo.review_massal');
     Route::post('/work-order/massal/store', [App\Http\Controllers\WorkOrderController::class, 'storeMassal'])->name('wo.store_massal');
-    Route::get('/work-order/massal/review', function() {return redirect()->route('wo.index')->with('error', 'Sesi tidak valid, silakan ulangi.');});
-    Route::post('/work-order/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])->name('wo.kirim_produksi');require __DIR__ . '/auth.php';require __DIR__ . '/auth.php';
-    Route::resource('pengeluaran-bahan-baku',PengeluaranBahanBakuController::class);
-    Route::get('pengeluaran-bahan-baku/{id}/approve',[PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');});
-    
+    Route::get('/work-order/massal/review', function () {
+        return redirect()->route('wo.index')->with('error', 'Sesi tidak valid, silakan ulangi.'); });
+    Route::post('/work-order/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])->name('wo.kirim_produksi');
+    require __DIR__ . '/auth.php';
+    require __DIR__ . '/auth.php';
+    Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
+    Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
+});
+
