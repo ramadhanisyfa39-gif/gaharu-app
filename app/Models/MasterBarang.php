@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Kategori;
 
 class MasterBarang extends Model
 {
@@ -24,5 +25,12 @@ class MasterBarang extends Model
     public function kategori()
     {
         return $this->belongsTo(Kategori::class, 'kategori_id');
+    }
+    public function permintaanDetails()
+    {
+        return $this->hasMany(
+            PermintaanBahanBakuDetail::class,
+            'barang_id'
+        );
     }
 }

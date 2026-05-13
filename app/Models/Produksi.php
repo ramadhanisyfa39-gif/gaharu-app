@@ -13,4 +13,11 @@ class Produksi extends Model
     {
         return $this->hasMany(ProduksiDetail::class, 'produksi_id');
     }
+    public function permintaanBahanBaku()
+    {
+        return $this->hasMany(
+            PermintaanBahanBaku::class,
+            'produksi_id'
+        );
+    }
 }
