@@ -22,6 +22,10 @@
             Barang
         </x-nav-link>
 
+        <x-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
+             Supplier
+        </x-nav-link>
+
         <x-nav-link :href="route('resep.index')" :active="request()->routeIs('resep.*')">
             Resep 
         </x-nav-link>
@@ -65,5 +69,16 @@
         <x-nav-link :href="route('stok-gudang.index')" :active="request()->routeIs('stok-gudang.*')">
             Stok Gudang
         </x-nav-link>
+
+        <x-nav-link 
+            :href="route('pengeluaran-bahan-baku.index')" 
+            :active="request()->routeIs('pengeluaran-bahan-baku.*')">
+
+            Pengeluaran Bahan Baku
+
+        </x-nav-link>
+
+        
+        
     </div>
 </div>
