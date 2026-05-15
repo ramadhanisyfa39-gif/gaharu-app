@@ -1,4 +1,19 @@
 <x-app-layout>
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
 <div class="container mt-5">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -10,13 +25,6 @@
             <i class="bi bi-plus-circle"></i> Tambah Pesanan
         </a>
     </div>
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-0"> 
@@ -219,7 +227,6 @@
 </div>
 
 <style>
-    /* Styling tambahan agar lebih "clean" */
     .table thead th { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: none; }
     .table tbody td { border-bottom-color: #f8f9fa; }
     .badge { font-weight: 500; padding: 0.5em 1em; }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\PengeluaranBahanBaku;
 use App\Services\PengeluaranBahanBakuService;
@@ -36,12 +37,17 @@ class PengeluaranBahanBakuController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-    {
-        $data = PengeluaranBahanBaku::latest()->get();
+{
+    // 1. Pastikan nama variabel di sini adalah $data
+    $data = DB::table('pengeluaran_bahan_baku')
+                ->join('master_gudang', 'pengeluaran_bahan_baku.gudang_id', '=', 'master_gudang.id')
+                ->select('pengeluaran_bahan_baku.*', 'master_gudang.nama as nama_gudang')
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-        return view('pengeluaran-bahan-baku.index', compact('data'));
-    }
-
+    // 2. Kirim variabel $data ke view
+    return view('pengeluaran-bahan-baku.index', compact('data'));
+}
     /**
      * Show the form for creating a new resource.
      */
@@ -73,7 +79,7 @@ class PengeluaranBahanBakuController extends Controller
             'keterangan' => 'nullable|string',
         ]);
 
-        $pengeluaran = PengeluaranBahanBaku::create([
+        $data = PengeluaranBahanBaku::create([
             'kode_pengeluaran' => 'PBK-' . time(),
             'tanggal' => now(),
 
@@ -87,7 +93,7 @@ class PengeluaranBahanBakuController extends Controller
 
         foreach ($request->barang_id as $index => $barangId) {
             PengeluaranBahanBakuDetail::create([
-                'pengeluaran_id' => $pengeluaran->id,
+                'pengeluaran_id' => $data->id,
                 'barang_id' => $barangId,
                 'qty' => $request->qty[$index],
                 'satuan' => 'pcs',
@@ -102,7 +108,7 @@ class PengeluaranBahanBakuController extends Controller
     }
     public function show(string $id)
     {
-        $pengeluaran = PengeluaranBahanBaku::with([
+        $data = PengeluaranBahanBaku::with([
             'details.barang',
             'gudang'
         ])->findOrFail($id);
@@ -142,11 +148,11 @@ class PengeluaranBahanBakuController extends Controller
 
     public function approve($id)
     {
-        $pengeluaran = PengeluaranBahanBaku::with('details')
+        $data = PengeluaranBahanBaku::with('details')
             ->findOrFail($id);
 
         $this->service->approve(
-            $pengeluaran,
+            $dat,
             auth()->id()
         );
 
