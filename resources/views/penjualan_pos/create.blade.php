@@ -8,7 +8,8 @@
 <div class="card-body">
 
 <form action="{{ route('penjualan_pos.store') }}"
-      method="POST">
+      method="POST"
+      novalidate>
 
 @csrf
 
@@ -122,7 +123,7 @@
 
 <h4>Total: Rp <span id="grand-total">0</span></h4>
 
-<button class="btn btn-primary">
+<button type="submit" class="btn btn-primary">
     Simpan
 </button>
 

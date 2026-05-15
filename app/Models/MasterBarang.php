@@ -10,6 +10,7 @@ class MasterBarang extends Model
     protected $table = 'master_barang';
     protected $fillable = [
         'kategori_id',
+        'resep_id',
         'kode_barang',
         'nama',
         'satuan',
@@ -34,10 +35,10 @@ class MasterBarang extends Model
         );
     }
 
+
     public function resep()
     {
-        // Asumsi: satu produk punya banyak bahan di tabel resep
-        // 'produk_id' adalah kolom di tabel resep yang menyambung ke sini
-        return $this->hasMany(ResepBahanBaku::class, 'resep_id'); 
+        // Gunakan hasMany karena satu resep_id memiliki banyak item bahan baku
+        return $this->hasMany(ResepBahanBaku::class, 'resep_id', 'resep_id');
     }
 }

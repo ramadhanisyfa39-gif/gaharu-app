@@ -69,4 +69,3 @@ Route::middleware('auth')->group(function () {
     Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
     Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
 });
-

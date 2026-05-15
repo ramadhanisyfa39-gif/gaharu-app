@@ -1,130 +1,145 @@
 <x-app-layout>
-<div class="container">
-    <div class="card shadow-sm">
-        <div class="card-header">
-            <h4 class="mb-0">Tambah Work Order</h4>
-        </div>
-        
-        <div class="card-body">
-            <form action="{{ route('wo.store') }}" method="POST">
-                @csrf
-
-                {{-- HEADER WO --}}
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Kode WO</label>
-                        <input type="text" name="kode_wo" class="form-control bg-light" value="WO-{{ time() }}" readonly>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Tanggal WO</label>
-                        <input type="datetime-local" name="tanggal_wo" class="form-control" required>
-                    </div>
-                </div>
-
-                {{-- INFORMASI PESANAN --}}
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Customer</label>
-                        <input type="text" class="form-control bg-light" value="{{ $pesanan->customer->nama }}" readonly>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Estimasi Pengiriman</label>
-                        <input type="text" class="form-control bg-light" value="{{ \Carbon\Carbon::parse($pesanan->estimasi_kirim)->format('d M Y H:i') }}" readonly>
-                    </div>
-                </div>
-
-                {{-- DETAIL PRODUK --}}
-                <div class="card mb-3 border-primary">
-                    <div class="card-header bg-primary text-white">
-                        <strong>Detail Pesanan & Rencana Produksi</strong>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-bordered align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Produk</th>
-                                        <th width="120" class="text-center">Qty Pesanan</th>
-                                        <th width="120" class="text-center">Qty Sudah WO</th>
-                                        <th width="120" class="text-center">Sisa Qty</th>
-                                        <th width="180">Qty WO Sekarang</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($pesanan->details as $detail)
-                                    @php
-                                        // Asumsi relasi pesanan_detail_id masih kamu gunakan untuk melacak sisa
-                                        $qtySudahWO = \App\Models\WorkOrderDetail::where(
-                                            'pesanan_id', 
-                                            $detail->id
-                                        )->sum('qty_rencana');
-                                        
-                                        $sisaQty = $detail->qty - $qtySudahWO;
-                                    @endphp
-
-                                    <tr>
-                                        {{-- PRODUK --}}
-                                        <td>{{ $detail->produk->nama }}</td>
-                                        
-                                        {{-- QTY PESANAN --}}
-                                        <td class="text-center">{{ $detail->qty }}</td>
-                                        
-                                        {{-- QTY SUDAH WO --}}
-                                        <td class="text-center">{{ $qtySudahWO }}</td>
-                                        
-                                        {{-- SISA --}}
-                                        <td class="text-center">
-                                            @if($sisaQty > 0)
-                                                <span class="badge bg-danger fs-6">{{ $sisaQty }}</span>
-                                            @else
-                                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Terpenuhi</span>
-                                            @endif
-                                        </td>
-                                        
-                                        {{-- INPUT QTY WO --}}
-                                        <td>
-                                            @if($sisaQty > 0)
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" 
-                                                           name="qty_rencana[]" 
-                                                           class="form-control border-primary" 
-                                                           value="{{ $sisaQty }}" 
-                                                           min="1" 
-                                                           max="{{ $sisaQty }}" 
-                                                           required>
-                                                    <span class="input-group-text">{{ $detail->produk->satuan ?? 'pcs' }}</span>
-                                                </div>
-
-                                                <input type="hidden" name="pesanan_id[]" value="{{ $pesanan->id }}">
-                                                <input type="hidden" name="produk_id[]" value="{{ $detail->produk_id }}">
-                                                <input type="hidden" name="pesanan_id[]" value="{{ $detail->id }}">
-                                            @else
-                                                <span class="text-muted fst-italic">Selesai</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-bold text-primary">Tambah Work Order</h5>
+                            <a href="{{ route('wo.index') }}" class="btn btn-sm btn-outline-secondary">Kembali</a>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="card-body">
+                        <form action="{{ route('wo.store') }}" method="POST">
+                            @csrf
 
-                {{-- CATATAN --}}
-                <div class="mb-4">
-                    <label class="form-label fw-bold">Catatan Produksi</label>
-                    <textarea name="catatan" rows="2" class="form-control" placeholder="Contoh: Produksi batch pagi, prioritaskan packing kardus..."></textarea>
-                </div>
+                            {{-- Hidden Pesanan ID - Cukup satu kali di luar loop --}}
+                            <input type="hidden" name="pesanan_id" value="{{ $pesanan->id }}">
 
-                {{-- BUTTON --}}
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('wo.index') }}" class="btn btn-outline-secondary px-4">Batal</a>
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="bi bi-save"></i> Simpan WO
-                    </button>
+                            {{-- HEADER WO --}}
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Kode WO</label>
+                                    <input type="text" name="kode_wo" class="form-control bg-light" value="WO-{{ time() }}" readonly>
+                                    <small class="text-muted">Kode diatur otomatis oleh sistem.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">Tanggal WO</label>
+                                    <input type="datetime-local" name="tanggal_wo" class="form-control" value="{{ date('Y-m-d\TH:i') }}" required>
+                                </div>
+                            </div>
+
+                            {{-- INFORMASI PESANAN --}}
+                            <div class="row mb-4 p-3 bg-light rounded mx-1">
+                                <div class="col-md-4 mb-2">
+                                    <label class="text-muted small d-block">Customer</label>
+                                    <span class="fw-bold text-dark">{{ $pesanan->customer->nama }}</span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="text-muted small d-block">Estimasi Pengiriman</label>
+                                    <span class="fw-bold text-dark">{{ \Carbon\Carbon::parse($pesanan->estimasi_kirim)->format('d M Y H:i') }}</span>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="text-muted small d-block">Status Pembayaran</label>
+                                    <span class="badge {{ $pesanan->status_pembayaran == 'Belum Bayar' ? 'bg-danger' : 'bg-success' }}">
+                                        {{ $pesanan->status_pembayaran }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {{-- DETAIL PRODUK --}}
+                            <div class="card mb-4 border-0 shadow-sm">
+                                <div class="card-header bg-primary text-white py-2">
+                                    <span class="small fw-bold">Detail Pesanan & Rencana Produksi</span>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr class="small text-uppercase">
+                                                <th class="ps-3">Produk</th>
+                                                <th class="text-center">Qty Pesanan</th>
+                                                <th class="text-center">Sudah WO</th>
+                                                <th class="text-center">Sisa</th>
+                                                <th width="200" class="pe-3">Qty WO Sekarang</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($pesanan->details as $detail)
+                                            @php
+                                                // Hitung qty yang sudah dibuatkan WO untuk produk ini di pesanan ini
+                                                $qtySudahWO = \App\Models\WorkOrderDetail::where('pesanan_id', $pesanan->id)
+                                                                ->where('produk_id', $detail->produk_id)
+                                                                ->sum('qty_rencana');
+                                                $sisaQty = $detail->qty - $qtySudahWO;
+                                            @endphp
+
+                                            <tr>
+                                                <td class="ps-3">
+                                                    <div class="fw-bold">{{ $detail->produk->nama }}</div>
+                                                    <small class="text-muted">ID: {{ $detail->produk->kode_barang }}</small>
+                                                </td>
+                                                <td class="text-center">{{ $detail->qty }}</td>
+                                                <td class="text-center text-muted">{{ $qtySudahWO }}</td>
+                                                <td class="text-center">
+                                                    @if($sisaQty > 0)
+                                                        <span class="badge bg-soft-danger text-danger border border-danger px-2">{{ $sisaQty }}</span>
+                                                    @else
+                                                        <span class="badge bg-success px-2"><i class="bi bi-check"></i> Terpenuhi</span>
+                                                    @endif
+                                                </td>
+                                                <td class="pe-3">
+                                                    @if($sisaQty > 0)
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="number" 
+                                                                   name="qty_rencana[]" 
+                                                                   class="form-control border-primary" 
+                                                                   value="{{ $sisaQty }}" 
+                                                                   min="1" 
+                                                                   max="{{ $sisaQty }}" 
+                                                                   required>
+                                                            <span class="input-group-text bg-white">{{ $detail->produk->satuan ?? 'pcs' }}</span>
+                                                        </div>
+                                                        {{-- Kirim produk_id sesuai urutan qty_rencana --}}
+                                                        <input type="hidden" name="produk_id[]" value="{{ $detail->produk_id }}">
+                                                    @else
+                                                        <span class="text-muted fst-italic small">Sudah Terproses</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- CATATAN --}}
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Catatan Produksi</label>
+                                <textarea name="catatan" rows="3" class="form-control" placeholder="Tambahkan instruksi khusus untuk tim produksi jika ada..."></textarea>
+                            </div>
+
+                            <hr class="my-4 text-muted">
+
+                            {{-- BUTTON --}}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <p class="small text-muted mb-0">* Pastikan data rencana produksi sudah sesuai sebelum menyimpan.</p>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ route('wo.index') }}" class="btn btn-light px-4">Batal</a>
+                                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                                        <i class="bi bi-check2-circle me-1"></i> Simpan sebagai Draft
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
+
+    <style>
+        .bg-soft-danger { background-color: #f8d7da; }
+        .form-control:focus { border-color: #0d6efd; box-shadow: none; }
+    </style>
 </x-app-layout>
