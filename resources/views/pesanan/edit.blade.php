@@ -219,8 +219,7 @@
                                     <input type="number"
                                            name="harga[]"
                                            class="form-control harga"
-                                           value="{{ $detail->harga }}"
-                                           readonly>
+                                           value="{{ $detail->harga }}">
 
                                 </td>
 

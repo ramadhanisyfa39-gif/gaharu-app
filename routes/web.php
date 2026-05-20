@@ -24,6 +24,9 @@ use App\Http\Controllers\PenjualanPosController;
 use App\Http\Controllers\PenjualanPosDetailController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\PengeluaranBahanBakuController;
+use App\Http\Controllers\ProduksiController;
+
+use App\Http\Controllers\HargaBarangPosController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -165,6 +168,13 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Input Produksi
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('produksi', ProduksiController::class)->middleware('auth');
+
+    /*
+    |--------------------------------------------------------------------------
     | Pengeluaran Bahan Baku
     |--------------------------------------------------------------------------
     */
@@ -174,6 +184,19 @@ Route::middleware('auth')->group(function () {
         'pengeluaran-bahan-baku/{id}/approve',
         [PengeluaranBahanBakuController::class, 'approve']
     )->name('pengeluaran-bahan-baku.approve');
-});
+
+
+    // Halaman form & riwayat (Butuh ID barang)
+    Route::get('/harga-barang-pos/{id?}', [HargaBarangPosController::class, 'index'])->name('harga.index');
+
+    // Proses simpan data
+    Route::post('/harga-barang-pos/store', [HargaBarangPosController::class, 'store'])->name('harga.store');
+
+    // TAMBAHKAN DUA BARIS BARU INI:
+    Route::put('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'update'])->name('harga.update');
+    Route::delete('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'destroy'])->name('harga.destroy');
+    });
+
+    Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
 
 require __DIR__ . '/auth.php';
