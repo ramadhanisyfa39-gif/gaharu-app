@@ -1,92 +1,192 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Input Pembayaran Gaji</h2>
-    </x-slot>
+    <style>
+        .form-container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+        }
 
-    <div class="container py-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-dark text-white p-3">
-                <h4 class="mb-0">Input Pembayaran Gaji</h4>
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card-payroll {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-weight: bold;
+            color: #1e293b;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #64748b;
+        }
+
+        .input-group input {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            padding: 8px;
+        }
+
+        .btn-save {
+            background: #0f172a;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .input-rupiah {
+            text-align: right;
+            font-weight: bold;
+            color: #0f172a;
+        }
+    </style>
+
+    <div class="form-container">
+        <h2 style="margin-bottom: 20px; font-weight: bold;">Input Penggajian Karyawan</h2>
+
+        <form action="{{ route('penggajian.store') }}" method="POST">
+            @csrf
+
+            <div class="card-payroll">
+                <div class="input-group">
+                    <label>Nama Karyawan</label>
+                    <select name="karyawan_id" class="input-group input" required>
+                        @foreach($karyawans as $k)
+                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Bulan</label>
+                    <input type="month" name="periode" class="input-group input" required>
+                </div>
             </div>
-            <div class="card-body p-4">
-                <form action="{{ route('penggajian.store') }}" method="POST">
-                    @csrf
-                    <div class="row g-3">
-                        <!-- Pilih Karyawan -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Karyawan</label>
-                            <select name="karyawan_id" class="form-select" required>
-                                <option value="">-- Pilih Karyawan --</option>
-                                @foreach($karyawans as $k)
-                                <option value="{{ $k->id }}">{{ $k->nama_karyawan }} ({{ $k->jabatan }})</option>
-                                @endforeach
-                            </select>
-                        </div>
+    </div>
 
-                        <!-- Periode -->
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Periode (Bulan-Tahun)</label>
-                            <input type="month" name="periode_bulan_tahun" class="form-control" required>
-                        </div>
+    <div class="grid-3">
+        <div class="card-payroll">
+            <div class="card-title" style="border-color: #10b981;">1. Penerimaan Tetap</div>
+            <div class="input-group">
+                <label>Gaji Pokok</label>
+                <input type="text" name="gaji_pokok" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Tunjangan Transport</label>
+                <input type="text" name="tunjangan_transport" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Tunjangan Makan</label>
+                <input type="text" name="tunjangan_makan" value="0" class="input-rupiah">
+            </div>
+        </div>
 
-                        <!-- Tanggal Transfer -->
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Tanggal Transfer</label>
-                            <input type="date" name="tanggal_transfer" class="form-control" value="{{ date('Y-m-d') }}" required>
-                        </div>
+        <div class="card-payroll">
+            <div class="card-title" style="border-color: #3b82f6;">2. Penerimaan Tidak Tetap</div>
+            <div class="input-group">
+                <label>Lembur</label>
+                <input type="text" name="lembur" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Bonus Target</label>
+                <input type="text" name="bonus_target" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Bonus Tanggal Merah</label>
+                <input type="text" name="bonus_tanggal_merah" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Bonus Birthday Service</label>
+                <input type="text" name="bonus_birthday" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Bonus Lain-lain</label>
+                <input type="text" name="bonus_dll" value="0" class="input-rupiah">
+            </div>
+        </div>
 
-                        <hr class="my-4">
-
-                        <!-- Komponen Gaji -->
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Gaji Pokok</label>
-                            <input type="number" name="gaji_pokok" id="gaji_pokok" class="form-control calc" value="0" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Lembur</label>
-                            <input type="number" name="lembur" id="lembur" class="form-control calc" value="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Potongan</label>
-                            <input type="number" name="potongan" id="potongan" class="form-control calc" value="0">
-                        </div>
-
-                        <div class="col-12 mt-4">
-                            <div class="alert alert-info d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Total Gaji Bersih:</h5>
-                                <h3 class="mb-0 fw-bold" id="label_total">Rp 0</h3>
-                                <input type="hidden" name="total_gaji_bersih" id="total_gaji_bersih" value="0">
-                            </div>
-                        </div>
-
-                        <div class="col-12 text-end">
-                            <a href="{{ route('penggajian.index') }}" class="btn btn-light border px-4">Batal</a>
-                            <button type="submit" class="btn btn-primary px-5 shadow">Simpan Gaji </Data></button>
-                        </div>
-                    </div>
-                </form>
+        <div class="card-payroll">
+            <div class="card-title" style="border-color: #ef4444;">3. Potongan</div>
+            <div class="input-group">
+                <label>Kerusakan Inventaris</label>
+                <input type="text" name="potongan_inventaris" value="0" class="input-rupiah">
+            </div>
+            <div class="input-group">
+                <label>Keterlambatan</label>
+                <input type="text" name="potongan_terlambat" value="0" class="input-rupiah">
             </div>
         </div>
     </div>
 
+    <button type="submit" class="btn-save">SIMPAN & CETAK SLIP GAJI</button>
+    </form>
+    </div>
+
     <script>
-        const inputs = document.querySelectorAll('.calc');
-        const labelTotal = document.getElementById('label_total');
-        const inputTotal = document.getElementById('total_gaji_bersih');
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('.input-rupiah');
 
-        function hitungGaji() {
-            let gapok = parseFloat(document.getElementById('gaji_pokok').value) || 0;
-            let lembur = parseFloat(document.getElementById('lembur').value) || 0;
-            let potongan = parseFloat(document.getElementById('potongan').value) || 0;
+            inputs.forEach(input => {
+                input.addEventListener('input', function(e) {
+                    // Ambil hanya angka dari input
+                    let rawValue = this.value.replace(/[^0-9]/g, '');
 
-            let bersih = gapok + lembur - potongan;
+                    // Format ulang ke Rupiah
+                    if (rawValue !== '') {
+                        this.value = formatRupiah(rawValue, 'Rp. ');
+                    } else {
+                        this.value = '';
+                    }
+                });
+            });
 
-            labelTotal.innerText = "Rp " + bersih.toLocaleString('id-ID');
-            inputTotal.value = bersih;
-        }
+            function formatRupiah(angka, prefix) {
+                let number_string = angka.replace(/[^0-9]/g, ''),
+                    sisa = number_string.length % 3,
+                    rupiah = number_string.substr(0, sisa),
+                    ribuan = number_string.substr(sisa).match(/\d{3}/gi);
 
-        inputs.forEach(input => {
-            input.addEventListener('input', hitungGaji);
+                if (ribuan) {
+                    let separator = sisa ? '.' : '';
+                    rupiah += separator + ribuan.join('.');
+                }
+
+                return prefix + rupiah;
+            }
+
+            // --- BAGIAN PALING PENTING ---
+            // Sebelum form dikirim ke controller, kita hilangkan "Rp." dan titiknya
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function() {
+                inputs.forEach(input => {
+                    // Mengubah "Rp. 1.000.000" menjadi "1000000" agar DB tidak error
+                    input.value = input.value.replace(/[^0-9]/g, '');
+                });
+            });
         });
     </script>
 </x-app-layout>

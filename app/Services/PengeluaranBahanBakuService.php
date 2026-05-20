@@ -3,20 +3,34 @@
 namespace App\Services;
 
 use App\Models\PengeluaranBahanBaku;
-use App\Services\StockService;
-use Illuminate\Support\Facades\DB;
 use App\Models\MasterGudang;
+
+use App\Services\StockService;
+use App\Services\FifoService;
+
+use Illuminate\Support\Facades\DB;
 
 class PengeluaranBahanBakuService
 {
+    /*
+    |--------------------------------------------------------------------------
+    | CONSTRUCTOR
+    |--------------------------------------------------------------------------
+    */
+
     public function __construct(
-        protected StockService $stockService
+
+        protected StockService $stockService,
+
+        protected FifoService $fifoService
+
     ) {
     }
 
     /**
      * APPROVE PENGELUARAN
      */
+
     public function approve(
         PengeluaranBahanBaku $pengeluaran,
         int $userId
@@ -34,14 +48,23 @@ class PengeluaranBahanBakuService
             */
 
             if ($pengeluaran->status == 'disetujui') {
+
                 throw new \Exception(
                     'Pengeluaran sudah disetujui'
                 );
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | GUDANG UTAMA
+            |--------------------------------------------------------------------------
+            */
+
             $gudangUtama = MasterGudang::where(
                 'nama',
                 'Gudang Utama'
             )->firstOrFail();
+
             /*
             |--------------------------------------------------------------------------
             | LOOP DETAIL BARANG
@@ -52,7 +75,31 @@ class PengeluaranBahanBakuService
 
                 /*
                 |--------------------------------------------------------------------------
-                | KURANGI STOK
+                | FIFO CONSUME
+                |--------------------------------------------------------------------------
+                |
+                | Mengurangi batch FIFO tertua.
+                |
+                */
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | OPTIONAL DEBUG FIFO
+                |--------------------------------------------------------------------------
+                |
+                | Bisa dipakai nanti untuk:
+                | - histori FIFO
+                | - costing
+                | - audit batch
+                |
+                */
+
+                // dd($fifoResult);
+
+                /*
+                |--------------------------------------------------------------------------
+                | KURANGI STOK SUMMARY
                 |--------------------------------------------------------------------------
                 */
 
@@ -62,7 +109,34 @@ class PengeluaranBahanBakuService
                         => $detail->barang_id,
 
                     'gudang_asal_id'
-                        => $gudangUtama->id, // Gudang Utama
+                        => $gudangUtama->id,
+
+                    'qty'
+                        => $detail->qty,
+
+                    'source_type'
+                        => 'pengeluaran_bahan_baku',
+
+                    'source_id'
+                        => $pengeluaran->id,
+
+                    'user_id'
+                        => $userId,
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | TAMBAH STOK KE GUDANG TUJUAN
+                |--------------------------------------------------------------------------
+                */
+
+                $this->stockService->stockIn([
+
+                    'barang_id'
+                        => $detail->barang_id,
+
+                    'gudang_tujuan_id'
+                        => $pengeluaran->gudang_id,
 
                     'qty'
                         => $detail->qty,
@@ -77,31 +151,6 @@ class PengeluaranBahanBakuService
                         => $userId,
                 ]);
             }
-             /*
-                |--------------------------------------------------------------------------
-                | PENAMBAHAN STOK
-                |--------------------------------------------------------------------------
-                */
-            $this->stockService->stockIn([
-
-                'barang_id'
-                    => $detail->barang_id,
-
-                'gudang_tujuan_id'
-                    => $pengeluaran->gudang_id,
-
-                'qty'
-                    => $detail->qty,
-
-                'source_type'
-                    => 'pengeluaran_bahan_baku',
-
-                'source_id'
-                    => $pengeluaran->id,
-
-                'user_id'
-                    => $userId,
-            ]);
 
             /*
             |--------------------------------------------------------------------------
@@ -111,11 +160,14 @@ class PengeluaranBahanBakuService
 
             $pengeluaran->update([
 
-                'status' => 'disetujui',
+                'status'
+                    => 'disetujui',
 
-                'approved_by' => $userId,
+                'approved_by'
+                    => $userId,
 
-                'approved_at' => now(),
+                'approved_at'
+                    => now(),
             ]);
 
             return $pengeluaran;
