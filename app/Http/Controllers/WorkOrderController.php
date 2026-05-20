@@ -144,46 +144,102 @@ public function show($id)
      * Dari Gudang Utama (ID: 1) ke Gudang Produksi (ID: 2)
      */
     public function kirimKeProduksi($id)
-    {
-        $wo = \App\Models\WorkOrder::with('details.produk.resep.bahan')->findOrFail($id);
-        
-        \DB::beginTransaction();
-        try {
-            // 1. BUAT DOKUMEN PENGELUARAN (Status: 'Draft')
-            // Ini yang nanti di-approve bagian persediaan/gudang
-            $pengeluaran = \App\Models\PengeluaranBahanBaku::create([
-                'kode_pengeluaran' => 'REQ-' . date('Ymd') . '-' . strtoupper(\Str::random(4)),
-                'tanggal'          => now(),
-                'gudang_id'        => 4, 
-                'status'           => 'Draft', 
-                'keterangan'       => 'Permintaan bahan baku untuk ' . $wo->kode_wo,
-                'created_by'       => auth()->id(),
-            ]);
-    
-            // 2. MASUKKAN DETAIL BAHAN
-            foreach ($wo->details as $detail) {
-                if ($detail->produk && $detail->produk->resep) {
-                    foreach ($detail->produk->resep as $resep) {
-                        \App\Models\PengeluaranBahanBakuDetail::create([
-                            'pengeluaran_id' => $pengeluaran->id,
-                            'barang_id'      => $resep->bahan_id,
-                            'qty'            => $resep->qty_bahan * $detail->qty_rencana,
-                            'satuan'         => $resep->bahan->satuan ?? 'gr',
-                        ]);
-                    }
-                }
-            }
-    
-            // 3. UPDATE STATUS WO KE 'Diproses'
-            // Status ini jauh lebih tepat secara alur kerja
-            $wo->update(['status_wo' => 'Diproses']);
-    
-            \DB::commit();
-            return redirect()->back()->with('success', 'Permintaan bahan dikirim! Status WO kini: Diproses.');
-    
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
+{
+    $wo = \App\Models\WorkOrder::with(
+        'details.produk.resep.bahan'
+    )->findOrFail($id);
+
+    \DB::beginTransaction();
+
+    try {
+
+        /*
+        |--------------------------------------------------------------------------
+        | CARI GUDANG PRODUKSI
+        |--------------------------------------------------------------------------
+        */
+
+        $gudangProduksi = \App\Models\MasterGudang::where(
+            'nama',
+            'Gudang Produksi'
+        )->first();
+
+        if (!$gudangProduksi) {
+            throw new \Exception(
+                'Gudang Produksi belum dibuat pada Master Gudang.'
+            );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | BUAT DOKUMEN PENGELUARAN
+        |--------------------------------------------------------------------------
+        */
+
+        $pengeluaran = \App\Models\PengeluaranBahanBaku::create([
+            'kode_pengeluaran' => 'REQ-' . date('Ymd') . '-' . strtoupper(\Str::random(4)),
+            'tanggal'          => now(),
+
+            // tujuan transfer
+            'gudang_id'        => $gudangProduksi->id,
+
+            'status'           => 'Draft',
+            'keterangan'       => 'Permintaan bahan baku untuk ' . $wo->kode_wo,
+            'created_by'       => auth()->id(),
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | DETAIL BAHAN BAKU DARI RESEP
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($wo->details as $detail) {
+
+            if (!$detail->produk) {
+                continue;
+            }
+
+            if (!$detail->produk->resep) {
+                continue;
+            }
+
+            foreach ($detail->produk->resep as $resep) {
+
+                \App\Models\PengeluaranBahanBakuDetail::create([
+                    'pengeluaran_id' => $pengeluaran->id,
+                    'barang_id'      => $resep->bahan_id,
+                    'qty'            => $resep->qty_bahan * $detail->qty_rencana,
+                    'satuan'         => $resep->bahan->satuan ?? '-',
+                ]);
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | UPDATE STATUS WO
+        |--------------------------------------------------------------------------
+        */
+
+        $wo->update([
+            'status_wo' => 'Diproses'
+        ]);
+
+        \DB::commit();
+
+        return redirect()->back()->with(
+            'success',
+            'Permintaan bahan berhasil dibuat.'
+        );
+
+    } catch (\Exception $e) {
+
+        \DB::rollBack();
+
+        return redirect()->back()->with(
+            'error',
+            'Gagal: ' . $e->getMessage()
+        );
     }
+}
 }

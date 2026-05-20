@@ -9,13 +9,21 @@ class PengeluaranBahanBakuDetail extends Model
     protected $table = 'pengeluaran_bahan_baku_detail';
 
     protected $fillable = [
-        'pengeluaran_id',
-        'barang_id',
-        'qty',
-        'satuan',
-        'harga_satuan',
-        'total_harga',
-    ];
+
+    'pengeluaran_id',
+
+    'barang_id',
+
+    'qty',
+
+    'satuan',
+
+    'harga_satuan',
+
+    'total_harga',
+
+    'hpp_total',
+];
 
     public function barang()
     {

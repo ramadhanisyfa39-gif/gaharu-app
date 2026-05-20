@@ -23,6 +23,38 @@ class BarangController extends Controller
         return view('barang.create', compact('kategori', 'reseps'));
     }
 
+    public function generateKode($kategoriId)
+    {
+        $kategori = Kategori::findOrFail($kategoriId);
+
+        // Ambil 3 huruf depan nama kategori
+        $prefix = strtoupper(substr($kategori->nama, 0, 3));
+
+        // Cari kode terakhir berdasarkan prefix
+        $lastBarang = MasterBarang::where('kode_barang', 'like', $prefix . '%')
+            ->orderBy('kode_barang', 'desc')
+            ->first();
+
+        if ($lastBarang) {
+
+            // Ambil angka terakhir
+            $lastNumber = (int) substr($lastBarang->kode_barang, 3);
+
+            $newNumber = $lastNumber + 1;
+
+        } else {
+
+            $newNumber = 1;
+        }
+
+        // Format jadi COF001
+        $kodeBarang = $prefix . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+
+        return response()->json([
+            'kode_barang' => $kodeBarang
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([

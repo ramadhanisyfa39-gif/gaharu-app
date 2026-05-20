@@ -24,9 +24,15 @@ use App\Http\Controllers\PenjualanPosController;
 use App\Http\Controllers\PenjualanPosDetailController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\PengeluaranBahanBakuController;
+use App\Http\Controllers\StokGudangBatchController;
 
 Route::get('/', function () {
-    return view('welcome');
+
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
@@ -161,6 +167,9 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])
             ->name('kirim_produksi');
+
+        Route::get('/stok-gudang-batch', [StokGudangBatchController::class, 'index'])
+            ->name('stok-gudang-batch.index');
     });
 
     /*
@@ -174,6 +183,14 @@ Route::middleware('auth')->group(function () {
         'pengeluaran-bahan-baku/{id}/approve',
         [PengeluaranBahanBakuController::class, 'approve']
     )->name('pengeluaran-bahan-baku.approve');
+
+    Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
+        ->name('barang.generate-kode');
+    Route::get(
+        '/stok-gudang-batch',
+        [StokGudangBatchController::class, 'index']
+    )->name('stok-gudang-batch.index');
+
 });
 
 require __DIR__ . '/auth.php';
