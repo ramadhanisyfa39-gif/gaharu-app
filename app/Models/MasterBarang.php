@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Kategori;
 
 class MasterBarang extends Model
 {
     protected $table = 'master_barang';
     protected $fillable = [
         'kategori_id',
+        'resep_id',
         'kode_barang',
         'nama',
         'satuan',
@@ -24,5 +26,19 @@ class MasterBarang extends Model
     public function kategori()
     {
         return $this->belongsTo(Kategori::class, 'kategori_id');
+    }
+    public function permintaanDetails()
+    {
+        return $this->hasMany(
+            PermintaanBahanBakuDetail::class,
+            'barang_id'
+        );
+    }
+
+
+    public function resep()
+    {
+        // Gunakan hasMany karena satu resep_id memiliki banyak item bahan baku
+        return $this->hasMany(ResepBahanBaku::class, 'resep_id', 'resep_id');
     }
 }

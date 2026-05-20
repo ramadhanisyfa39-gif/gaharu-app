@@ -30,5 +30,34 @@ class Pembelian extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function isEditable(): bool
+    {
+        foreach ($this->details as $detail) {
 
+            $stok = \App\Models\StokGudang::where(
+                'barang_id',
+                $detail->barang_id
+            )
+            ->where(
+                'gudang_id',
+                $this->gudang_id
+            )
+            ->first();
+
+            /*
+            |--------------------------------------------------------------------------
+            | JIKA STOK SUDAH BERKURANG
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                !$stok ||
+                $stok->jumlah < $detail->qty
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

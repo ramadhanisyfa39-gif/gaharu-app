@@ -13,10 +13,21 @@ return new class extends Migration
     {
         Schema::create('pesanan_detail', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('pesanan_id')->constrained('pesanan');
-            $table->foreignId('produk_id')->constrained('master_barang');
+
+            $table->foreignId('pesanan_id')
+                  ->constrained('pesanan')
+                  ->cascadeOnDelete();
+
+            $table->foreignId('produk_id')
+                  ->constrained('master_barang');
+
             $table->decimal('qty', 15, 2);
+
             $table->decimal('harga', 15, 2);
+
+            $table->decimal('subtotal', 15, 2);
+
+            $table->timestamps();
         });
     }
 

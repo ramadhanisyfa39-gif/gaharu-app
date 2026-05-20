@@ -13,13 +13,28 @@ return new class extends Migration
     {
         Schema::create('pesanan', function (Blueprint $table) {
             $table->id();
+        
             $table->string('kode_pesanan')->unique();
-            $table->foreignId('customer_id')->constrained('customers');
-            $table->datetime('tanggal');
-            $table->datetime('estimasi_kirim');
-            $table->decimal('total_pesanan', 15, 2);
-            $table->string('status_pesanan');
-            $table->foreignId('created_by')->constrained('users');
+        
+            $table->foreignId('customer_id')
+                  ->constrained('customers');
+        
+            $table->dateTime('tanggal');
+        
+            $table->dateTime('estimasi_kirim');
+        
+            $table->decimal('total_pesanan', 15, 2)
+                  ->default(0);
+        
+            $table->string('status_pesanan')
+                  ->default('pending');
+        
+            $table->foreignId('created_by')
+                  ->nullable()
+                  ->constrained('users')
+                  ->nullOnDelete();
+        
+            $table->timestamps();
         });
     }
 

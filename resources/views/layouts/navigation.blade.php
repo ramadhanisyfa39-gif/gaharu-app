@@ -22,6 +22,14 @@
             Barang
         </x-nav-link>
 
+        <x-nav-link :href="route('suppliers.index')" :active="request()->routeIs('suppliers.*')">
+             Supplier
+        </x-nav-link>
+
+        <x-nav-link :href="route('resep.index')" :active="request()->routeIs('resep.*')">
+            Resep 
+        </x-nav-link>
+
         <x-nav-link :href="route('gudangs.index')" :active="request()->routeIs('gudangs.*')">
             Gudang
         </x-nav-link>
@@ -50,8 +58,27 @@
             Pembelian
         </x-nav-link>
 
+        <x-nav-link :href="route('pesanan.index')" :active="request()->routeIs('pesanan.*')">
+            Pesanan B2B
+        </x-nav-link>
+
+        <x-nav-link :href="route('wo.index')" :active="request()->routeIs('work_order.*')">
+            Permintaan Produksi
+        </x-nav-link>
+
         <x-nav-link :href="route('stok-gudang.index')" :active="request()->routeIs('stok-gudang.*')">
             Stok Gudang
         </x-nav-link>
+
+        <x-nav-link 
+            :href="route('pengeluaran-bahan-baku.index')" 
+            :active="request()->routeIs('pengeluaran-bahan-baku.*')">
+
+            Pengeluaran Bahan Baku
+
+        </x-nav-link>
+
+        
+        
     </div>
 </div>

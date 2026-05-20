@@ -1,17 +1,25 @@
 <x-app-layout>
 <div class="container">
+@if(session('success'))
+    <div id="flash-success" data-message="{{ session('success') }}"></div>
+@endif
+
+@if(session('error'))
+    <div id="flash-error" data-message="{{ session('error') }}"></div>
+@endif
 
 <h3 class="mb-3">Data Resep</h3>
 
 <a href="{{ route('resep.create') }}" class="btn btn-primary mb-3">+ Tambah</a>
 
-<table class="table table-bordered">
+<table class="table table-bordered text-center">
 <thead>
 <tr>
     <th>Produk</th>
     <th>Output</th>
     <th>BTKL / Batch</th>
     <th>BOP / Batch</th>
+    <th>Jumlah Bahan</th>
     <th>Aksi</th>
 </tr>
 </thead>
@@ -29,14 +37,14 @@
     <td>{{ $d->produk->nama ?? '-' }}</td>
 
     <td>
-        {{ $d->output_qty }} {{ $d->satuan_output ?? '-' }}
+        {{ (int) $d->output_qty }} {{ $d->satuan_output ?? '-' }}
     </td>
 
     <td>Rp {{ number_format($d->btkl_per_batch) }}</td>
     <td>Rp {{ number_format($d->bop_per_batch) }}</td>
 
     {{-- JUMLAH BAHAN --}}
-    <td>{{ $d->bahanbaku->count() }} bahan</td>
+    <td>{{ $d->bahanbaku->count() }} bahan </td>
 
     <td>
         <a href="{{ route('resep.bahan.show', $d->id) }}"
@@ -66,4 +74,29 @@
 </table>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+@if(session('success'))
+<script>
+Swal.fire({
+    icon: 'success',
+    title: 'Berhasil',
+    text: @json(session('success')),
+    timer: 2000,
+    showConfirmButton: false
+});
+</script>
+@endif
+
+@if(session('error'))
+<script>
+Swal.fire({
+    icon: 'error',
+    title: 'Gagal',
+    text: @json(session('error'))
+});
+</script>
+@endif
+
 </x-app-layout>
