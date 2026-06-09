@@ -203,6 +203,32 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
     });
+
+    Route::get('/jurnal-pembelian', [JurnalController::class, 'pembelianIndex'])->name('jurnal-pembelian.index');
+
+    // 2. Halaman form input jurnal manual berdasarkan ID pembelian terpilih
+    Route::get('/jurnal-pembelian/create/{id}', [JurnalController::class, 'pembelianCreate'])->name('jurnal-pembelian.create');
+
+    // 3. Proses pengiriman data form untuk menyimpan jurnal keuangan ke database
+    Route::post('/jurnal-pembelian/store/{id}', [JurnalController::class, 'prosesJurnalPembelian'])->name('jurnal-pembelian.store');
+
+    Route::get('/jurnal-penjualanpos', [JurnalController::class, 'penjualanposIndex'])->name('jurnal-penjualanpos.index');
+
+    // 2. Halaman form input jurnal manual berdasarkan ID pembelian terpilih
+    Route::get('/jurnal-penjualanpos/create/{id}', [JurnalController::class, 'penjualanposCreate'])->name('jurnal-penjualanpos.create');
+
+    // 3. Proses pengiriman data form untuk menyimpan jurnal keuangan ke database
+    Route::post('/jurnal-penjualanpos/store/{id}', [JurnalController::class, 'prosesJurnalPenjualanpos'])->name('jurnal-penjualanpos.store');
+
+    Route::get('/jurnal-penjualanb2b', [JurnalController::class, 'penjualanb2bIndex'])->name('jurnal-penjualanb2b.index');
+
+    // 2. Halaman form input jurnal manual berdasarkan ID pembelian terpilih
+    Route::get('/jurnal-penjualanb2b/create/{id}', [JurnalController::class, 'penjualanb2bCreate'])->name('jurnal-penjualanb2b.create');
+
+    // 3. Proses pengiriman data form untuk menyimpan jurnal keuangan ke database
+    Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'prosesJurnalPenjualanB2B'])->name('jurnal-penjualanb2b.store');
+
+    Route::get('/buku-pembantu-utang', [JurnalController::class, 'bukuPembantuUtang'])->name('bukupembantu-utang.index');
 });
 
 require __DIR__ . '/auth.php';

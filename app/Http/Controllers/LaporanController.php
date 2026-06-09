@@ -11,38 +11,59 @@ class LaporanController extends Controller
 {
     public function neracaSaldo(Request $request)
     {
-        // Filter Bulan dan Tahun
+        // Filter Bulan dan Tahun (Default ke bulan & tahun saat ini jika kosong)
         $bulan = $request->get('bulan', date('m'));
         $tahun = $request->get('tahun', date('Y'));
 
-        // Tanggal akhir bulan terpilih (untuk mengambil semua transaksi sampai tgl tsb)
-        $lastDay = date('Y-m-t', strtotime("$tahun-$bulan-01"));
+        // Konversi string rentang tanggal bulan berjalan
+        $startOfMonth = "$tahun-$bulan-01";
+        $endOfMonth = date('Y-m-t', strtotime($startOfMonth));
 
-        // Ambil semua akun COA
+        // Ambil semua akun COA dari database CV Gaharu Agung Sejahtera
         $neracaSaldo = \App\Models\ChartOfAccount::orderBy('kode', 'asc')
             ->get()
-            ->map(function ($coa) use ($lastDay) {
-                // Hitung total mutasi debet dan kredit sampai periode terpilih
-                $mutasi = \App\Models\JournalItem::where('account_id', $coa->id)
-                    ->whereHas('journal', function ($q) use ($lastDay) {
-                        $q->where('tanggal', '<=', $lastDay);
+            ->map(function ($coa) use ($startOfMonth, $endOfMonth) {
+
+                // 1. HITUNG SALDO AWAL (Semua transaksi SEBELUM tanggal 1 di bulan terpilih)
+                // Catatan: Jika relasi di model JournalItem Anda bukan 'journal', ganti string 'journal' di bawah ini
+                $saldoAwalRaw = \App\Models\JournalItem::where('account_id', $coa->id)
+                    ->whereHas('journal', function ($q) use ($startOfMonth) {
+                        $q->where('tanggal', '<', $startOfMonth);
                     })
                     ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
                     ->first();
 
-                // Hitung Saldo Akhir (Net)
-                $saldoAkhir = $mutasi->total_debit - $mutasi->total_kredit;
+                $netSaldoAwal = ($saldoAwalRaw->total_debit ?? 0) - ($saldoAwalRaw->total_kredit ?? 0);
 
-                // Masukkan ke objek coa
-                $coa->debet_akhir = $saldoAkhir > 0 ? $saldoAkhir : 0;
-                $coa->kredit_akhir = $saldoAkhir < 0 ? abs($saldoAkhir) : 0;
+                $coa->saldo_awal_debit  = $netSaldoAwal > 0 ? $netSaldoAwal : 0;
+                $coa->saldo_awal_kredit = $netSaldoAwal < 0 ? abs($netSaldoAwal) : 0;
+
+
+                // 2. HITUNG MUTASI PERIODE (Hanya transaksi DI DALAM bulan berjalan)
+                $mutasiRaw = \App\Models\JournalItem::where('account_id', $coa->id)
+                    ->whereHas('journal', function ($q) use ($startOfMonth, $endOfMonth) {
+                        $q->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+                    })
+                    ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+                    ->first();
+
+                $coa->mutasi_debit  = $mutasiRaw->total_debit ?? 0;
+                $coa->mutasi_kredit = $mutasiRaw->total_kredit ?? 0;
+
+
+                // 3. HITUNG SALDO AKHIR (Saldo Awal + Mutasi)
+                $totalDebitKeseluruhan  = ($saldoAwalRaw->total_debit ?? 0) + ($mutasiRaw->total_debit ?? 0);
+                $totalKreditKeseluruhan = ($saldoAwalRaw->total_kredit ?? 0) + ($mutasiRaw->total_kredit ?? 0);
+                $netSaldoAkhir = $totalDebitKeseluruhan - $totalKreditKeseluruhan;
+
+                $coa->debet_akhir  = $netSaldoAkhir > 0 ? $netSaldoAkhir : 0;
+                $coa->kredit_akhir = $netSaldoAkhir < 0 ? abs($netSaldoAkhir) : 0;
 
                 return $coa;
-            })
-            ->filter(function ($coa) {
-                // Hanya tampilkan akun yang punya saldo (tidak nol)
-                return $coa->debet_akhir != 0 || $coa->kredit_akhir != 0;
             });
+
+        // SEMENTARA KITA MATIKAN FILTER AGAR SEMUA AKUN COA MUNCUL DI VIEW
+        // ->filter(function ($coa) { ... });
 
         return view('laporan.neraca-saldo.index', compact('neracaSaldo', 'bulan', 'tahun'));
     }

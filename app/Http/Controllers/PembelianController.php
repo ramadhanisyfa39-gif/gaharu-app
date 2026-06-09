@@ -29,10 +29,10 @@ class PembelianController extends Controller
     public function index()
     {
         $pembelian = Pembelian::with([
-                'supplier',
-                'gudang',
-                'user'
-            ])
+            'supplier',
+            'gudang',
+            'user'
+        ])
             ->orderByDesc('tanggal')
             ->paginate(10);
 
@@ -107,24 +107,24 @@ class PembelianController extends Controller
             $pembelian = Pembelian::create([
 
                 'kode_pembelian'
-                    => $this->generateKodePembelian(
-                        $data['tanggal']
-                    ),
+                => $this->generateKodePembelian(
+                    $data['tanggal']
+                ),
 
                 'supplier_id'
-                    => $data['supplier_id'],
+                => $data['supplier_id'],
 
                 'gudang_id'
-                    => $data['gudang_id'],
+                => $data['gudang_id'],
 
                 'tanggal'
-                    => $data['tanggal'],
+                => $data['tanggal'],
 
                 'total'
-                    => $total,
+                => $total,
 
                 'created_by'
-                    => auth()->id(),
+                => auth()->id(),
             ]);
 
             /*
@@ -144,16 +144,16 @@ class PembelianController extends Controller
                 $detail = $pembelian->details()->create([
 
                     'barang_id'
-                        => $item['barang_id'],
+                    => $item['barang_id'],
 
                     'qty'
-                        => $item['qty'],
+                    => $item['qty'],
 
                     'harga'
-                        => $item['harga'],
+                    => $item['harga'],
 
                     'batch_number'
-                        => $item['batch_number'] ?? null,
+                    => $item['batch_number'] ?? null,
                 ]);
 
                 /*
@@ -165,25 +165,25 @@ class PembelianController extends Controller
                 $this->stockService->stockIn([
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'gudang_tujuan_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->qty * $detail->harga,
+                    => $detail->qty * $detail->harga,
 
                     'source_type'
-                        => 'pembelian',
+                    => 'pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
         });
@@ -280,25 +280,25 @@ class PembelianController extends Controller
                 $this->stockService->stockOut([
 
                     'gudang_asal_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->qty * $detail->harga,
+                    => $detail->qty * $detail->harga,
 
                     'source_type'
-                        => 'edit_pembelian',
+                    => 'edit_pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
 
@@ -334,16 +334,16 @@ class PembelianController extends Controller
             $pembelian->update([
 
                 'supplier_id'
-                    => $data['supplier_id'],
+                => $data['supplier_id'],
 
                 'gudang_id'
-                    => $data['gudang_id'],
+                => $data['gudang_id'],
 
                 'tanggal'
-                    => $data['tanggal'],
+                => $data['tanggal'],
 
                 'total'
-                    => $total,
+                => $total,
             ]);
 
             /*
@@ -357,16 +357,16 @@ class PembelianController extends Controller
                 $detail = $pembelian->details()->create([
 
                     'barang_id'
-                        => $item['barang_id'],
+                    => $item['barang_id'],
 
                     'qty'
-                        => $item['qty'],
+                    => $item['qty'],
 
                     'harga'
-                        => $item['harga'],
+                    => $item['harga'],
 
                     'batch_number'
-                        => $item['batch_number'] ?? null,
+                    => $item['batch_number'] ?? null,
                 ]);
 
                 /*
@@ -378,25 +378,25 @@ class PembelianController extends Controller
                 $this->stockService->stockIn([
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'gudang_tujuan_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->qty * $detail->harga,
+                    => $detail->qty * $detail->harga,
 
                     'source_type'
-                        => 'edit_pembelian',
+                    => 'edit_pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
         });
@@ -416,103 +416,103 @@ class PembelianController extends Controller
     */
 
     public function destroy(Pembelian $pembelian)
-{
-    DB::transaction(function () use ($pembelian) {
+    {
+        DB::transaction(function () use ($pembelian) {
 
-        $pembelian->load('details');
+            $pembelian->load('details');
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | VALIDASI STOK MASIH ADA
         |--------------------------------------------------------------------------
         */
 
-        foreach ($pembelian->details as $detail) {
+            foreach ($pembelian->details as $detail) {
 
-            $stok = \App\Models\StokGudang::where(
-                'barang_id',
-                $detail->barang_id
-            )
-            ->where(
-                'gudang_id',
-                $pembelian->gudang_id
-            )
-            ->first();
+                $stok = \App\Models\StokGudang::where(
+                    'barang_id',
+                    $detail->barang_id
+                )
+                    ->where(
+                        'gudang_id',
+                        $pembelian->gudang_id
+                    )
+                    ->first();
 
-            /*
+                /*
             |--------------------------------------------------------------------------
             | JIKA STOK SUDAH TERPAKAI
             |--------------------------------------------------------------------------
             */
 
-            if (
-                !$stok ||
-                $stok->jumlah < $detail->qty
-            ) {
+                if (
+                    !$stok ||
+                    $stok->jumlah < $detail->qty
+                ) {
 
-                throw new \RuntimeException(
-                    'Pembelian tidak bisa dihapus karena stok sudah terpakai.'
-                );
+                    throw new \RuntimeException(
+                        'Pembelian tidak bisa dihapus karena stok sudah terpakai.'
+                    );
+                }
             }
-        }
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | KELUARKAN STOK
         |--------------------------------------------------------------------------
         */
 
-        foreach ($pembelian->details as $detail) {
+            foreach ($pembelian->details as $detail) {
 
-            $this->stockService->stockOut([
+                $this->stockService->stockOut([
 
-                'gudang_asal_id'
+                    'gudang_asal_id'
                     => $pembelian->gudang_id,
 
-                'barang_id'
+                    'barang_id'
                     => $detail->barang_id,
 
-                'qty'
+                    'qty'
                     => $detail->qty,
 
-                'total_harga'
+                    'total_harga'
                     => $detail->qty * $detail->harga,
 
-                'source_type'
+                    'source_type'
                     => 'hapus_pembelian',
 
-                'source_id'
+                    'source_id'
                     => $pembelian->id,
 
-                'user_id'
+                    'user_id'
                     => auth()->id(),
-            ]);
-        }
+                ]);
+            }
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | HAPUS DETAIL
         |--------------------------------------------------------------------------
         */
 
-        $pembelian->details()->delete();
+            $pembelian->details()->delete();
 
-        /*
+            /*
         |--------------------------------------------------------------------------
         | HAPUS HEADER
         |--------------------------------------------------------------------------
         */
 
-        $pembelian->delete();
-    });
+            $pembelian->delete();
+        });
 
-    return redirect()
-        ->route('pembelian.index')
-        ->with(
-            'success',
-            'Pembelian berhasil dihapus dan stok berhasil dikurangi.'
-        );
-}
+        return redirect()
+            ->route('pembelian.index')
+            ->with(
+                'success',
+                'Pembelian berhasil dihapus dan stok berhasil dikurangi.'
+            );
+    }
     /*
     |--------------------------------------------------------------------------
     | GENERATE KODE
@@ -525,13 +525,13 @@ class PembelianController extends Controller
 
         $prefix = 'PB'
             . Carbon::parse($tanggal)
-                ->format('Ymd');
+            ->format('Ymd');
 
         $last = Pembelian::where(
-                'kode_pembelian',
-                'like',
-                $prefix . '%'
-            )
+            'kode_pembelian',
+            'like',
+            $prefix . '%'
+        )
             ->lockForUpdate()
             ->orderByDesc('id')
             ->first();
