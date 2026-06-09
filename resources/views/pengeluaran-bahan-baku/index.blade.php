@@ -1,53 +1,126 @@
 <x-app-layout>
 
-    <div class="container mx-auto">
+<div class="container-fluid">
 
-        <!-- HEADER -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
-            <h3 class="fw-bold">
+        <div>
+
+            <h2 class="fw-bold mb-0">
                 Pengeluaran Bahan Baku
-            </h3>
+            </h2>
 
-            <div class="d-flex gap-2">
+            <small class="text-muted">
+                Manajemen pengeluaran stok bahan baku produksi
+            </small>
 
-                <!-- KEMBALI -->
-                <a href="{{ route('dashboard') }}"
-                   class="btn btn-secondary">
+        </div>
 
-                    ← Menu Utama
+        <div>
 
-                </a>
+            <a href="{{ route('dashboard') }}"
+               class="btn btn-secondary">
 
-                <!-- TAMBAH -->
-                <a href="{{ route('pengeluaran-bahan-baku.create') }}"
-                   class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i>
+                Dashboard
 
-                    + Tambah Pengeluaran
+            </a>
 
-                </a>
+            <a href="{{ route('pengeluaran-bahan-baku.create') }}"
+               class="btn btn-primary">
+
+                <i class="bi bi-plus-circle"></i>
+                Tambah
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- STATISTIK -->
+    <div class="row mb-4">
+
+        <div class="col-md-4">
+
+            <div class="card shadow-sm">
+
+                <div class="card-body">
+
+                    <h6>Total Pengeluaran</h6>
+
+                    <h2 class="fw-bold">
+                        {{ $data->count() }}
+                    </h2>
+
+                </div>
 
             </div>
 
         </div>
 
-        <!-- ALERT -->
-        @if(session('success'))
+        <div class="col-md-4">
 
-            <div class="alert alert-success">
+            <div class="card shadow-sm">
 
-                {{ session('success') }}
+                <div class="card-body">
+
+                    <h6>Draft</h6>
+
+                    <h2 class="fw-bold text-warning">
+                        {{ $data->where('status','draft')->count() }}
+                    </h2>
+
+                </div>
 
             </div>
 
-        @endif
+        </div>
 
-        <!-- CARD -->
-        <div class="card shadow-sm">
+        <div class="col-md-4">
 
-            <div class="card-body">
+            <div class="card shadow-sm">
 
-                <table class="table table-bordered table-hover align-middle">
+                <div class="card-body">
+
+                    <h6>Approved</h6>
+
+                    <h2 class="fw-bold text-success">
+                        {{
+                            $data->whereIn(
+                                'status',
+                                ['approved','disetujui']
+                            )->count()
+                        }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    @if(session('success'))
+
+        <div class="alert alert-success">
+
+            {{ session('success') }}
+
+        </div>
+
+    @endif
+
+    <!-- TABEL -->
+    <div class="card shadow-sm">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
 
                     <thead class="table-dark">
 
@@ -55,9 +128,12 @@
 
                             <th>No</th>
                             <th>Kode</th>
+                            <th>Gudang</th>
                             <th>Tanggal</th>
                             <th>Status</th>
-                            <th width="220">Aksi</th>
+                            <th width="180">
+                                Aksi
+                            </th>
 
                         </tr>
 
@@ -65,90 +141,122 @@
 
                     <tbody>
 
-                        @forelse($data as $item)
+                    @forelse($data as $item)
 
-                            <tr>
+                        <tr>
 
-                                <td>
-                                    {{ $loop->iteration }}
-                                </td>
+                            <td>
+                                {{ $loop->iteration }}
+                            </td>
 
-                                <td>
-                                    {{ $item->kode_pengeluaran }}
-                                </td>
+                            <td class="fw-semibold">
+                                {{ $item->kode_pengeluaran }}
+                            </td>
 
-                                <td>
-                                    {{ $item->tanggal }}
-                                </td>
+                            <td>
+                                {{ $item->nama_gudang }}
+                            </td>
 
-                                <td>
+                            <td>
+                                {{ $item->tanggal }}
+                            </td>
 
-                                    @if($item->status == 'disetujui')
+                            <td>
 
-                                        <span class="badge bg-success">
+                                @if(
+                                    strtolower($item->status) == 'approved'
+                                    ||
+                                    strtolower($item->status) == 'disetujui'
+                                )
 
-                                            Disetujui
+                                    <span class="badge bg-success">
+                                        Approved
+                                    </span>
 
-                                        </span>
+                                @else
 
-                                    @else
+                                    <span class="badge bg-warning text-dark">
+                                        Draft
+                                    </span>
 
-                                        <span class="badge bg-warning text-dark">
+                                @endif
 
-                                            {{ ucfirst($item->status) }}
+                            </td>
 
-                                        </span>
+                            <td>
 
-                                    @endif
+                                <div class="btn-group">
 
-                                </td>
+                                    <a
+                                        href="{{ route('pengeluaran-bahan-baku.show',$item->id) }}"
+                                        class="btn btn-info btn-sm">
 
-                                <td>
-
-                                    <a href="{{ route('pengeluaran-bahan-baku.show', $item->id) }}"
-                                       class="btn btn-sm btn-info">
-
-                                        Detail
+                                        <i class="bi bi-eye"></i>
 
                                     </a>
 
-                                    @if($item->status !== 'disetujui')
+                                    @if(
+                                        strtolower($item->status) == 'draft'
+                                    )
 
-                                        <a href="{{ route('pengeluaran-bahan-baku.edit', $item->id) }}"
-                                           class="btn btn-sm btn-warning">
+                                        @if(
 
-                                            Edit
+    strtolower($item->status) !== 'approved'
 
-                                        </a>
+    &&
 
-                                        <a href="{{ route('pengeluaran-bahan-baku.approve', $item->id) }}"
-                                           class="btn btn-sm btn-success"
-                                           onclick="return confirm('Approve pengeluaran ini?')">
+    strtolower($item->status) !== 'disetujui'
 
-                                            Approve
+    &&
+
+    !str_contains(
+        strtolower($item->keterangan ?? ''),
+        'permintaan bahan baku untuk'
+    )
+
+)
+
+    <a
+        href="{{ route('pengeluaran-bahan-baku.edit', $item->id) }}"
+        class="btn btn-warning btn-sm">
+
+        Edit
+
+    </a>
+
+@endif
+
+                                        <a
+                                            href="{{ route('pengeluaran-bahan-baku.approve',$item->id) }}"
+                                            class="btn btn-success btn-sm"
+                                            onclick="return confirm('Approve pengeluaran ini?')">
+
+                                            <i class="bi bi-check-circle"></i>
 
                                         </a>
 
                                     @endif
 
-                                </td>
+                                </div>
 
-                            </tr>
+                            </td>
 
-                        @empty
+                        </tr>
 
-                            <tr>
+                    @empty
 
-                                <td colspan="5"
-                                    class="text-center text-muted">
+                        <tr>
 
-                                    Belum ada data pengeluaran bahan baku.
+                            <td colspan="6"
+                                class="text-center text-muted">
 
-                                </td>
+                                Belum ada data pengeluaran bahan baku.
 
-                            </tr>
+                            </td>
 
-                        @endforelse
+                        </tr>
+
+                    @endforelse
 
                     </tbody>
 
@@ -159,5 +267,7 @@
         </div>
 
     </div>
+
+</div>
 
 </x-app-layout>

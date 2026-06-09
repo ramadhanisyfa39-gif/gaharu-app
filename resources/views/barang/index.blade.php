@@ -23,9 +23,6 @@
     <th>Kategori</th>
     <th>Satuan</th>
     <th>Jenis</th>
-    <th>Harga B2B</th>
-    <th>Harga POS</th>
-    <th>HPP</th>
     <th>Aksi</th>
 </tr>
 </thead>
@@ -51,21 +48,6 @@
         @elseif($d->is_operational)
             <span class="badge bg-warning-subtle text-dark px-3 py-2">Operational</span>
         @endif
-    </td>
-
-    <!-- B2B -->
-    <td class="fw-semibold">
-        {{ $d->is_barang_jadi ? 'Rp ' . number_format($d->harga_jual_b2b,0,',','.') : '-' }}
-    </td>
-
-    <!-- POS -->
-    <td class="fw-semibold">
-        {{ $d->is_barang_jadi ? 'Rp ' . number_format($d->harga_jual_pos,0,',','.') : '-' }}
-    </td>
-
-    <!-- HPP (SEMUA JENIS PUNYA) -->
-    <td class="fw-semibold">
-        Rp {{ number_format($d->hpp_referensi,0,',','.') }}
     </td>
 
     <td>

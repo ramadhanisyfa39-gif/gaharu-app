@@ -88,9 +88,10 @@
 
                 <thead>
                     <tr>
-                        <th>Barang</th>
+                        <th>Nama Barang</th>
                         <th width="120">Qty</th>
-                        <th width="160">Harga</th>
+                        <th width="180">Total Harga</th>
+                        <th width="180">Harga / Qty</th>
                         <th width="220">Batch Number</th>
                         <th width="80">Aksi</th>
                     </tr>
@@ -132,18 +133,28 @@
                                 type="number"
                                 step="0.01"
                                 name="items[0][qty]"
-                                class="form-control"
+                                class="form-control qty-input"
                                 required>
                         </td>
 
-                        {{-- HARGA --}}
+                        {{-- TOTAL HARGA --}}
                         <td>
                             <input
                                 type="number"
                                 step="0.01"
                                 name="items[0][harga]"
-                                class="form-control"
+                                class="form-control harga-input"
                                 required>
+                        </td>
+
+                        {{-- HARGA PER QTY --}}
+                        <td>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="items[0][harga_per_qty]"
+                                class="form-control harga-per-qty"
+                                readonly>
                         </td>
 
                         {{-- BATCH --}}
@@ -249,7 +260,7 @@
                             type="number"
                             step="0.01"
                             name="items[\${rowIndex}][qty]"
-                            class="form-control"
+                            class="form-control qty-input"
                             required>
                     </td>
 
@@ -258,8 +269,17 @@
                             type="number"
                             step="0.01"
                             name="items[\${rowIndex}][harga]"
-                            class="form-control"
+                            class="form-control harga-input"
                             required>
+                    </td>
+
+                    <td>
+                        <input
+                            type="number"
+                            step="0.01"
+                            name="items[\${rowIndex}][harga_per_qty]"
+                            class="form-control harga-per-qty"
+                            readonly>
                     </td>
 
                     <td>
@@ -357,7 +377,40 @@
 
         /*
         |--------------------------------------------------------------------------
-        | AUTO GENERATE
+        | HITUNG HARGA PER QTY
+        |--------------------------------------------------------------------------
+        */
+
+        function calculateHargaPerQty(row)
+        {
+            const qtyInput =
+                row.querySelector('.qty-input');
+
+            const hargaInput =
+                row.querySelector('.harga-input');
+
+            const hargaPerQtyInput =
+                row.querySelector('.harga-per-qty');
+
+            const qty =
+                parseFloat(qtyInput.value) || 0;
+
+            const harga =
+                parseFloat(hargaInput.value) || 0;
+
+            let hasil = 0;
+
+            if (qty > 0) {
+                hasil = harga / qty;
+            }
+
+            hargaPerQtyInput.value =
+                hasil.toFixed(2);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | AUTO GENERATE BATCH
         |--------------------------------------------------------------------------
         */
 
@@ -374,6 +427,26 @@
 
                         generateBatchNumber(row);
                     });
+            }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | AUTO HITUNG HARGA PER QTY
+        |--------------------------------------------------------------------------
+        */
+
+        document.addEventListener('input', function(e) {
+
+            if (
+                e.target.classList.contains('qty-input') ||
+                e.target.classList.contains('harga-input')
+            ) {
+
+                const row =
+                    e.target.closest('.item-row');
+
+                calculateHargaPerQty(row);
             }
         });
 

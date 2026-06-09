@@ -24,10 +24,18 @@ use App\Http\Controllers\PenjualanPosController;
 use App\Http\Controllers\PenjualanPosDetailController;
 use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\PengeluaranBahanBakuController;
+use App\Http\Controllers\ProduksiController;
+use App\Http\Controllers\HargaBarangPosController;
+use App\Http\Controllers\StokGudangBatchController;
 use App\Http\Controllers\LaporanController;
 
 Route::get('/', function () {
-    return view('welcome');
+
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
@@ -164,7 +172,17 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])
             ->name('kirim_produksi');
+
+        Route::get('/stok-gudang-batch', [StokGudangBatchController::class, 'index'])
+            ->name('stok-gudang-batch.index');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Input Produksi
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('produksi', ProduksiController::class)->middleware('auth');
 
     /*
     |--------------------------------------------------------------------------
@@ -177,6 +195,26 @@ Route::middleware('auth')->group(function () {
         'pengeluaran-bahan-baku/{id}/approve',
         [PengeluaranBahanBakuController::class, 'approve']
     )->name('pengeluaran-bahan-baku.approve');
+
+
+    // Halaman form & riwayat (Butuh ID barang)
+    Route::get('/harga-barang-pos/{id?}', [HargaBarangPosController::class, 'index'])->name('harga.index');
+
+    // Proses simpan data
+    Route::post('/harga-barang-pos/store', [HargaBarangPosController::class, 'store'])->name('harga.store');
+
+    // TAMBAHKAN DUA BARIS BARU INI:
+    Route::put('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'update'])->name('harga.update');
+    Route::delete('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'destroy'])->name('harga.destroy');
+    });
+
+    Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
+    Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
+        ->name('barang.generate-kode');
+    Route::get(
+        '/stok-gudang-batch',
+        [StokGudangBatchController::class, 'index']
+    )->name('stok-gudang-batch.index');
 
     Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
     Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');

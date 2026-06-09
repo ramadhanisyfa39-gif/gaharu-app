@@ -35,7 +35,16 @@ class MasterBarang extends Model
         );
     }
 
-
+// Di dalam class MasterBarang
+public function hargaPosAktif()
+{
+    // Laravel akan otomatis mencari 'barang_id' di tabel harga_barang_pos 
+    // dan mencocokkannya dengan 'id' di tabel ini
+    return $this->hasOne(HargaPeriode::class, 'barang_id')
+                ->whereDate('tgl_mulai', '<=', now())
+                ->whereDate('tgl_selesai', '>=', now())
+                ->latest();
+}
     public function resep()
     {
         // Gunakan hasMany karena satu resep_id memiliki banyak item bahan baku

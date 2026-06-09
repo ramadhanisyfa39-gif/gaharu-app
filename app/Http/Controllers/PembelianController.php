@@ -7,17 +7,39 @@ use App\Models\MasterBarang;
 use App\Models\MasterGudang;
 use App\Models\Pembelian;
 use App\Models\Supplier;
+
 use App\Services\StockService;
+use App\Services\FifoService;
+
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class PembelianController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | PROPERTY
+    |--------------------------------------------------------------------------
+    */
+
     protected StockService $stockService;
 
-    public function __construct(StockService $stockService)
-    {
+    protected FifoService $fifoService;
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONSTRUCTOR
+    |--------------------------------------------------------------------------
+    */
+
+    public function __construct(
+        StockService $stockService,
+        FifoService $fifoService
+    ) {
+
         $this->stockService = $stockService;
+
+        $this->fifoService = $fifoService;
     }
 
     /*
@@ -85,17 +107,17 @@ class PembelianController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | HITUNG TOTAL
+            | HITUNG TOTAL PEMBELIAN
             |--------------------------------------------------------------------------
+            |
+            | harga sekarang adalah TOTAL HARGA
+            |
             */
 
             $total = collect($data['items'])
                 ->sum(function ($item) {
 
-                    return
-                        (float) $item['qty']
-                        *
-                        (float) $item['harga'];
+                    return (float) $item['harga'];
                 });
 
             /*
@@ -129,11 +151,27 @@ class PembelianController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | CREATE DETAIL + STOCK IN
+            | CREATE DETAIL
             |--------------------------------------------------------------------------
             */
 
             foreach ($data['items'] as $item) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | HARGA PER QTY
+                |--------------------------------------------------------------------------
+                */
+
+                $hargaPerQty = 0;
+
+                if ((float) $item['qty'] > 0) {
+
+                    $hargaPerQty =
+                        (float) $item['harga']
+                        /
+                        (float) $item['qty'];
+                }
 
                 /*
                 |--------------------------------------------------------------------------
@@ -152,13 +190,63 @@ class PembelianController extends Controller
                     'harga'
                     => $item['harga'],
 
+                    'harga_per_qty'
+                    => $hargaPerQty,
+
+                    /*
+    |--------------------------------------------------------------------------
+    | TEMP BATCH
+    |--------------------------------------------------------------------------
+    */
+
                     'batch_number'
-                    => $item['batch_number'] ?? null,
+                    => 'TEMP',
+                ]);
+
+                /*
+|--------------------------------------------------------------------------
+| GENERATE BATCH UNIK
+|--------------------------------------------------------------------------
+*/
+
+                $detail->update([
+
+                    'batch_number'
+                    => Carbon::parse(
+                        $pembelian->tanggal
+                    )->format('Ymd')
+                        . '-PB'
+                        . $detail->id,
+                ]);
+
+                /*
+|--------------------------------------------------------------------------
+| GENERATE BATCH UNIK
+|--------------------------------------------------------------------------
+*/
+
+                $detail->update([
+
+                    'batch_number'
+                    => date('Ymd')
+                        . '-PB'
+                        . $detail->id,
                 ]);
 
                 /*
                 |--------------------------------------------------------------------------
-                | STOCK IN
+                | FIFO BATCH STOCK
+                |--------------------------------------------------------------------------
+                */
+
+                $this->fifoService->createBatchStock(
+                    $pembelian,
+                    $detail
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | STOCK IN SUMMARY
                 |--------------------------------------------------------------------------
                 */
 
@@ -173,8 +261,14 @@ class PembelianController extends Controller
                     'qty'
                     => $detail->qty,
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | TOTAL HARGA
+                    |--------------------------------------------------------------------------
+                    */
+
                     'total_harga'
-                    => $detail->qty * $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
                     => 'pembelian',
@@ -289,7 +383,7 @@ class PembelianController extends Controller
                     => $detail->qty,
 
                     'total_harga'
-                    => $detail->qty * $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
                     => 'edit_pembelian',
@@ -319,10 +413,7 @@ class PembelianController extends Controller
             $total = collect($data['items'])
                 ->sum(function ($item) {
 
-                    return
-                        (float) $item['qty']
-                        *
-                        (float) $item['harga'];
+                    return (float) $item['harga'];
                 });
 
             /*
@@ -354,6 +445,28 @@ class PembelianController extends Controller
 
             foreach ($data['items'] as $item) {
 
+                /*
+                |--------------------------------------------------------------------------
+                | HARGA PER QTY
+                |--------------------------------------------------------------------------
+                */
+
+                $hargaPerQty = 0;
+
+                if ((float) $item['qty'] > 0) {
+
+                    $hargaPerQty =
+                        (float) $item['harga']
+                        /
+                        (float) $item['qty'];
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | CREATE DETAIL
+                |--------------------------------------------------------------------------
+                */
+
                 $detail = $pembelian->details()->create([
 
                     'barang_id'
@@ -365,9 +478,33 @@ class PembelianController extends Controller
                     'harga'
                     => $item['harga'],
 
+                    'harga_per_qty'
+                    => $hargaPerQty,
+
                     'batch_number'
-                    => $item['batch_number'] ?? null,
+                    => 'TEMP',
                 ]);
+
+                $detail->update([
+
+                    'batch_number'
+                    => Carbon::parse(
+                        $pembelian->tanggal
+                    )->format('Ymd')
+                        . '-PB'
+                        . $detail->id,
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | FIFO BATCH
+                |--------------------------------------------------------------------------
+                */
+
+                $this->fifoService->createBatchStock(
+                    $pembelian,
+                    $detail
+                );
 
                 /*
                 |--------------------------------------------------------------------------
@@ -387,7 +524,7 @@ class PembelianController extends Controller
                     => $detail->qty,
 
                     'total_harga'
-                    => $detail->qty * $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
                     => 'edit_pembelian',
@@ -421,47 +558,6 @@ class PembelianController extends Controller
 
             $pembelian->load('details');
 
-            /*
-        |--------------------------------------------------------------------------
-        | VALIDASI STOK MASIH ADA
-        |--------------------------------------------------------------------------
-        */
-
-            foreach ($pembelian->details as $detail) {
-
-                $stok = \App\Models\StokGudang::where(
-                    'barang_id',
-                    $detail->barang_id
-                )
-                    ->where(
-                        'gudang_id',
-                        $pembelian->gudang_id
-                    )
-                    ->first();
-
-                /*
-            |--------------------------------------------------------------------------
-            | JIKA STOK SUDAH TERPAKAI
-            |--------------------------------------------------------------------------
-            */
-
-                if (
-                    !$stok ||
-                    $stok->jumlah < $detail->qty
-                ) {
-
-                    throw new \RuntimeException(
-                        'Pembelian tidak bisa dihapus karena stok sudah terpakai.'
-                    );
-                }
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | KELUARKAN STOK
-        |--------------------------------------------------------------------------
-        */
-
             foreach ($pembelian->details as $detail) {
 
                 $this->stockService->stockOut([
@@ -476,7 +572,7 @@ class PembelianController extends Controller
                     => $detail->qty,
 
                     'total_harga'
-                    => $detail->qty * $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
                     => 'hapus_pembelian',
@@ -489,19 +585,7 @@ class PembelianController extends Controller
                 ]);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | HAPUS DETAIL
-        |--------------------------------------------------------------------------
-        */
-
             $pembelian->details()->delete();
-
-            /*
-        |--------------------------------------------------------------------------
-        | HAPUS HEADER
-        |--------------------------------------------------------------------------
-        */
 
             $pembelian->delete();
         });
@@ -513,6 +597,7 @@ class PembelianController extends Controller
                 'Pembelian berhasil dihapus dan stok berhasil dikurangi.'
             );
     }
+
     /*
     |--------------------------------------------------------------------------
     | GENERATE KODE

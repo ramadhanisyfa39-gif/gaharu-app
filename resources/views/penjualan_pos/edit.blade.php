@@ -2,6 +2,12 @@
     <div class="container py-4">
         <h3 class="mb-4 fw-bold">Edit Penjualan POS</h3>
 
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <strong>Gagal!</strong> {{ session('error') }}
+            </div>
+        @endif
+
         <div class="card shadow-sm">
             <div class="card-body">
                 <form action="{{ route('penjualan_pos.update', $penjualan->id) }}" method="POST">
@@ -13,13 +19,17 @@
                             <label class="form-label fw-bold">Tanggal</label>
                             <input type="datetime-local" 
                                    name="tanggal" 
-                                   class="form-control" 
+                                   id="input-tanggal"
+                                   class="form-control @error('tanggal') is-invalid @enderror" 
                                    value="{{ \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d\TH:i') }}" 
                                    required>
+                            @error('tanggal')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Gudang</label>
-                            <select name="gudang_id" class="form-select" required>
+                            <select name="gudang_id" class="form-select @error('gudang_id') is-invalid @enderror" required>
                                 <option value="">-- Pilih Gudang --</option>
                                 @foreach($gudang as $g)
                                     <option value="{{ $g->id }}" {{ $penjualan->gudang_id == $g->id ? 'selected' : '' }}>
@@ -27,6 +37,9 @@
                                     </option>
                                 @endforeach
                             </select>
+                            @error('gudang_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
 
@@ -47,12 +60,10 @@
                                 @foreach($penjualan->details as $detail)
                                 <tr>
                                     <td>
-                                        <select name="produk_id[]" class="form-select produk" required>
+                                        <select name="produk_id[]" class="form-select select-produk" required>
                                             <option value="">-- Pilih Produk --</option>
                                             @foreach($produk as $p)
-                                                <option value="{{ $p->id }}" 
-                                                        data-harga="{{ $p->harga_jual_pos }}" 
-                                                        {{ $detail->produk_id == $p->id ? 'selected' : '' }}>
+                                                <option value="{{ $p->id }}" {{ $detail->produk_id == $p->id ? 'selected' : '' }}>
                                                     {{ $p->nama }}
                                                 </option>
                                             @endforeach
@@ -83,7 +94,7 @@
                                     </td>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-danger btn-sm btn-remove">
-                                            <i class="fa-solid fa-xmark"></i> X
+                                            X
                                         </button>
                                     </td>
                                 </tr>
@@ -118,82 +129,127 @@
     </div>
 
     <script>
-        // Menambah baris baru
-        document.getElementById('btn-add').addEventListener('click', function() {
-            let tableBody = document.querySelector('#table-item tbody');
-            let firstRow = tableBody.querySelector('tr');
-            
-            if (!firstRow) return; // Cegah error jika tabel kosong
+        document.addEventListener('DOMContentLoaded', function () {
 
-            let row = firstRow.cloneNode(true);
-
-            // Reset nilai input
-            row.querySelectorAll('input').forEach(input => {
-                input.value = '';
-            });
-            row.querySelector('.subtotal').value = 0;
-            
-            // Reset dropdown select
-            row.querySelectorAll('select').forEach(select => {
-                select.selectedIndex = 0;
-            });
-
-            tableBody.appendChild(row);
-        });
-
-        // Deteksi perubahan pada dropdown Produk
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('produk')) {
-                let row = e.target.closest('tr');
-                let selectedOption = e.target.options[e.target.selectedIndex];
-                let harga = selectedOption.getAttribute('data-harga') || 0;
-
-                row.querySelector('.harga').value = harga;
-                hitungSubtotal(row);
-            }
-        });
-
-        // Deteksi input pada kolom Qty
-        document.addEventListener('input', function(e) {
-            if (e.target.classList.contains('qty')) {
-                let row = e.target.closest('tr');
-                hitungSubtotal(row);
-            }
-        });
-
-        // Hapus baris
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('btn-remove') || e.target.closest('.btn-remove')) {
-                let rows = document.querySelectorAll('#table-item tbody tr');
+            // 1. TAMBAH BARIS BARU (CLONE ROW)
+            document.getElementById('btn-add').addEventListener('click', function() {
+                let tableBody = document.querySelector('#table-item tbody');
+                let firstRow = tableBody.querySelector('tr');
                 
-                // Jangan izinkan menghapus baris terakhir
-                if (rows.length > 1) {
-                    e.target.closest('tr').remove();
-                    hitungTotal();
+                if (!firstRow) return; 
+
+                let row = firstRow.cloneNode(true);
+
+                // Reset nilai input baris baru
+                row.querySelectorAll('input').forEach(input => {
+                    input.value = '';
+                });
+                row.querySelector('.subtotal').value = 0;
+                
+                // Reset dropdown select baris baru
+                row.querySelectorAll('select').forEach(select => {
+                    select.selectedIndex = 0;
+                });
+
+                tableBody.appendChild(row);
+            });
+
+            // 2. FUNGSI PANGGIL API HARGA (Sinkron dengan Logika Periode)
+            function fetchHarga(selectElement) {
+                const row = selectElement.closest('tr');
+                const inputHarga = row.querySelector('.harga'); 
+                
+                const produkId = selectElement.value;
+                const tanggalInput = document.getElementById('input-tanggal').value; 
+
+                if (produkId) {
+                    inputHarga.value = '...'; 
+
+                    // Memanggil endpoint get-harga milikmu
+                    const urlHarga = '/penjualan_pos/get-harga/' + produkId + '?tanggal=' + tanggalInput;
+
+                    fetch(urlHarga)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Gagal mengambil data harga server.');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            inputHarga.value = data.harga;
+                            hitungSubtotal(row);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching price:', error);
+                            inputHarga.value = 0;
+                            hitungSubtotal(row);
+                        });
                 } else {
-                    alert('Minimal harus ada satu item produk!');
+                    inputHarga.value = 0;
+                    hitungSubtotal(row);
                 }
             }
-        });
 
-        // Fungsi Hitung Subtotal per baris
-        function hitungSubtotal(row) {
-            let qty = parseFloat(row.querySelector('.qty').value) || 0;
-            let harga = parseFloat(row.querySelector('.harga').value) || 0;
-            let subtotal = qty * harga;
+            // 3. EVENT DELEGATION (UNTUK OPERASI TABEL DINAMIS)
+            const table = document.querySelector('#table-item');
 
-            row.querySelector('.subtotal').value = subtotal;
-            hitungTotal();
-        }
-
-        // Fungsi Hitung Grand Total
-        function hitungTotal() {
-            let total = 0;
-            document.querySelectorAll('.subtotal').forEach(function(item) {
-                total += parseFloat(item.value) || 0;
+            // Deteksi perubahan produk
+            table.addEventListener('change', function(e) {
+                if (e.target.classList.contains('select-produk')) {
+                    fetchHarga(e.target);
+                }
             });
 
-            document.getElementById('grand-total').innerText = total.toLocaleString('id-ID');
-        }
+            // Deteksi input nilai Qty / Harga
+            table.addEventListener('input', function(e) {
+                if (e.target.classList.contains('qty') || e.target.classList.contains('harga')) {
+                    let row = e.target.closest('tr');
+                    hitungSubtotal(row);
+                }
+            });
+
+            // Hapus baris item
+            table.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-remove')) {
+                    let rows = document.querySelectorAll('#table-item tbody tr');
+                    
+                    if (rows.length > 1) {
+                        e.target.closest('tr').remove();
+                        hitungTotal();
+                    } else {
+                        alert('Minimal harus ada satu item produk di dalam transaksi!');
+                    }
+                }
+            });
+
+            // 4. DETEKSI PERUBAHAN TANGGAL (Update ulang semua harga di tabel)
+            document.getElementById('input-tanggal').addEventListener('change', function() {
+                document.querySelectorAll('.select-produk').forEach(function(selectElement) {
+                    if (selectElement.value !== "") {
+                        fetchHarga(selectElement);
+                    }
+                });
+            });
+
+            // 5. FUNGSI HITUNG MATEMATIKA SUB-TOTAL
+            function hitungSubtotal(row) {
+                let qty = parseFloat(row.querySelector('.qty').value) || 0;
+                let harga = parseFloat(row.querySelector('.harga').value) || 0;
+                let subtotal = qty * harga;
+
+                row.querySelector('.subtotal').value = subtotal;
+                hitungTotal();
+            }
+
+            // 6. FUNGSI HITUNG MATEMATIKA GRAND TOTAL
+            function hitungTotal() {
+                let total = 0;
+                document.querySelectorAll('.subtotal').forEach(function(item) {
+                    total += parseFloat(item.value) || 0;
+                });
+
+                document.getElementById('grand-total').innerText = total.toLocaleString('id-ID');
+            }
+        });
     </script>
 </x-app-layout>

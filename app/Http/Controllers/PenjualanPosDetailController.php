@@ -9,24 +9,14 @@ class PenjualanPosDetailController extends Controller
 {
     public function store(Request $request)
     {
-        PenjualanPosDetail::create([
-            'penjualan_id' => $request->penjualan_id,
-            'produk_id' => $request->produk_id,
-            'qty' => $request->qty,
-            'harga' => $request->harga,
-            'hpp_satuan' => $request->hpp_satuan,
-            'subtotal' => $request->subtotal,
-        ]);
-
-        return back()->with('success', 'Detail berhasil ditambahkan');
+        // BLOKIR AKSI INI
+        // Arahkan user untuk mengedit melalui form edit transaksi utama
+        return back()->with('error', 'Penambahan item harus melalui form Edit Transaksi Utama agar stok FIFO terpotong dengan benar.');
     }
 
     public function destroy(string $id)
     {
-        $detail = PenjualanPosDetail::findOrFail($id);
-
-        $detail->delete();
-
-        return back()->with('success', 'Detail berhasil dihapus');
+        // BLOKIR AKSI INI
+        return back()->with('error', 'Penghapusan item harus melalui form Edit Transaksi Utama agar stok bahan baku dapat dikembalikan (revert) ke gudang.');
     }
 }
