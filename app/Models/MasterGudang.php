@@ -20,4 +20,11 @@ class MasterGudang extends Model
             'gudang_id'
         );
     }
+    public function stockOpname()
+    {
+        return $this->hasMany(
+            StockOpname::class,
+            'gudang_id'
+        );
+    }
 }

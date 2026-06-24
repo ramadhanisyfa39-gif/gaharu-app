@@ -20,7 +20,9 @@ class MasterBarang extends Model
         'is_direct_consumption',
         'harga_jual_b2b',
         'harga_jual_pos',
-        'hpp_referensi'
+        'hpp_referensi',
+        'is_active',
+        'minimum_stock'
     ];
 
     public function kategori()
@@ -50,4 +52,11 @@ public function hargaPosAktif()
         // Gunakan hasMany karena satu resep_id memiliki banyak item bahan baku
         return $this->hasMany(ResepBahanBaku::class, 'resep_id', 'resep_id');
     }
+public function stockOpnameDetails()
+{
+    return $this->hasMany(
+        StockOpnameDetail::class,
+        'barang_id'
+    );
+}
 }

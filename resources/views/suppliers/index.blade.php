@@ -1,5 +1,9 @@
 <x-app-layout>
+<x-slot name="header">
 
+        Master Supplier
+
+    </x-slot>
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div>
@@ -7,9 +11,9 @@
             <small class="text-muted">Kelola data supplier perusahaan</small>
         </div>
 
-        <a href="{{ route('suppliers.create') }}" class="btn btn-primary btn-sm">
-            + Tambah Supplier
-        </a>
+        <button type="button" class="btn text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahSupplier">
+    + Tambah Supplier
+</button>
     </div>
 
     <div class="card-body">
@@ -73,6 +77,49 @@
         </div>
 
     </div>
+    <div class="modal fade" id="modalTambahSupplier" tabindex="-1" aria-labelledby="modalTambahSupplierLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color: #d88656;">
+                <h5 class="modal-title" id="modalTambahSupplierLabel">Tambah Supplier Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form action="{{ route('suppliers.store') }}" method="POST">
+                @csrf
+                <div class="modal-body text-start">
+                    
+                    <div class="mb-3">
+                        <label class="fw-semibold">Nama Supplier</label>
+                        <input type="text" name="nama_supplier" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-semibold">No HP / Telepon</label>
+                        <input type="text" name="no_hp" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-semibold">Alamat</label>
+                        <textarea name="alamat" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
+                    <button type="submit" class="btn text-white" style="background-color: #d88656;">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Memastikan tombol X (close) berwarna putih */
+.btn-close-white {
+    filter: invert(1) grayscale(1) brightness(2);
+}
+</style>
 </div>
 
 </x-app-layout>

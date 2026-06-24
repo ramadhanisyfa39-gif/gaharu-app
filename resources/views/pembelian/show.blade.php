@@ -47,9 +47,23 @@
                     <tr>
                         <td>{{ $detail->barang->nama ?? '-' }}</td>
                         <td>{{ $detail->qty }}</td>
-                        <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
-                        <td>Rp {{ number_format($detail->qty * $detail->harga, 0, ',', '.') }}</td>
-                        <td>{{ $detail->batch_number ?? '-' }}</td>
+                        <td>
+    Rp {{ number_format(
+        $detail->harga_per_qty,
+        0,
+        ',',
+        '.'
+    ) }}
+</td>
+
+<td>
+    Rp {{ number_format(
+        $detail->harga,
+        0,
+        ',',
+        '.'
+    ) }}
+</td>
                     </tr>
                 @endforeach
             </tbody>

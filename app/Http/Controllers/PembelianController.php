@@ -13,6 +13,7 @@ use App\Services\FifoService;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class PembelianController extends Controller
 {
@@ -49,20 +50,34 @@ class PembelianController extends Controller
     */
 
     public function index()
-    {
-        $pembelian = Pembelian::with([
-                'supplier',
-                'gudang',
-                'user'
-            ])
-            ->orderByDesc('tanggal')
-            ->paginate(10);
+{
+    $pembelian = Pembelian::with(['supplier', 'gudang', 'user'])
+        ->orderBy('tanggal', 'desc')
+        ->paginate(10);
 
-        return view(
-            'pembelian.index',
-            compact('pembelian')
-        );
-    }
+    // Tambahkan ini
+    $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
+        $label = match($item->metode_pembayaran) {
+            'cod'    => 'COD',
+            'termin' => 'Termin',
+            'dp'     => 'DP ' . $item->persen_dp . '%',
+            default  => '-',
+        };
+        return [$item->id => [
+            'kode'                => $item->kode_pembelian,
+            'total'               => (float) $item->total,
+            'metode'              => $item->metode_pembayaran,
+            'label'               => $label,
+            'persen_dp'           => $item->persen_dp,
+            'tanggal_jatuh_tempo' => $item->tanggal_jatuh_tempo,
+            'tanggal_pelunasan'   => $item->tanggal_pelunasan,
+            'catatan'             => $item->catatan_pembayaran,
+            'dicatat_pada'        => $item->dicatat_pada,
+        ]];
+    });
+
+    return view('pembelian.index', compact('pembelian', 'dataPembayaran'));
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -597,7 +612,26 @@ $detail->update([
                 'Pembelian berhasil dihapus dan stok berhasil dikurangi.'
             );
     }
+public function catatPembayaran(Request $request, Pembelian $pembelian)
+{
+    $validated = $request->validate([
+        'metode_pembayaran'   => 'required|in:cod,termin,dp',
+        'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
+        'persen_dp'           => 'required_if:metode_pembayaran,dp|nullable|integer|min:1|max:99',
+        'tanggal_pelunasan'   => 'nullable|date',
+        'catatan_pembayaran'  => 'nullable|string|max:500',
+    ]);
 
+    $pembelian->update([
+        ...$validated,
+        'dicatat_oleh' => auth()->id(),
+        'dicatat_pada' => now(),
+    ]);
+
+    return redirect()
+        ->route('pembelian.index')
+        ->with('success', 'Informasi pembayaran berhasil disimpan.');
+}
     /*
     |--------------------------------------------------------------------------
     | GENERATE KODE

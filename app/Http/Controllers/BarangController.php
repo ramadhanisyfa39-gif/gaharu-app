@@ -9,11 +9,19 @@ use Illuminate\Http\Request;
 
 class BarangController extends Controller
 {
+    // Jalur: app/Http/Controllers/BarangController.php
+
     public function index()
     {
-        // Ambil data beserta kategori dan resep agar bisa tampil di tabel
-        $data = MasterBarang::with(['kategori', 'resep'])->get(); 
-        return view('barang.index', compact('data'));
+        // 1. Kode kamu yang sudah ada untuk mengambil data barang (biasanya seperti ini)
+        $data = MasterBarang::all(); // atau Barang::latest()->get(); sesuaikan dengan kode aslimu
+
+        // 2. TAMBAHKAN BARIS INI untuk mengambil semua data kategori dari database
+        // (Pastikan nama Model Kategori sesuai dengan nama model di projekmu, misal: Kategori atau Category)
+        $kategori = \App\Models\Kategori::all(); 
+
+        // 3. Tambahkan 'kategori' di dalam fungsi compact() agar terkirim ke view index
+        return view('barang.index', compact('data', 'kategori'));
     }
 
     public function create()
@@ -87,6 +95,7 @@ class BarangController extends Controller
                 'hpp_referensi'         => $hpp,
                 'harga_jual_b2b'        => $harga_b2b,
                 'harga_jual_pos'        => $harga_pos,
+                'minimum_stock'         => $request->minimum_stock, // <-- FIX: Sekarang data minimum_stock ikut tersimpan ke database
             ]);
     
             return redirect()->route('barang.index')->with('success', 'Data berhasil ditambah');
@@ -137,14 +146,48 @@ class BarangController extends Controller
             'hpp_referensi'  => $hpp,
             'harga_jual_b2b' => $harga_b2b,
             'harga_jual_pos' => $harga_pos,
+            'minimum_stock'  => $request->minimum_stock, // <-- FIX: Biar kalau diedit nilainya ter-update
         ]);
     
         return redirect()->route('barang.index')->with('success', 'Data berhasil diupdate');
     }
 
-    public function destroy($id)
+    public function destroy(MasterBarang $barang)
     {
-        MasterBarang::findOrFail($id)->delete();
-        return redirect()->route('barang.index')->with('success', 'Data berhasil dihapus');
+        // Cek apakah barang sudah dipakai di tabel manapun
+        $dipakai = \Illuminate\Support\Facades\DB::table('pembelian_detail')
+                    ->where('barang_id', $barang->id)->exists()
+                || \Illuminate\Support\Facades\DB::table('stok_gudang')
+                    ->where('barang_id', $barang->id)->exists()
+                || \Illuminate\Support\Facades\DB::table('pengeluaran_bahan_baku_detail')
+                    ->where('barang_id', $barang->id)->exists()
+                || \Illuminate\Support\Facades\DB::table('stock_opname_detail')
+                    ->where('barang_id', $barang->id)->exists();
+
+        if ($dipakai) {
+            return back()->with('error', 'Barang sudah digunakan dalam transaksi dan tidak bisa dihapus. Gunakan fitur nonaktifkan jika barang tidak lagi dipakai.');
+        }
+
+        $barang->delete();
+
+        return back()->with('success', 'Barang berhasil dihapus.');
     }
-}
+
+    public function toggleStatus($id)
+    {
+        $barang = \App\Models\MasterBarang::findOrFail($id);
+        $barang->is_active = !$barang->is_active;
+        $barang->save();
+
+        return back()->with('success', 'Status barang berhasil diubah.');
+    }
+
+    public function toggle(MasterBarang $barang)
+    {
+        $barang->update([
+            'is_active' => !$barang->is_active,
+        ]);
+
+        return back()->with('success', 'Status barang berhasil diubah.');
+    }
+} // <-- FIX: Kurung tutup ganda yang salah sudah dihapus

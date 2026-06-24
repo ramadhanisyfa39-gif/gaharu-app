@@ -20,7 +20,6 @@
 <form action="{{ route('barang.store') }}" method="POST">
 @csrf
 
-<!-- KATEGORI -->
 <div class="mb-3">
     <label>Kategori</label>
 
@@ -44,7 +43,6 @@
 
 <div class="row">
 
-    <!-- KODE BARANG -->
     <div class="col-md-6 mb-3">
 
         <label>Kode Barang</label>
@@ -58,7 +56,6 @@
 
     </div>
 
-    <!-- NAMA BARANG -->
     <div class="col-md-6 mb-3">
 
         <label>Nama Barang</label>
@@ -70,7 +67,6 @@
 
     </div>
 
-    <!-- SATUAN -->
     <div class="col-md-6 mb-3">
 
         <label>Satuan</label>
@@ -81,7 +77,6 @@
 
     </div>
 
-    <!-- JENIS -->
     <div class="col-md-6 mb-3">
 
         <label>Jenis Barang</label>
@@ -108,11 +103,23 @@
         </select>
     </div>
 
+    <div class="col-md-6 mb-3" id="group-min-stock" style="display: none;">
+        
+        <label>Minimum Stock (Batas Kritis)</label>
+        
+        <input type="number"
+               name="minimum_stock"
+               id="minimum_stock"
+               class="form-control"
+               placeholder="Contoh: 10"
+               min="0">
+
+    </div>
+
 </div>
 
 <hr>
 
-<!-- HARGA -->
 <div id="group-harga" class="row">
 
     <div class="col-md-6 mb-3">
@@ -145,29 +152,6 @@
 
             <input type="text"
                    name="harga_jual_pos"
-                   class="form-control uang">
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- HPP -->
-<div id="group-hpp" class="row">
-
-    <div class="col-md-6 mb-3">
-
-        <label>HPP Referensi</label>
-
-        <div class="input-group">
-
-            <span class="input-group-text">
-                Rp
-            </span>
-
-            <input type="text"
-                   name="hpp_referensi"
                    class="form-control uang">
 
         </div>
@@ -213,14 +197,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const jenis = document.getElementById('jenis');
 
     const groupHarga = document.getElementById('group-harga');
-
-    const groupHPP = document.getElementById('group-hpp');
+    const groupMinStock = document.getElementById('group-min-stock');
 
     const b2b = document.querySelector('[name="harga_jual_b2b"]');
-
     const pos = document.querySelector('[name="harga_jual_pos"]');
-
-    const hpp = document.querySelector('[name="hpp_referensi"]');
+    const minStockInput = document.getElementById('minimum_stock');
 
     const inputs = document.querySelectorAll('.uang');
 
@@ -248,38 +229,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
     });
 
-    // TOGGLE FORM
+    // TOGGLE FORM (Harga dan Minimum Stock)
     function toggleForm() {
 
         if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {
 
+            // Nonaktifkan Harga
             groupHarga.style.opacity = "0.3";
-
-            groupHPP.style.opacity = "1";
-
             b2b.disabled = true;
-
             pos.disabled = true;
 
-            hpp.disabled = false;
+            // Tampilkan Minimum Stock
+            groupMinStock.style.display = "block";
 
         }
         else if (jenis.value === 'BARANG_JADI') {
 
+            // Aktifkan Harga
             groupHarga.style.opacity = "1";
-
-            groupHPP.style.opacity = "0.3";
-
             b2b.disabled = false;
-
             pos.disabled = false;
 
-            hpp.disabled = true;
+            // Sembunyikan Minimum Stock
+            groupMinStock.style.display = "none";
+            minStockInput.value = ''; // Kosongkan input saat disembunyikan
+
+        } else {
+            
+            // Sembunyikan Minimum Stock jika opsi "-- Pilih Jenis --" dipilih
+            groupMinStock.style.display = "none";
+            minStockInput.value = '';
 
         }
     }
 
     jenis.addEventListener('change', toggleForm);
+
+    // Panggil saat halaman pertama kali load (untuk menangani old input jika ada error validasi)
+    toggleForm();
 
     // =====================================================
     // AUTO GENERATE KODE BARANG

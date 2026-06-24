@@ -9,13 +9,21 @@ class Pembelian extends Model
     protected $table = 'pembelian';
 
     protected $fillable = [
-        'kode_pembelian',
-        'supplier_id',
-        'gudang_id',
-        'tanggal',
-        'total',
-        'created_by',
-    ];
+    'kode_pembelian',
+    'supplier_id',
+    'gudang_id',
+    'tanggal',
+    'total',
+    'created_by',
+    // --- TAMBAHKAN 7 BARIS INI ---
+    'metode_pembayaran',
+    'tanggal_jatuh_tempo',
+    'persen_dp',
+    'tanggal_pelunasan',
+    'catatan_pembayaran',
+    'dicatat_oleh',
+    'dicatat_pada',
+];
 
     public $timestamps = false;
 

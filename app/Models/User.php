@@ -48,4 +48,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function stockOpname()
+    {
+        return $this->hasMany(
+            StockOpname::class,
+            'created_by'
+        );
+    }
 }

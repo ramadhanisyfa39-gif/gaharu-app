@@ -1,105 +1,165 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Tambah Pengeluaran Bahan Baku</title>
+<x-app-layout>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+<x-slot name="header">
+    Pengeluaran Bahan Baku
+</x-slot>
 
-<body class="bg-light">
+<div class="page-header mb-4">
 
-<div class="container mt-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center">
 
         <div>
-            <h3 class="mb-1">
+
+            <h1 class="page-header-title">
                 Tambah Pengeluaran Bahan Baku
-            </h3>
+            </h1>
 
             <p class="text-muted mb-0">
-                Form ini digunakan untuk memindahkan bahan baku dari Gudang Utama ke gudang tujuan.
+                Buat permintaan pengeluaran bahan baku dari Gudang Utama ke gudang tujuan.
             </p>
+
         </div>
 
         <a href="{{ route('pengeluaran-bahan-baku.index') }}"
-           class="btn btn-secondary">
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left"></i>
             Kembali
+
         </a>
 
     </div>
 
-    @if($barang->count() == 0)
+</div>
 
-        <div class="alert alert-danger">
+@if($barang->count() == 0)
 
-            <strong>
-                Stok tidak tersedia, lakukan pembelian lebih dulu!
-            </strong>
+<div class="alert alert-danger">
 
-        </div>
+    <strong>
+        Stok bahan baku tidak tersedia.
+    </strong>
 
-    @endif
+    Silakan lakukan pembelian terlebih dahulu.
 
-    <div class="card shadow-sm">
+</div>
 
-        <div class="card-header bg-primary text-white">
-            Informasi Pengeluaran
-        </div>
+@endif
 
-        <div class="card-body">
+<div class="card">
 
-            <form method="POST"
-                  action="{{ route('pengeluaran-bahan-baku.store') }}">
+    <div
+        class="card-header text-white fw-bold"
+        style="
+            background:#9c4f18;
+            border-radius:24px 24px 0 0;
+        ">
 
-                @csrf
+        <i class="bi bi-box-seam me-2"></i>
 
-                <div class="mb-3">
+        Informasi Pengeluaran
 
-                    <label class="form-label fw-bold">
-                        Gudang Tujuan
-                    </label>
+    </div>
 
-                    <select name="gudang_id"
-                            class="form-select"
-                            required>
+    <div class="card-body p-4">
 
-                        <option value="">
-                            -- Pilih Gudang Tujuan --
-                        </option>
+        <form
+            method="POST"
+            action="{{ route('pengeluaran-bahan-baku.store') }}">
 
-                        @foreach($gudang as $g)
+            @csrf
 
-                            <option value="{{ $g->id }}">
-                                {{ $g->nama }} - {{ $g->kategori }}
-                            </option>
+            <div class="mb-4">
 
-                        @endforeach
+                <label class="form-label fw-bold">
+                    Gudang Tujuan
+                </label>
 
-                    </select>
+                <select
+                    name="gudang_id"
+                    class="form-select"
+                    required>
 
-                    <small class="text-muted">
-                        Bahan baku akan dipindahkan dari Gudang Utama ke gudang tujuan yang dipilih.
-                    </small>
+                    <option value="">
+                        -- Pilih Gudang Tujuan --
+                    </option>
 
-                </div>
+                    @foreach($gudang as $g)
 
-                <hr>
+                    <option value="{{ $g->id }}">
 
-                <h6 class="fw-bold mb-3">
+                        {{ $g->nama }}
+                        -
+                        {{ $g->kategori }}
+
+                    </option>
+
+                    @endforeach
+
+                </select>
+
+                <small class="text-muted">
+
+                    Bahan baku akan dipindahkan dari Gudang Utama
+                    ke gudang tujuan yang dipilih.
+
+                </small>
+
+            </div>
+
+            <hr>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                <h5 class="fw-bold mb-0">
+
                     Detail Bahan Baku
-                </h6>
 
-                <table class="table table-bordered align-middle"
-                       id="table-detail">
+                </h5>
 
-                    <thead class="table-light">
+                <button
+                    type="button"
+                    onclick="tambahBaris()"
+                    class="btn btn-sm"
+                    style="
+                        background:#f7f3ee;
+                        border:1px solid #d88656;
+                        color:#9c4f18;
+                        border-radius:10px;
+                    "
+                    {{ $barang->count() == 0 ? 'disabled' : '' }}>
+
+                    <i class="bi bi-plus-circle"></i>
+
+                    Tambah Barang
+
+                </button>
+
+            </div>
+
+            <div class="table-responsive">
+
+                <table
+                    class="table align-middle"
+                    id="table-detail">
+
+                    <thead
+                        style="
+                            background:#5a3416;
+                            color:white;
+                        ">
 
                         <tr>
 
                             <th>Barang</th>
-                            <th width="220">Qty Keluar</th>
-                            <th width="90">Aksi</th>
+
+                            <th width="200">
+                                Qty Keluar
+                            </th>
+
+                            <th width="120">
+                                Aksi
+                            </th>
 
                         </tr>
 
@@ -111,57 +171,58 @@
 
                             <td>
 
-                               <select
-    name="barang_id[]"
-    class="form-select barang-select"
-    required
-    {{ $barang->count() == 0 ? 'disabled' : '' }}>
+                                <select
+                                    name="barang_id[]"
+                                    class="form-select barang-select"
+                                    required
+                                    {{ $barang->count() == 0 ? 'disabled' : '' }}>
 
-    <option value="">
-        -- Pilih Bahan Baku --
-    </option>
+                                    <option value="">
+                                        -- Pilih Bahan Baku --
+                                    </option>
 
-    @foreach($barang as $b)
+                                    @foreach($barang as $b)
 
-        <option
-            value="{{ $b->id }}"
-            data-stok="{{ $b->stok }}">
+                                    <option
+                                        value="{{ $b->id }}"
+                                        data-stok="{{ $b->stok }}">
 
-            {{ $b->kode_barang }}
-            -
-            {{ $b->nama }}
-            ({{ $b->satuan }})
+                                        {{ $b->kode_barang }}
+                                        -
+                                        {{ $b->nama }}
+                                        ({{ $b->satuan }})
 
-            @if($b->stok <= 0)
-                - STOK HABIS
-            @endif
+                                        @if($b->stok <= 0)
+                                        - STOK HABIS
+                                        @endif
 
-        </option>
+                                    </option>
 
-    @endforeach
+                                    @endforeach
 
-</select>
+                                </select>
 
                             </td>
 
                             <td>
 
-                                <input type="number"
-                                       name="qty[]"
-                                       class="form-control"
-                                       min="1"
-                                       step="0.01"
-                                       placeholder="Qty"
-                                       required
-                                       {{ $barang->count() == 0 ? 'disabled' : '' }}>
+                                <input
+                                    type="number"
+                                    name="qty[]"
+                                    class="form-control"
+                                    min="1"
+                                    step="0.01"
+                                    placeholder="Qty"
+                                    required>
 
                             </td>
 
-                            <td class="text-center">
+                            <td>
 
-                                <button type="button"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="hapusBaris(this)">
+                                <button
+                                    type="button"
+                                    class="btn btn-danger btn-sm"
+                                    onclick="hapusBaris(this)">
 
                                     Hapus
 
@@ -175,48 +236,65 @@
 
                 </table>
 
-                <button type="button"
-                        class="btn btn-outline-primary btn-sm mb-3"
-                        onclick="tambahBaris()"
-                        {{ $barang->count() == 0 ? 'disabled' : '' }}>
+            </div>
 
-                    + Tambah Barang
+            <div class="mt-4">
 
-                </button>
+                <label class="form-label fw-bold">
 
-                <div class="mb-3">
+                    Keterangan
 
-                    <label class="form-label fw-bold">
-                        Keterangan
-                    </label>
+                </label>
 
-                    <textarea name="keterangan"
-                              class="form-control"
-                              rows="3"
-                              placeholder="Contoh: Pemindahan bahan baku ke Gudang Produksi"></textarea>
+                <textarea
+                    name="keterangan"
+                    rows="4"
+                    class="form-control"
+                    placeholder="Contoh: Pengeluaran bahan baku untuk produksi kopi robusta"></textarea>
 
-                </div>
+            </div>
 
-                <div class="alert alert-warning">
+            <div
+                class="p-3 rounded mt-4"
+                style="
+                    background:#fff8e8;
+                    border:1px solid #f2d28c;
+                    color:#7a5a00;
+                ">
 
-                    Stok belum berpindah saat data disimpan.
-                    Stok akan berpindah dari Gudang Utama ke Gudang Tujuan setelah pengeluaran di-approve.
+                <i class="bi bi-exclamation-triangle me-2"></i>
 
-                </div>
+                Stok belum berpindah saat data disimpan.
+
+                Pengurangan stok FIFO baru dilakukan
+                setelah pengeluaran disetujui.
+
+            </div>
+
+            <div class="mt-4">
 
                 <button
-    id="btnSimpan"
-    type="submit"
-    class="btn btn-primary"
-                        {{ $barang->count() == 0 ? 'disabled' : '' }}>
+                    id="btnSimpan"
+                    type="submit"
+                    class="btn"
+                    style="
+                        background:#d88656;
+                        color:white;
+                        font-weight:600;
+                        padding:12px 24px;
+                        border-radius:12px;
+                    "
+                    {{ $barang->count() == 0 ? 'disabled' : '' }}>
+
+                    <i class="bi bi-save me-2"></i>
 
                     Simpan Pengeluaran
 
                 </button>
 
-            </form>
+            </div>
 
-        </div>
+        </form>
 
     </div>
 
@@ -224,8 +302,8 @@
 
 <script>
 
-function tambahBaris() {
-
+function tambahBaris()
+{
     let tbody =
         document.querySelector(
             '#table-detail tbody'
@@ -247,20 +325,16 @@ function tambahBaris() {
 
                     @foreach($barang as $b)
 
-                        <option
-                            value="{{ $b->id }}"
-                            data-stok="{{ $b->stok }}">
+                    <option
+                        value="{{ $b->id }}"
+                        data-stok="{{ $b->stok }}">
 
-                            {{ $b->kode_barang }}
-                            -
-                            {{ $b->nama }}
-                            ({{ $b->satuan }})
+                        {{ $b->kode_barang }}
+                        -
+                        {{ $b->nama }}
+                        ({{ $b->satuan }})
 
-                            @if($b->stok <= 0)
-                                - STOK HABIS
-                            @endif
-
-                        </option>
+                    </option>
 
                     @endforeach
 
@@ -276,12 +350,11 @@ function tambahBaris() {
                     class="form-control"
                     min="1"
                     step="0.01"
-                    placeholder="Qty"
                     required>
 
             </td>
 
-            <td class="text-center">
+            <td>
 
                 <button
                     type="button"
@@ -303,79 +376,16 @@ function tambahBaris() {
     );
 }
 
-</script>
-<script>
-
-function cekStok()
+function hapusBaris(button)
 {
-    let warning =
-        document.getElementById(
-            'stokWarning'
-        );
+    let row = button.closest('tr');
 
-    let btn =
-        document.getElementById(
-            'btnSimpan'
-        );
-
-    let stokKosong = false;
-
-    document
-        .querySelectorAll(
-            '.barang-select'
-        )
-        .forEach(function(select){
-
-            let option =
-                select.options[
-                    select.selectedIndex
-                ];
-
-            let stok =
-                parseFloat(
-                    option.dataset.stok || 0
-                );
-
-            if(
-                select.value &&
-                stok <= 0
-            ){
-                stokKosong = true;
-            }
-        });
-
-    if(stokKosong)
+    if(document.querySelectorAll('#table-detail tbody tr').length > 1)
     {
-        warning.classList.remove(
-            'd-none'
-        );
-
-        btn.disabled = true;
-    }
-    else
-    {
-        warning.classList.add(
-            'd-none'
-        );
-
-        btn.disabled = false;
+        row.remove();
     }
 }
 
-document.addEventListener(
-    'change',
-    function(e){
-
-        if(
-            e.target.classList.contains(
-                'barang-select'
-            )
-        ){
-            cekStok();
-        }
-    }
-);
-
 </script>
-</body>
-</html>
+
+</x-app-layout>

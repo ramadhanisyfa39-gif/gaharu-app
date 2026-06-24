@@ -28,6 +28,11 @@ use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\HargaBarangPosController;
 use App\Http\Controllers\StokGudangBatchController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\LaporanPersediaanController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportInventoryController;
+use App\Http\Controllers\StockOpnameController;
+
 
 Route::get('/', function () {
 
@@ -38,9 +43,16 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get(
+    '/dashboard',
+    [DashboardController::class, 'index']
+)->middleware(['auth'])
+ ->name('dashboard');
+
+ Route::get(
+    '/reports/inventory',
+    [ReportInventoryController::class, 'index']
+)->name('reports.inventory');
 
 Route::middleware('auth')->group(function () {
 
@@ -52,7 +64,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
+Route::patch('barang/{barang}/toggle', [BarangController::class, 'toggle'])
+    ->name('barang.toggle');
     /*
     |--------------------------------------------------------------------------
     | Master Data
@@ -108,6 +121,30 @@ Route::middleware('auth')->group(function () {
         'update',
         'destroy'
     ]);
+
+    // yang sudah ada — jangan diubah
+Route::resource('pembelian', PembelianController::class)->only([
+    'index', 'create', 'store', 'show', 'edit', 'update', 'destroy'
+]);
+
+Route::prefix('laporan')->name('laporan.')->group(function () {
+    Route::get('/pembelian',
+        [LaporanPersediaanController::class, 'pembelian'])
+        ->name('pembelian');
+    Route::get('/stok-gudang',
+        [LaporanPersediaanController::class, 'stokGudang'])
+        ->name('stok-gudang');
+    Route::get('/pengeluaran-bahan-baku',
+        [LaporanPersediaanController::class, 'pengeluaranBahanBaku'])
+        ->name('pengeluaran-bahan-baku');
+    Route::get('/stock-opname',
+        [LaporanPersediaanController::class, 'stockOpname'])
+        ->name('stock-opname');
+});
+// TAMBAHKAN BARIS INI TEPAT DI BAWAH
+Route::post('pembelian/{pembelian}/catat-pembayaran',
+    [PembelianController::class, 'catatPembayaran'])
+    ->name('pembelian.catat-pembayaran');
 
     /*
     |--------------------------------------------------------------------------
@@ -196,6 +233,30 @@ Route::middleware('auth')->group(function () {
         [PengeluaranBahanBakuController::class, 'approve']
     )->name('pengeluaran-bahan-baku.approve');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Stock Opname
+    |--------------------------------------------------------------------------
+    */
+
+Route::post(
+    '/stock-opname/hitung-fifo',
+    [StockOpnameController::class,'hitungFIFORealtime']
+)->name('stock-opname.hitung-fifo');
+
+Route::post(
+    'stock-opname/load-barang',
+    [StockOpnameController::class, 'loadBarang']
+)->name('stock-opname.load-barang');
+    Route::resource(
+        'stock-opname',
+        StockOpnameController::class
+    );
+
+    Route::get(
+        'stock-opname/{id}/approve',
+        [StockOpnameController::class, 'approve']
+    )->name('stock-opname.approve');
 
     // Halaman form & riwayat (Butuh ID barang)
     Route::get('/harga-barang-pos/{id?}', [HargaBarangPosController::class, 'index'])->name('harga.index');
@@ -240,7 +301,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/buku-besar', [LaporanController::class, 'bukuBesar'])->name('buku-besar.index');
 
         Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
-    });
-});
+
+        Route::patch('/barang/{barang}/toggle', [BarangController::class, 'toggleStatus'])->name('barang.toggle');
+    
+        });
 
 require __DIR__ . '/auth.php';
