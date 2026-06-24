@@ -56,17 +56,16 @@
                                 Rp {{ number_format($p->total_pesanan, 0, ',', '.') }}
                             </td>
                             <td class="text-center">
-                                @php
-                                    $statusClasses = [
-                                        'pending' => 'bg-warning text-dark',
-                                        'diproses' => 'bg-info text-white',
-                                        'dikirim' => 'bg-primary text-white',
-                                        'selesai' => 'bg-success text-white',
-                                        'batal' => 'bg-danger text-white'
-                                    ];
-                                    $class = $statusClasses[$p->status_pesanan] ?? 'bg-secondary text-white';
-                                @endphp
-                                <span class="badge rounded-pill {{ $class }} px-3">{{ ucfirst($p->status_pesanan) }}</span>
+                            @php
+                                $statusClasses = [
+                                    'pending'    => 'bg-warning text-dark',
+                                    'siap kirim' => 'bg-primary text-white',
+                                    'selesai'    => 'bg-success text-white',
+                                ];
+                                // Ditambahkan strtolower() agar huruf besar di database otomatis terbaca oleh array
+                                $class = $statusClasses[strtolower($p->status_pesanan)] ?? 'bg-secondary text-white';
+                             @endphp
+                            <span class="badge rounded-pill {{ $class }} px-3 py-2">{{ ucfirst($p->status_pesanan) }}</span>
                             </td>
                             <td class="text-center">
                                 @if($p->status_pembayaran == 'Belum Bayar')
@@ -115,7 +114,7 @@
                                             </li>
                                             <li>
                                                 <a class="dropdown-item" href="{{ route('pesanan.kwitansi', $p->id) }}" target="_blank">
-                                                    <i class="bi bi-printer me-2 text-secondary"></i> Print / PDF
+                                                    <i class="bi bi-printer me-2 text-secondary"></i> Cetak Kwitansi
                                                 </a>
                                             </li>
 

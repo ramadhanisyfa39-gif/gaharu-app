@@ -4,22 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterBarang;
 use App\Models\Kategori;
-use App\Models\ResepBtklBop; // <--- Tambahkan Model Resep di sini
+use App\Models\ResepBtklBop; 
 use Illuminate\Http\Request;
 
 class BarangController extends Controller
 {
     public function index()
     {
-        // Ambil data beserta kategori dan resep agar bisa tampil di tabel
+        // Ambil data utama beserta relasinya untuk isi tabel
         $data = MasterBarang::with(['kategori', 'resep'])->get(); 
-        return view('barang.index', compact('data'));
+        
+        // Ambil data pendukung untuk mengisi dropdown di dalam modal popup
+        $kategori = Kategori::all();
+        $reseps = ResepBtklBop::all(); 
+
+        // Kirim ketiganya ke view index
+        return view('barang.index', compact('data', 'kategori', 'reseps'));
     }
 
     public function create()
     {
+        // Fungsi ini sekarang opsional karena sudah pakai popup di index
         $kategori = Kategori::all();
-        $reseps = ResepBtklBop::all(); // <--- Tambahkan ini untuk kirim ke view
+        $reseps = ResepBtklBop::all(); 
         return view('barang.create', compact('kategori', 'reseps'));
     }
 
@@ -36,14 +43,10 @@ class BarangController extends Controller
             ->first();
 
         if ($lastBarang) {
-
             // Ambil angka terakhir
             $lastNumber = (int) substr($lastBarang->kode_barang, 3);
-
             $newNumber = $lastNumber + 1;
-
         } else {
-
             $newNumber = 1;
         }
 
@@ -76,7 +79,7 @@ class BarangController extends Controller
     
             MasterBarang::create([
                 'kategori_id'           => $request->kategori_id,
-                'resep_id'              => $request->resep_id, // <--- INI PENTING: Harus ada ini
+                'resep_id'              => $request->resep_id, 
                 'kode_barang'           => $request->kode_barang,
                 'nama'                  => $request->nama,
                 'satuan'                => $request->satuan,
@@ -98,13 +101,12 @@ class BarangController extends Controller
     
     public function edit($id)
     {
+        // Fungsi ini sekarang opsional karena sudah pakai popup di index
         $data = MasterBarang::findOrFail($id);
         $kategori = Kategori::all();
-        $reseps = ResepBtklBop::all(); // <--- Tambahkan ini juga di menu edit
+        $reseps = ResepBtklBop::all(); 
 
-        $data->jenis_utama =
-            $data->is_bahan_baku ? 'BAHAN_BAKU' :
-            ($data->is_barang_jadi ? 'BARANG_JADI' : 'OPERATIONAL');
+        $data->jenis_utama = $data->is_bahan_baku ? 'BAHAN_BAKU' : ($data->is_barang_jadi ? 'BARANG_JADI' : 'OPERATIONAL');
 
         return view('barang.edit', compact('data', 'kategori', 'reseps'));
     }
@@ -124,7 +126,7 @@ class BarangController extends Controller
     
         $data->update([
             'kategori_id' => $request->kategori_id,
-            'resep_id'    => $request->resep_id, // <--- INI JUGA: Biar kalau diedit kesimpan
+            'resep_id'    => $request->resep_id, 
             'kode_barang' => $request->kode_barang,
             'nama'        => $request->nama,
             'satuan'      => $request->satuan,

@@ -29,6 +29,21 @@ use App\Http\Controllers\HargaBarangPosController;
 use App\Http\Controllers\StokGudangBatchController;
 use App\Http\Controllers\LaporanController;
 
+use App\Http\Controllers\LaporanProduksiController;
+use App\Http\Controllers\PengirimanController;
+use App\Http\Controllers\LaporanPenjualanController;
+
+Route::get('/laporan-penjualan', [LaporanPenjualanController::class, 'index'])->name('laporan.penjualan');
+
+Route::get('/pengiriman', [PengirimanController::class, 'index'])->name('pengiriman.index');
+
+// Route Form Pengiriman Mandiri
+Route::get('/pengiriman/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
+Route::post('/pengiriman/store', [PengirimanController::class, 'store'])->name('pengiriman.store');
+
+// Route pembantu untuk mengambil detail item pesanan lewat JavaScript
+Route::get('/pengiriman/pesanan-detail/{id}', [PengirimanController::class, 'getPesananDetail']);
+
 Route::get('/', function () {
 
     if (auth()->check()) {
@@ -138,6 +153,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::resource('penjualan_pos', PenjualanPosController::class);
     Route::resource('penjualanpos-detail', PenjualanPosDetailController::class);
+    Route::get('/laporan-penjualan-pos', [App\Http\Controllers\LaporanPenjualanPosController::class, 'index'])
+    ->name('penjualan_pos.laporan');
 
     /*
     |--------------------------------------------------------------------------
@@ -241,6 +258,14 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
     });
-});
+
+    // Menampilkan WO di form produksi
+    Route::get('/produksi/get-wo-detail/{id}', [ProduksiController::class, 'getWoDetail'])->name('produksi.getWoDetail');
+    Route::resource('produksi', ProduksiController::class);
+
+    Route::prefix('laporan-produksi')->group(function () {
+        Route::get('/rekapitulasi', [LaporanProduksiController::class, 'rekapitulasi'])->name('laporan.rekapitulasi');
+        Route::get('/hpp', [LaporanProduksiController::class, 'hpp'])->name('laporan.hpp');
+    });
 
 require __DIR__ . '/auth.php';

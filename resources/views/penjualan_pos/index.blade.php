@@ -1,94 +1,120 @@
 <x-app-layout>
 
-<div class="container">
+<div class="container py-4">
 
-<div class="d-flex justify-content-between mb-3">
-    <h3>Penjualan POS</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold mb-0">Penjualan POS</h3>
 
-    <a href="{{ route('penjualan_pos.create') }}"
-       class="btn btn-primary">
-       + Tambah
-    </a>
-</div>
+        <div>
+            <a href="{{ route('penjualan_pos.laporan') }}"
+               class="btn btn-success px-4 me-2">
+               📊 Lihat Laporan
+            </a>
 
-@if(session('success'))
-<div class="alert alert-success">
-    {{ session('success') }}
-</div>
-@endif
+            <a href="{{ route('penjualan_pos.create') }}"
+               class="btn btn-primary px-4">
+               + Tambah
+            </a>
+        </div>
+    </div>
 
-<div class="card">
-<div class="card-body">
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+    </div>
+    @endif
 
-<table class="table table-bordered">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            
+            <div class="table-responsive">
+                <table class="table table-hover align-middle text-nowrap mb-0">
 
-    <thead>
-        <tr>
-            <th>Kode</th>
-            <th>Tanggal</th>
-            <th>Gudang</th>
-            <th>Total</th>
-            <th width="220">Aksi</th>
-        </tr>
-    </thead>
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-3">Kode</th>
+                            <th>Tanggal</th>
+                            <th>Gudang</th>
+                            <th class="text-end">Total Omzet</th>
+                            <th class="text-end">Total HPP</th>
+                            <th class="text-end">Laba Kotor</th>
+                            <th class="text-center" style="min-width: 180px;">Aksi</th>
+                        </tr>
+                    </thead>
 
-    <tbody>
+                    <tbody>
 
-        @foreach($data as $item)
+                        @foreach($data as $item)
+                        @php
+                            /**
+                             * Menghitung total HPP per transaksi dari relasi detail.
+                             * Pastikan 'details' sesuai dengan nama fungsi relasi di Model PenjualanPos
+                             */
+                            $totalHpp = $item->details ? $item->details->sum(fn($d) => $d->hpp_satuan * $d->qty) : 0;
+                            $labaKotor = $item->total - $totalHpp;
+                        @endphp
 
-        <tr>
-            <td>{{ $item->kode_transaksi }}</td>
+                        <tr>
+                            <td class="ps-3 fw-semibold text-secondary">{{ $item->kode_transaksi }}</td>
 
-            <td>
-                {{ \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y H:i') }}
-            </td>
+                            <td>
+                                {{ \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y H:i') }}
+                            </td>
 
-            <td>{{ $item->gudang->nama }}</td>
+                            <td>{{ $item->gudang->nama }}</td>
 
-            <td>
-                Rp {{ number_format($item->total, 0, ',', '.') }}
-            </td>
+                            <td class="text-end fw-medium">
+                                Rp {{ number_format($item->total, 0, ',', '.') }}
+                            </td>
 
-            <td>
+                            <td class="text-end text-muted">
+                                Rp {{ number_format($totalHpp, 0, ',', '.') }}
+                            </td>
 
-                <a href="{{ route('penjualan_pos.show', $item->id) }}"
-                   class="btn btn-info btn-sm">
-                   Detail
-                </a>
+                            <td class="text-end fw-bold text-success">
+                                Rp {{ number_format($labaKotor, 0, ',', '.') }}
+                            </td>
 
-                <a href="{{ route('penjualan_pos.edit', $item->id) }}"
-                   class="btn btn-warning btn-sm">
-                   Edit
-                </a>
+                            <td class="text-center">
 
-                <form action="{{ route('penjualan_pos.destroy', $item->id) }}"
-                      method="POST"
-                      class="d-inline">
+                                <a href="{{ route('penjualan_pos.show', $item->id) }}"
+                                   class="btn btn-info btn-sm text-white">
+                                    Detail
+                                </a>
 
-                    @csrf
-                    @method('DELETE')
+                                <a href="{{ route('penjualan_pos.edit', $item->id) }}"
+                                   class="btn btn-warning btn-sm text-white">
+                                    Edit
+                                </a>
 
-                    <button type="submit"
-                            class="btn btn-danger btn-sm"
-                            onclick="return confirm('Hapus data?')">
+                                <form action="{{ route('penjualan_pos.destroy', $item->id) }}"
+                                   method="POST"
+                                   class="d-inline">
 
-                        Hapus
-                    </button>
+                                    @csrf
+                                    @method('DELETE')
 
-                </form>
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm('Hapus data?')">
+                                        Hapus
+                                    </button>
 
-            </td>
+                                </form>
 
-        </tr>
+                            </td>
 
-        @endforeach
+                        </tr>
 
-    </tbody>
+                        @endforeach
 
-</table>
+                    </tbody>
 
-</div>
-</div>
+                </table>
+            </div>
+            
+        </div>
+    </div>
 </div>
 
 </x-app-layout>

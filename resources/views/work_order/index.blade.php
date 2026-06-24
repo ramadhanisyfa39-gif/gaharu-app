@@ -16,7 +16,7 @@
                 
                 {{-- TOMBOL BUAT WO MASSAL --}}
                 <button type="submit" class="btn btn-light btn-sm fw-bold text-primary shadow-sm" id="btnMassal" disabled>
-                    <i class="bi bi-ui-checks"></i> Buat WO Massal
+                    <i class="bi bi-ui-checks"></i> Buat WO
                 </button>
             </div>
             
@@ -35,7 +35,6 @@
                                 <th class="text-center">Sisa Qty</th>
                                 <th class="text-center">Status Pesanan</th>
                                 <th class="text-center">Status Bayar</th>
-                                <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -102,12 +101,6 @@
                                         @else
                                             <span class="badge bg-success">{{ $item->status_pembayaran }}</span>
                                         @endif
-                                    </td>
-
-                                    <td class="text-center">
-                                        <a href="{{ route('wo.create', $item->id) }}" class="btn btn-outline-success btn-sm" title="Buat WO Individu">
-                                            <i class="bi bi-gear-fill"></i>
-                                        </a>
                                     </td>
                                 </tr>
                                 @endif
