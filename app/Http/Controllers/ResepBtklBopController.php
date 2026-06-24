@@ -11,12 +11,28 @@ class ResepBtklBopController extends Controller
 {
     public function index()
     {
+        // 1. Mengambil data utama resep beserta relasinya untuk tabel list
         $data = ResepBtklBop::with(['produk', 'bahanbaku'])->get();
-        return view('resep.index', compact('data'));
+
+        // 2. Mengambil data master barang jadi dan bahan baku untuk dioper ke modal popup
+        $produk = MasterBarang::where('is_barang_jadi', '1')->get();
+        $bahan  = MasterBarang::where('is_bahan_baku', '1')->get();
+
+        // 3. Mengirimkan ketiga variabel ke view resep.index
+        return view('resep.index', compact('data', 'produk', 'bahan'));
     }
+
+    public function show($id)
+{
+    // Kita ubah nama variabelnya menjadi $resep agar singkron dengan view
+    $resep = ResepBtklBop::with(['produk', 'bahanbaku.bahan'])->findOrFail($id);
+
+    return view('resep.show', compact('resep'));
+}
 
     public function create()
     {
+        // Fungsi ini sudah tidak terpakai karena beralih ke popup, tapi biarkan saja agar tidak merusak route yang ada
         $produk = MasterBarang::where('is_barang_jadi', '1')->get();
         $bahan  = MasterBarang::where('is_bahan_baku', '1')->get();
 
@@ -88,6 +104,7 @@ class ResepBtklBopController extends Controller
 
     public function edit($id)
     {
+        // Fungsi ini sudah tidak terpakai karena beralih ke popup, tapi biarkan saja agar tidak merusak route yang ada
         $data = ResepBtklBop::with('bahanbaku.bahan')->findOrFail($id);
         $produk = MasterBarang::where('is_barang_jadi', 1)->get();
         $bahan  = MasterBarang::where('is_bahan_baku', 1)->get();

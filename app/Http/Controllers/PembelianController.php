@@ -50,10 +50,14 @@ class PembelianController extends Controller
     */
 
     public function index()
-{
-    $pembelian = Pembelian::with(['supplier', 'gudang', 'user'])
-        ->orderBy('tanggal', 'desc')
-        ->paginate(10);
+    {
+        $pembelian = Pembelian::with([
+            'supplier',
+            'gudang',
+            'user'
+        ])
+            ->orderByDesc('tanggal')
+            ->paginate(10);
 
     // Tambahkan ini
     $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
@@ -144,24 +148,24 @@ class PembelianController extends Controller
             $pembelian = Pembelian::create([
 
                 'kode_pembelian'
-                    => $this->generateKodePembelian(
-                        $data['tanggal']
-                    ),
+                => $this->generateKodePembelian(
+                    $data['tanggal']
+                ),
 
                 'supplier_id'
-                    => $data['supplier_id'],
+                => $data['supplier_id'],
 
                 'gudang_id'
-                    => $data['gudang_id'],
+                => $data['gudang_id'],
 
                 'tanggal'
-                    => $data['tanggal'],
+                => $data['tanggal'],
 
                 'total'
-                    => $total,
+                => $total,
 
                 'created_by'
-                    => auth()->id(),
+                => auth()->id(),
             ]);
 
             /*
@@ -194,59 +198,59 @@ class PembelianController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-               $detail = $pembelian->details()->create([
+                $detail = $pembelian->details()->create([
 
-    'barang_id'
-        => $item['barang_id'],
+                    'barang_id'
+                    => $item['barang_id'],
 
-    'qty'
-        => $item['qty'],
+                    'qty'
+                    => $item['qty'],
 
-    'harga'
-        => $item['harga'],
+                    'harga'
+                    => $item['harga'],
 
-    'harga_per_qty'
-        => $hargaPerQty,
+                    'harga_per_qty'
+                    => $hargaPerQty,
 
-    /*
+                    /*
     |--------------------------------------------------------------------------
     | TEMP BATCH
     |--------------------------------------------------------------------------
     */
 
-    'batch_number'
-        => 'TEMP',
-]);
+                    'batch_number'
+                    => 'TEMP',
+                ]);
 
-/*
+                /*
 |--------------------------------------------------------------------------
 | GENERATE BATCH UNIK
 |--------------------------------------------------------------------------
 */
 
-$detail->update([
+                $detail->update([
 
-    'batch_number'
-        => Carbon::parse(
-            $pembelian->tanggal
-        )->format('Ymd')
-        . '-PB'
-        . $detail->id,
-]);
+                    'batch_number'
+                    => Carbon::parse(
+                        $pembelian->tanggal
+                    )->format('Ymd')
+                        . '-PB'
+                        . $detail->id,
+                ]);
 
-/*
+                /*
 |--------------------------------------------------------------------------
 | GENERATE BATCH UNIK
 |--------------------------------------------------------------------------
 */
 
-$detail->update([
+                $detail->update([
 
-    'batch_number'
-        => date('Ymd')
-        . '-PB'
-        . $detail->id,
-]);
+                    'batch_number'
+                    => date('Ymd')
+                        . '-PB'
+                        . $detail->id,
+                ]);
 
                 /*
                 |--------------------------------------------------------------------------
@@ -268,13 +272,13 @@ $detail->update([
                 $this->stockService->stockIn([
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'gudang_tujuan_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     /*
                     |--------------------------------------------------------------------------
@@ -283,16 +287,16 @@ $detail->update([
                     */
 
                     'total_harga'
-                        => $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
-                        => 'pembelian',
+                    => 'pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
         });
@@ -389,25 +393,25 @@ $detail->update([
                 $this->stockService->stockOut([
 
                     'gudang_asal_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
-                        => 'edit_pembelian',
+                    => 'edit_pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
 
@@ -440,16 +444,16 @@ $detail->update([
             $pembelian->update([
 
                 'supplier_id'
-                    => $data['supplier_id'],
+                => $data['supplier_id'],
 
                 'gudang_id'
-                    => $data['gudang_id'],
+                => $data['gudang_id'],
 
                 'tanggal'
-                    => $data['tanggal'],
+                => $data['tanggal'],
 
                 'total'
-                    => $total,
+                => $total,
             ]);
 
             /*
@@ -484,31 +488,31 @@ $detail->update([
 
                 $detail = $pembelian->details()->create([
 
-    'barang_id'
-        => $item['barang_id'],
+                    'barang_id'
+                    => $item['barang_id'],
 
-    'qty'
-        => $item['qty'],
+                    'qty'
+                    => $item['qty'],
 
-    'harga'
-        => $item['harga'],
+                    'harga'
+                    => $item['harga'],
 
-    'harga_per_qty'
-        => $hargaPerQty,
+                    'harga_per_qty'
+                    => $hargaPerQty,
 
-    'batch_number'
-        => 'TEMP',
-]);
+                    'batch_number'
+                    => 'TEMP',
+                ]);
 
-$detail->update([
+                $detail->update([
 
-    'batch_number'
-        => Carbon::parse(
-            $pembelian->tanggal
-        )->format('Ymd')
-        . '-PB'
-        . $detail->id,
-]);
+                    'batch_number'
+                    => Carbon::parse(
+                        $pembelian->tanggal
+                    )->format('Ymd')
+                        . '-PB'
+                        . $detail->id,
+                ]);
 
                 /*
                 |--------------------------------------------------------------------------
@@ -530,25 +534,25 @@ $detail->update([
                 $this->stockService->stockIn([
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'gudang_tujuan_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
-                        => 'edit_pembelian',
+                    => 'edit_pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
         });
@@ -578,25 +582,25 @@ $detail->update([
                 $this->stockService->stockOut([
 
                     'gudang_asal_id'
-                        => $pembelian->gudang_id,
+                    => $pembelian->gudang_id,
 
                     'barang_id'
-                        => $detail->barang_id,
+                    => $detail->barang_id,
 
                     'qty'
-                        => $detail->qty,
+                    => $detail->qty,
 
                     'total_harga'
-                        => $detail->harga,
+                    => $detail->harga,
 
                     'source_type'
-                        => 'hapus_pembelian',
+                    => 'hapus_pembelian',
 
                     'source_id'
-                        => $pembelian->id,
+                    => $pembelian->id,
 
                     'user_id'
-                        => auth()->id(),
+                    => auth()->id(),
                 ]);
             }
 
@@ -644,13 +648,13 @@ public function catatPembayaran(Request $request, Pembelian $pembelian)
 
         $prefix = 'PB'
             . Carbon::parse($tanggal)
-                ->format('Ymd');
+            ->format('Ymd');
 
         $last = Pembelian::where(
-                'kode_pembelian',
-                'like',
-                $prefix . '%'
-            )
+            'kode_pembelian',
+            'like',
+            $prefix . '%'
+        )
             ->lockForUpdate()
             ->orderByDesc('id')
             ->first();

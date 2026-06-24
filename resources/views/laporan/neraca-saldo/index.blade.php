@@ -1,11 +1,11 @@
 <x-app-layout>
-    <div class="bg-gray-100 min-h-screen pb-12">
-        <div class="bg-white border-b border-gray-200 no-print">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="bg-gray-100 pb-12 no-print">
+        <div class="bg-white border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">Neraca Saldo</h1>
-                        <p class="text-sm text-gray-500">Monitoring integritas data akun periode ini.</p>
+                        <h1 class="text-2xl font-bold text-gray-900">Neraca Saldo Lajur</h1>
+                        <p class="text-sm text-gray-500">Monitoring integritas, mutasi, dan saldo akhir akun periode ini.</p>
                     </div>
 
                     <form action="{{ route('laporan.neraca-saldo.index') }}" method="GET" class="flex items-center gap-2">
@@ -28,91 +28,163 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="p-10">
-            <div class="flex justify-between items-center mb-12 pb-6 border-b-2 border-gray-900">
-                <div class="flex flex-col">
-                    <h2 class="text-2xl font-black text-gray-900 leading-none">CV GAHARU AGUNG SEJAHTERA</h2>
-                    <div class="flex items-center gap-3 mt-2">
-                        <span class="bg-gray-900 text-gray-500 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Laporan</span>
-                        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">Neraca Saldo</h3>
-                    </div>
-                </div>
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 my-6">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
-                <div class="flex flex-col items-end gap-2">
-                    <button onclick="window.print()" class="no-print group flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200">
-                        <svg class="w-4 h-4 text-gray-500 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-                        </svg>
-                        <span class="text-xs font-bold text-gray-600 uppercase tracking-widest">Print PDF</span>
-                    </button>
-                    <p class="text-[11px] font-medium text-gray-400 italic">
-                        Periode: <span class="text-gray-700 font-bold not-italic">{{ date('F Y', mktime(0,0,0,$bulan,1,$tahun)) }}</span>
-                    </p>
+            <div class="flex justify-between items-center mb-6 no-print">
+                <div class="text-sm font-medium text-gray-500">
+                    Periode: <span class="text-gray-900 font-bold">{{ date('F Y', mktime(0,0,0,$bulan,1,$tahun)) }}</span>
                 </div>
+                <button onclick="window.print()" class="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50 transition">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    <span class="text-xs font-bold text-gray-600 uppercase tracking-widest">Print PDF</span>
+                </button>
             </div>
-        </div>
 
-        <div class="p-0">
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-800 text-white">
-                        <th class="py-4 px-6 text-left text-xs font-bold uppercase tracking-wider">Kode Akun</th>
-                        <th class="py-4 px-6 text-left text-xs font-bold uppercase tracking-wider">Deskripsi Perkiraan</th>
-                        <th class="py-4 px-6 text-right text-xs font-bold uppercase tracking-wider">Debet</th>
-                        <th class="py-4 px-6 text-right text-xs font-bold uppercase tracking-wider">Kredit</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @php $totalD = 0; $totalK = 0; @endphp
-                    @foreach($neracaSaldo as $row)
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse border border-gray-200">
+                    <thead>
+                        <tr class="bg-[#1f2537] text-black border-b border-gray-700 text-xs font-bold uppercase tracking-wider">
+                            <th rowspan="2" class="p-3 w-28 text-left">Kode Akun</th>
+                            <th rowspan="2" class="p-3 text-left">Nama Akun</th>
+                            <th colspan="2" class="p-2 text-center bg-[#293754]">Saldo Awal</th>
+                            <th colspan="2" class="p-2 text-center bg-[#3c2b2b]">Mutasi Periode</th>
+                            <th colspan="2" class="p-2 text-center bg-[#1b3d2b]">Saldo Akhir</th>
+                        </tr>
+                        <tr class="bg-[#2a3142] text-black text-[11px] font-semibold border-b border-gray-300">
+                            <th class="p-2 text-right bg-[#303f5e] w-32">Debit (Rp)</th>
+                            <th class="p-2 text-right bg-[#303f5e] w-32">Kredit (Rp)</th>
+                            <th class="p-2 text-right bg-[#473434] w-32">Debit (Rp)</th>
+                            <th class="p-2 text-right bg-[#473434] w-32">Kredit (Rp)</th>
+                            <th class="p-2 text-right bg-[#224a35] w-32">Debit (Rp)</th>
+                            <th class="p-2 text-right bg-[#224a35] w-32">Kredit (Rp)</th>
+                        </tr>
+                    </thead>
+
                     @php
-                    $totalD += $row->debet_akhir;
-                    $totalK += $row->kredit_akhir;
+                    // Inisialisasi variabel total keseluruhan di bawah
+                    $grandSA_D = 0; $grandSA_K = 0;
+                    $grandM_D = 0; $grandM_K = 0;
+                    $grandAK_D = 0; $grandAK_K = 0;
+
+                    // Definisikan warna label kategori sesuai gambar referensi Anda
+                    $kategoriData = [
+                    'Aset' => ['color' => 'text-blue-600', 'bg' => 'bg-blue-50/50'],
+                    'Kewajiban' => ['color' => 'text-orange-600', 'bg' => 'bg-orange-50/50'],
+                    'Ekuitas' => ['color' => 'text-green-600', 'bg' => 'bg-green-50/50'],
+                    'Pendapatan' => ['color' => 'text-purple-600', 'bg' => 'bg-purple-50/50'],
+                    'Beban' => ['color' => 'text-red-600', 'bg' => 'bg-red-50/50'],
+                    ];
                     @endphp
-                    <tr class="hover:bg-blue-50/30 transition-colors">
-                        <td class="py-4 px-6 text-sm font-semibold text-gray-500">{{ $row->kode }}</td>
-                        <td class="py-4 px-6 text-sm font-bold text-gray-800">{{ $row->nama }}</td>
-                        <td class="py-4 px-6 text-right text-sm {{ $row->debet_akhir > 0 ? 'text-gray-900' : 'text-gray-300' }}">
-                            {{ number_format($row->debet_akhir, 2, ',', '.') }}
-                        </td>
-                        <td class="py-4 px-6 text-right text-sm {{ $row->kredit_akhir > 0 ? 'text-gray-900' : 'text-gray-300' }}">
-                            {{ number_format($row->kredit_akhir, 2, ',', '.') }}
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr class="bg-gray-900 text-white font-bold">
-                        <td colspan="2" class="py-5 px-6 text-right text-xs uppercase tracking-widest">Total Periode {{ date('F Y', mktime(0,0,0,$bulan,1,$tahun)) }}</td>
-                        <td class="py-5 px-6 text-right text-lg">
-                            <span class="text-blue-400">Rp</span> {{ number_format($totalD, 2, ',', '.') }}
-                        </td>
-                        <td class="py-5 px-6 text-right text-lg">
-                            <span class="text-blue-400">Rp</span> {{ number_format($totalK, 2, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
 
-        <div class="p-6 bg-gray-50 flex justify-center">
-            @if($totalD == $totalK)
-            <div class="flex items-center gap-2 text-green-700 font-bold text-xs uppercase tracking-widest bg-white border border-green-200 px-6 py-2 rounded-full shadow-sm">
-                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                Data Is Balanced
-            </div>
-            @else
-            <div class="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-widest bg-white border border-red-200 px-6 py-2 rounded-full shadow-sm animate-bounce">
-                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
-                Out of Balance
-            </div>
-            @endif
-        </div>
-    </div>
+                    <tbody class="text-xs divide-y divide-gray-200">
+                        @foreach($neracaSaldo->groupBy('tipe') as $tipe => $items)
+                        <tr class="{{ $kategoriData[$tipe]['bg'] ?? 'bg-gray-50' }} font-bold text-[11px] uppercase tracking-wide">
+                            <td colspan="8" class="p-2.5 {{ $kategoriData[$tipe]['color'] ?? 'text-gray-800' }}">
+                                ● {{ $tipe == 'Beban' ? 'BEBAN & HPP' : $tipe }}
+                            </td>
+                        </tr>
 
-    <p class="text-center text-[10px] text-gray-400 mt-8 uppercase font-semibold tracking-[0.2em]">Subsistem Keuangan - CV Gaharu Agung Sejahtera</p>
-    </div>
+                        @foreach($items as $row)
+                        @php
+                        // Akumulasi data ke grand total
+                        $grandSA_D += $row->saldo_awal_debit ?? 0;
+                        $grandSA_K += $row->saldo_awal_kredit ?? 0;
+                        $grandM_D += $row->mutasi_debit ?? 0;
+                        $grandM_K += $row->mutasi_kredit ?? 0;
+                        $grandAK_D += $row->debet_akhir ?? 0;
+                        $grandAK_K += $row->kredit_akhir ?? 0;
+                        @endphp
+                        <tr class="hover:bg-gray-50/80 transition-colors">
+                            <td class="p-2.5 text-gray-500 font-medium border-r border-gray-100">{{ $row->kode }}</td>
+                            <td class="p-2.5 font-semibold text-gray-800 border-r border-gray-100 flex items-center gap-2">
+                                <span class="inline-block w-1 h-3 bg-blue-500 rounded"></span>
+                                {{ $row->nama }}
+                            </td>
+
+                            <td class="p-2 text-right text-gray-700 border-r border-gray-100">
+                                {{ ($row->saldo_awal_debit ?? 0) > 0 ? number_format($row->saldo_awal_debit, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="p-2 text-right text-gray-700 border-r border-gray-100">
+                                {{ ($row->saldo_awal_kredit ?? 0) > 0 ? number_format($row->saldo_awal_kredit, 0, ',', '.') : '-' }}
+                            </td>
+
+                            <td class="p-2 text-right text-gray-700 border-r border-gray-100">
+                                {{ ($row->mutasi_debit ?? 0) > 0 ? number_format($row->mutasi_debit, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="p-2 text-right text-gray-700 border-r border-gray-100">
+                                {{ ($row->mutasi_kredit ?? 0) > 0 ? number_format($row->mutasi_kredit, 0, ',', '.') : '-' }}
+                            </td>
+
+                            <td class="p-2 text-right text-gray-900 font-medium border-r border-gray-100">
+                                {{ ($row->debet_akhir ?? 0) > 0 ? number_format($row->debet_akhir, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="p-2 text-right text-gray-900 font-medium">
+                                {{ ($row->kredit_akhir ?? 0) > 0 ? number_format($row->kredit_akhir, 0, ',', '.') : '-' }}
+                            </td>
+                        </tr>
+                        @endforeach
+                        @endforeach
+                    </tbody>
+
+                    <tfoot>
+                        <tr class="bg-[#111625] text-white font-bold text-xs uppercase border-t-2 border-gray-800">
+                            <td colspan="2" class="p-3 text-left tracking-wider">Total Keseluruhan</td>
+
+                            <td class="p-2 text-right text-blue-300">{{ number_format($grandSA_D, 0, ',', '.') }}</td>
+                            <td class="p-2 text-right text-blue-300 border-r border-gray-700">{{ number_format($grandSA_K, 0, ',', '.') }}</td>
+
+                            <td class="p-2 text-right text-orange-300">{{ number_format($grandM_D, 0, ',', '.') }}</td>
+                            <td class="p-2 text-right text-orange-300 border-r border-gray-700">{{ number_format($grandM_K, 0, ',', '.') }}</td>
+
+                            <td class="p-2 text-right text-green-300">{{ number_format($grandAK_D, 0, ',', '.') }}</td>
+                            <td class="p-2 text-right text-green-300">{{ number_format($grandAK_K, 0, ',', '.') }}</td>
+                        </tr>
+
+                        @php
+                        $selisihSA = $grandSA_D - $grandSA_K;
+                        $selisihM = $grandM_D - $grandM_K;
+                        $selisihAK = $grandAK_D - $grandAK_K;
+                        @endphp
+                        <tr class="bg-[#0b0e16] text-[11px] font-medium text-gray-400 italic">
+                            <td colspan="2" class="p-2 text-left text-gray-400">Selisih Saldo (Debit - Kredit)</td>
+
+                            <td colspan="2" class="p-2 text-center border-r border-gray-800">
+                                @if($selisihSA == 0)
+                                <span class="text-green-400 font-bold">✓ 0 (Balance)</span>
+                                @else
+                                <span class="text-red-400 font-bold">{{ number_format($selisihSA, 0, ',', '.') }}</span>
+                                @endif
+                            </td>
+
+                            <td colspan="2" class="p-2 text-center border-r border-gray-800">
+                                @if($selisihM == 0)
+                                <span class="text-green-400 font-bold">✓ 0 (Balance)</span>
+                                @else
+                                <span class="text-red-400 font-bold bg-red-950/50 px-2 py-0.5 rounded">{{ number_format($selisihM, 0, ',', '.') }}</span>
+                                @endif
+                            </td>
+
+                            <td colspan="2" class="p-2 text-center">
+                                @if($selisihAK == 0)
+                                <span class="text-green-400 font-bold">✓ 0 (Balance)</span>
+                                @else
+                                <span class="text-red-400 font-bold bg-red-950/50 px-2 py-0.5 rounded">{{ number_format($selisihAK, 0, ',', '.') }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <p class="text-center text-[10px] text-gray-400 mt-6 uppercase font-semibold tracking-widest">
+                Subsistem Keuangan — CV Gaharu Agung Sejahtera
+            </p>
+        </div>
     </div>
 
     <style>
@@ -121,31 +193,22 @@
                 display: none !important;
             }
 
-            .bg-gray-100 {
+            body {
                 background: white !important;
             }
 
-            .shadow-xl {
-                box-shadow: none !important;
+            table {
+                border: 1px solid #d1d5db !important;
             }
 
-            .mt-8 {
-                margin-top: 0 !important;
-            }
-
-            tr.bg-gray-800 {
-                background-color: #1f2937 !important;
+            th {
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
-            tr.bg-gray-900 {
-                background-color: #111827 !important;
+            tr {
                 -webkit-print-color-adjust: exact;
-            }
-
-            th,
-            td {
-                color: inherit !important;
+                print-color-adjust: exact;
             }
         }
     </style>

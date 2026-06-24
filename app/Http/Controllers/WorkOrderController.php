@@ -160,8 +160,8 @@ public function show($id)
         */
 
         $gudangProduksi = \App\Models\MasterGudang::where(
-            'nama',
-            'Gudang Produksi'
+            'kategori',
+            'Produksi'
         )->first();
 
         if (!$gudangProduksi) {

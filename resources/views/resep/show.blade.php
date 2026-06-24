@@ -2,7 +2,7 @@
 <div class="container py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold text-dark">Resep: {{ $resep->produk->nama }}</h3>
+        <h3 class="fw-bold text-dark">Resep: {{ $resep->produk->nama ?? 'Produk Tidak Diketahui' }}</h3>
         <a href="{{ route('resep.index') }}" class="btn btn-secondary rounded-3">
             Kembali
         </a>
@@ -38,8 +38,9 @@
 
     {{-- HITUNG PER PRODUK (Hanya untuk Biaya Operasional) --}}
     @php
-        $btkl_per_produk = $resep->btkl_per_batch / $resep->output_qty;
-        $bop_per_produk  = $resep->bop_per_batch / $resep->output_qty;
+        // Ditambahkan validasi pembagi nol agar sistem aman jika output_qty belum diisi
+        $btkl_per_produk = $resep->output_qty > 0 ? $resep->btkl_per_batch / $resep->output_qty : 0;
+        $bop_per_produk  = $resep->output_qty > 0 ? $resep->bop_per_batch / $resep->output_qty : 0;
     @endphp
 
     <div class="alert alert-light border shadow-sm d-flex justify-content-around text-center mb-4">
@@ -69,22 +70,22 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($bahan as $b)
+                    @forelse($resep->bahanbaku as $b)
                     <tr>
-                        <td class="ps-4 fw-semibold text-dark">{{ $b->bahan->nama }}</td>
-                        <td class="text-center">{{ (int) $b->qty_bahan }}</td>
+                        <td class="ps-4 fw-semibold text-dark">{{ $b->bahan->nama ?? 'Bahan Tidak Diketahui' }}</td>
+                        <td class="text-center">{{ $b->qty_bahan }}</td>
                         <td class="text-center">
-                            <span class="badge bg-secondary opacity-75 px-3">{{ $b->satuan }}</span>
+                            <span class="badge bg-secondary opacity-75 px-3">{{ $b->satuan ?? '-' }}</span>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="3" class="text-center text-muted py-4">Tidak ada komponen bahan baku yang terdaftar.</td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <div class="mt-4 text-muted small">
-        <p><i class="fas fa-info-circle me-1"></i> Data di atas menampilkan estimasi biaya tenaga kerja (BTKL) dan biaya operasional (BOP) tanpa menyertakan harga bahan baku.</p>
     </div>
 
 </div>
