@@ -279,6 +279,7 @@ Route::post(
         'stock-opname/{id}/approve',
         [StockOpnameController::class, 'approve']
     )->name('stock-opname.approve');
+    /*
     | Harga Barang POS
     |--------------------------------------------------------------------------
     */
@@ -342,48 +343,7 @@ Route::post(
     // TAMBAHKAN DUA BARIS BARU INI:
     Route::put('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'update'])->name('harga.update');
     Route::delete('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'destroy'])->name('harga.destroy');
-<<<<<<< HEAD
-    });
-
-    Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
-    Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
-        ->name('barang.generate-kode');
-    Route::get(
-        '/stok-gudang-batch',
-        [StokGudangBatchController::class, 'index']
-    )->name('stok-gudang-batch.index');
-
-    Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
-    Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
-    Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
-
-    Route::prefix('laporan')->name('laporan.')->group(function () {
-
-        Route::get('/', [LaporanController::class, 'labaRugiIndex'])->name('index');
-
-        // Laba Rugi
-        Route::get('/laba-rugi', [LaporanController::class, 'labaRugiIndex'])->name('laba-rugi.index');
-        Route::get('/laba-rugi/show', [LaporanController::class, 'labaRugiShow'])->name('laba-rugi.show');
-
-        // Neraca
-        Route::get('/neraca', [LaporanController::class, 'neracaIndex'])->name('neraca.index');
-        Route::get('/neraca/show', [LaporanController::class, 'neracaShow'])->name('neraca.show');
-
-        // Arus Kas
-        Route::get('/arus-kas', [LaporanController::class, 'arusKasIndex'])->name('arus-kas.index');
-        Route::get('/arus-kas/show', [LaporanController::class, 'arusKasShow'])->name('arus-kas.show');
-
-        // Buku Besar
-        Route::get('/buku-besar', [LaporanController::class, 'bukuBesar'])->name('buku-besar.index');
-
-        Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
-
-        Route::patch('/barang/{barang}/toggle', [BarangController::class, 'toggleStatus'])->name('barang.toggle');
-    
-        });
-=======
 });
->>>>>>> fbd573634a125fdb80ba265a181c38df59e938cd
 
 Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
 Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
