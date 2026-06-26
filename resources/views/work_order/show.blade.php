@@ -66,7 +66,7 @@
                         </form>
                     @else
                         <div class="alert alert-success border-0 py-2 small mb-0">
-                            <i class="bi bi-check-circle-fill me-1"></i> Bahan sudah diproses ke gudang & stok B2B bertambah.
+                            <i class="bi bi-check-circle-fill me-1"></i> Permintaan bahan sudah diproses ke gudang utama
                         </div>
                     @endif
                 </div>

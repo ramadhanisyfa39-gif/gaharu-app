@@ -1,102 +1,343 @@
 <x-app-layout>
-<div class="container">
-@if(session('success'))
-    <div id="flash-success" data-message="{{ session('success') }}"></div>
-@endif
 
-@if(session('error'))
-    <div id="flash-error" data-message="{{ session('error') }}"></div>
-@endif
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<h3 class="mb-3">Data Resep</h3>
+<div class="container py-4">
 
-<a href="{{ route('resep.create') }}" class="btn btn-primary mb-3">+ Tambah</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark m-0">Daftar Resep Produk</h3>
+        <button type="button" class="btn btn-primary rounded-3 px-4 shadow-sm fw-semibold" id="btn-tambah-resep">
+            <i class="fas fa-plus me-2"></i>Tambah Resep
+        </button>
+    </div>
 
-<table class="table table-bordered text-center">
-<thead>
-<tr>
-    <th>Produk</th>
-    <th>Output</th>
-    <th>BTKL / Batch</th>
-    <th>BOP / Batch</th>
-    <th>Jumlah Bahan</th>
-    <th>Aksi</th>
-</tr>
-</thead>
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+        <strong class="me-2"><i class="fas fa-check-circle"></i> Berhasil!</strong> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
-<tbody>
+    @if(session('error') || $errors->any())
+    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+        <strong class="d-block mb-1"><i class="fas fa-exclamation-triangle"></i> Terjadi Kesalahan:</strong>
+        <ul class="mb-0 ps-3">
+            @if(session('error')) <li>{{ session('error') }}</li> @endif
+            @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
 
-@if($data->isEmpty())
-<tr>
-    <td colspan="6" class="text-center">Belum ada data resep</td>
-</tr>
-@endif
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary text-uppercase fs-7 text-center">
+                        <tr>
+                            <th class="text-start ps-4 py-3">Nama Produk</th>
+                            <th>Output / Batch</th>
+                            <th>BTKL / Batch</th>
+                            <th>BOP / Batch</th>
+                            <th style="width: 200px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        @forelse($data as $r)
+                        <tr>
+                            <td class="text-start ps-4 fw-semibold text-dark">
+                                {{ $r->produk->nama ?? 'Produk Tidak Diketahui' }}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border px-3 py-2 fw-medium">
+                                    {{ (int) $r->output_qty }} {{ $r->satuan_output }}
+                                </span>
+                            </td>
+                            <td class="text-dark fw-medium">Rp {{ number_format($r->btkl_per_batch) }}</td>
+                            <td class="text-dark fw-medium">Rp {{ number_format($r->bop_per_batch) }}</td>
+                            <td>
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="{{ route('resep.show', $r->id) }}" class="btn btn-info btn-sm text-white rounded-2 px-2">
+                                        Lihat
+                                    </a>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-warning btn-sm btn-edit-resep rounded-2 px-2"
+                                            data-id="{{ $r->id }}"
+                                            data-produk_id="{{ $r->produk_id }}"
+                                            data-output_qty="{{ (int) $r->output_qty }}"
+                                            data-satuan_output="{{ $r->satuan_output }}"
+                                            data-btkl="{{ (int) $r->btkl_per_batch }}"
+                                            data-bop="{{ (int) $r->bop_per_batch }}"
+                                            data-bahanbaku="{{ json_encode($r->bahanbaku) }}">
+                                        Edit
+                                    </button>
 
-@foreach($data as $d)
-<tr>
-    <td>{{ $d->produk->nama ?? '-' }}</td>
-
-    <td>
-        {{ (int) $d->output_qty }} {{ $d->satuan_output ?? '-' }}
-    </td>
-
-    <td>Rp {{ number_format($d->btkl_per_batch) }}</td>
-    <td>Rp {{ number_format($d->bop_per_batch) }}</td>
-
-    {{-- JUMLAH BAHAN --}}
-    <td>{{ $d->bahanbaku->count() }} bahan </td>
-
-    <td>
-        <a href="{{ route('resep.bahan.show', $d->id) }}"
-            class="btn btn-info btn-sm">
-            Detail
-        </a>
-
-        <a href="{{ route('resep.edit',$d->id) }}"
-           class="btn btn-warning btn-sm">
-           Edit
-        </a>
-
-        <form action="{{ route('resep.destroy',$d->id) }}"
-              method="POST"
-              style="display:inline;">
-            @csrf @method('DELETE')
-            <button class="btn btn-danger btn-sm"
-                onclick="return confirm('Yakin hapus?')">
-                Hapus
-            </button>
-        </form>
-    </td>
-</tr>
-@endforeach
-
-</tbody>
-</table>
-
+                                    <form action="{{ route('resep.destroy', $r->id) }}" method="POST" class="d-inline m-0">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm rounded-2" onclick="return confirm('Apakah Anda yakin ingin menghapus resep ini?')">
+                                            Hapus
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-5 fs-6">
+                                <i class="fas fa-folder-open d-block mb-2 fs-3 opacity-50"></i>
+                                Belum ada data resep yang tersimpan.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<form id="form-resep" action="{{ route('resep.store') }}" method="POST">
+    @csrf
+    <input type="hidden" name="_method" id="form-method" value="POST">
 
-@if(session('success'))
+    <div class="modal fade" id="modalResep" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalResepTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="max-height: 92vh;">
+            <div class="modal-content border-0 shadow">
+                
+                <div class="modal-header bg-light py-3">
+                    <h5 class="modal-title fw-bold text-dark" id="modalResepTitle">Tambah Resep Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body px-4 py-3">
+                    
+                    {{-- PILIH MASTER PRODUK BARANG JADI --}}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-secondary">Produk</label>
+                        <select name="produk_id" id="produk_id" class="form-select produk-select" required>
+                            <option value="" disabled selected>-- Pilih Produk --</option>
+                            @foreach($produk as $p)
+                                <option value="{{ $p->id }}" data-satuan="{{ $p->satuan }}">{{ $p->nama }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-danger d-none mt-1 d-block" id="edit-produk-warning">
+                            <i class="fas fa-info-circle me-1"></i> Produk tidak dapat diganti saat mengedit resep.
+                        </small>
+                    </div>
+
+                    {{-- TARGET OUTPUT PROSES PRODUKSI --}}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-secondary">Output per Batch</label>
+                            <input type="number" name="output_qty" id="output_qty" class="form-control" min="1" placeholder="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-secondary">Satuan Output (Auto)</label>
+                            <input type="text" name="satuan_output" id="satuan_output" class="form-control bg-light text-center fw-semibold" readonly placeholder="-">
+                        </div>
+                    </div>
+
+                    {{-- BIAYA TENAGA KERJA & OPERASIONAL --}}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-secondary">BTKL per Batch (Rp)</label>
+                            <input type="number" name="btkl_per_batch" id="btkl_per_batch" class="form-control" min="0" placeholder="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-secondary">BOP per Batch (Rp)</label>
+                            <input type="number" name="bop_per_batch" id="bop_per_batch" class="form-control" min="0" placeholder="0" required>
+                        </div>
+                    </div>
+
+                    <hr class="my-3 opacity-25">
+                    <h6 class="fw-bold text-primary mb-3"><i class="fas fa-flask me-2"></i>Komposisi Komponen Bahan Baku</h6>
+
+                    {{-- TABEL INPUT DATA BAHAN BAKU DINAMIS --}}
+                    <div class="table-responsive" style="max-height: 220px; overflow-y: auto; border: 1px solid #dee2e6; rounded: 4px;">
+                        <table class="table table-bordered table-sm align-middle mb-0" id="table-bahan">
+                            <thead class="table-light text-center small text-secondary sticky-top" style="z-index: 10;">
+                                <tr>
+                                    <th class="py-2">Nama Bahan Baku</th>
+                                    <th style="width: 22%;" class="py-2">Qty / Produk</th>
+                                    <th style="width: 20%;" class="py-2">Satuan</th>
+                                    <th style="width: 10%;" class="py-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="p-1">
+                                        <select name="bahan_id[]" class="form-select form-select-sm bahan-select" required>
+                                            <option value="" disabled selected>-- Pilih Bahan --</option>
+                                            @foreach($bahan as $b)
+                                                <option value="{{ $b->id }}" data-satuan="{{ $b->satuan }}">
+                                                    {{ $b->nama }} (Rp {{ number_format($b->hpp_referensi) }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td class="p-1">
+                                        <input type="number" step="any" name="qty_bahan[]" class="form-control form-control-sm text-center" min="0.001" placeholder="0" required>
+                                    </td>
+                                    <td class="p-1">
+                                        <input type="text" name="satuan[]" class="form-control form-control-sm text-center bg-light satuan-input" readonly placeholder="-">
+                                    </td>
+                                    <td class="text-center p-1">
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row border-0 px-2">✕</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="button" class="btn btn-light text-primary btn-sm fw-bold border mt-2 shadow-sm" id="btn-add-row">
+                        <i class="fas fa-plus me-1"></i> Tambah Baris Bahan
+                    </button>
+                </div>
+                
+                <div class="modal-footer bg-light border-top py-2">
+                    <button type="button" class="btn btn-secondary px-4 shadow-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm" id="btn-submit-form">Simpan Resep</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-Swal.fire({
-    icon: 'success',
-    title: 'Berhasil',
-    text: @json(session('success')),
-    timer: 2000,
-    showConfirmButton: false
+document.addEventListener("DOMContentLoaded", function () {
+    // Daftarkan Objek Instance Modal Bootstrap 5 secara eksplisit
+    const elemenModal = document.getElementById('modalResep');
+    const bsModalInstance = new bootstrap.Modal(elemenModal);
+
+    const formResep = document.getElementById('form-resep');
+    const formMethod = document.getElementById('form-method');
+    const modalTitle = document.getElementById('modalResepTitle');
+    const btnSubmit = document.getElementById('btn-submit-form');
+    
+    const selectProduk = document.getElementById('produk_id');
+    const warningProduk = document.getElementById('edit-produk-warning');
+    const inputSatuanOutput = document.getElementById('satuan_output');
+    
+    const tbodyBahan = document.querySelector('#table-bahan tbody');
+    const rowBlueprint = tbodyBahan.querySelector('tr').cloneNode(true);
+
+    // Sinkronisasi otomatis input teks kolom 'Satuan' bahan baku
+    function sinkronkanSatuanBahan(row) {
+        let select = row.querySelector('.bahan-select');
+        let optionTerpilih = select.options[select.selectedIndex];
+        let satuan = optionTerpilih ? optionTerpilih.dataset.satuan : '';
+        row.querySelector('.satuan-input').value = satuan ?? '';
+    }
+
+    // Mengunci & set otomatis kolom satuan output ketika produk dipilih
+    selectProduk.addEventListener('change', function() {
+        let satuan = this.options[this.selectedIndex].dataset.satuan;
+        inputSatuanOutput.value = satuan ?? '';
+    });
+
+    // Menangani perubahan dropdown bahan baku (Menggunakan Event Delegation)
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('bahan-select')) {
+            sinkronkanSatuanBahan(e.target.closest('tr'));
+        }
+    });
+
+    // Aksi: Tambah baris baru bahan baku
+    document.getElementById('btn-add-row').addEventListener('click', function() {
+        let barisBaru = rowBlueprint.cloneNode(true);
+        barisBaru.querySelectorAll('input').forEach(input => input.value = '');
+        barisBaru.querySelector('.bahan-select').selectedIndex = 0;
+        tbodyBahan.appendChild(barisBaru);
+    });
+
+    // Aksi: Hapus baris bahan baku
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('btn-remove-row')) {
+            if (tbodyBahan.querySelectorAll('tr').length > 1) {
+                e.target.closest('tr').remove();
+            } else {
+                alert('Sistem Keamanan: Resep minimal wajib memiliki 1 baris komponen bahan baku!');
+            }
+        }
+    });
+
+    // ==========================================
+    // ACTION CONTROL: MODAL TAMBAH DATA BARU
+    // ==========================================
+    document.getElementById('btn-tambah-resep').addEventListener('click', function() {
+        modalTitle.innerText = "Tambah Resep Baru";
+        btnSubmit.innerText = "Simpan Resep";
+        btnSubmit.className = "btn btn-primary px-4 shadow-sm";
+        formResep.action = "{{ route('resep.store') }}";
+        formMethod.value = "POST";
+        
+        formResep.reset();
+        selectProduk.removeAttribute('disabled');
+        warningProduk.classList.add('d-none');
+        
+        // Kembalikan tabel ke form bersih (1 baris kosong)
+        tbodyBahan.innerHTML = '';
+        tbodyBahan.appendChild(rowBlueprint.cloneNode(true));
+
+        // Luncurkan modal
+        bsModalInstance.show();
+    });
+
+    // ==========================================
+    // ACTION CONTROL: MODAL EDIT DATA BARIS
+    // ==========================================
+    document.querySelectorAll('.btn-edit-resep').forEach(tombol => {
+        tombol.addEventListener('click', function() {
+            modalTitle.innerText = "Edit Resep Produk";
+            btnSubmit.innerText = "Update Resep";
+            btnSubmit.className = "btn btn-warning px-4 text-dark shadow-sm fw-semibold";
+            
+            const idResep = this.dataset.id;
+            formResep.action = `/resep/${idResep}`; 
+            formMethod.value = "PUT";
+
+            // Mengunci dropdown produk agar integritas data master aman
+            selectProduk.value = this.dataset.produk_id;
+            selectProduk.setAttribute('disabled', 'true');
+            warningProduk.classList.remove('d-none');
+
+            document.getElementById('output_qty').value = this.dataset.output_qty;
+            inputSatuanOutput.value = this.dataset.satuan_output;
+            document.getElementById('btkl_per_batch').value = this.dataset.btkl;
+            document.getElementById('bop_per_batch').value = this.dataset.bop;
+
+            // Bersihkan isi tabel lama & susun ulang berdasar array JSON relasi backend
+            tbodyBahan.innerHTML = '';
+            const arrayBahanBaku = JSON.parse(this.dataset.bahanbaku);
+
+            if (arrayBahanBaku && arrayBahanBaku.length > 0) {
+                arrayBahanBaku.forEach(item => {
+                    let barisEdit = rowBlueprint.cloneNode(true);
+                    
+                    barisEdit.querySelector('.bahan-select').value = item.bahan_id;
+                    barisEdit.querySelector('input[name="qty_bahan[]"]').value = parseFloat(item.qty_bahan);
+                    
+                    tbodyBahan.appendChild(barisEdit);
+                    sinkronkanSatuanBahan(barisEdit);
+                });
+            } else {
+                tbodyBahan.appendChild(rowBlueprint.cloneNode(true));
+            }
+
+            // Luncurkan modal edit
+            bsModalInstance.show();
+        });
+    });
+
+    // Pembuka gembok proteksi field 'disabled' tepat sebelum submit agar dibaca Laravel Request
+    formResep.addEventListener('submit', function() {
+        selectProduk.removeAttribute('disabled');
+    });
 });
 </script>
-@endif
-
-@if(session('error'))
-<script>
-Swal.fire({
-    icon: 'error',
-    title: 'Gagal',
-    text: @json(session('error'))
-});
-</script>
-@endif
-
 </x-app-layout>

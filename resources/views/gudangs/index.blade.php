@@ -1,5 +1,9 @@
 <x-app-layout>
+<x-slot name="header">
 
+        Master Gudang
+
+    </x-slot>
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div>

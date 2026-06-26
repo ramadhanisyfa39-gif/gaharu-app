@@ -1,4 +1,9 @@
 <x-app-layout>
+    <x-slot name="header">
+
+        Master Customer
+
+    </x-slot>
 <div class="card">
     <div class="card-header">
         <h4>Data Customer</h4>

@@ -1,90 +1,152 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Detail Pengeluaran Bahan Baku</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+<x-app-layout>
 
-<body class="bg-light">
+<x-slot name="header">
+    Pengeluaran Bahan Baku
+</x-slot>
 
-<div class="container mt-4">
+@php
+    $grandTotal = 0;
+@endphp
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-header mb-4">
+
+    <div class="d-flex justify-content-between align-items-center">
+
         <div>
-            <h3 class="mb-1">Detail Pengeluaran Bahan Baku</h3>
+
+            <h1 class="page-header-title">
+                Detail Pengeluaran Bahan Baku
+            </h1>
+
             <p class="text-muted mb-0">
-                Informasi detail transaksi pengeluaran bahan baku.
+                Informasi transaksi pengeluaran bahan baku dan perhitungan FIFO.
             </p>
+
         </div>
 
         <a href="{{ route('pengeluaran-bahan-baku.index') }}"
-           class="btn btn-secondary">
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left"></i>
             Kembali
+
         </a>
+
     </div>
 
-    {{-- HEADER --}}
+</div>
 
-    <div class="card shadow-sm mb-4">
+<div class="row mb-4">
 
-        <div class="card-header bg-primary text-white">
-            Informasi Pengeluaran
+    <div class="col-md-3 mb-3">
+
+        <div class="card p-3 h-100">
+
+            <small class="text-muted">
+                Kode Pengeluaran
+            </small>
+
+            <h5 class="fw-bold mb-0">
+                {{ $pengeluaran->kode_pengeluaran }}
+            </h5>
+
         </div>
 
-        <div class="card-body">
+    </div>
 
-            <div class="row">
+    <div class="col-md-3 mb-3">
 
-                <div class="col-md-6 mb-3">
-                    <strong>Kode Pengeluaran</strong>
-                    <div>
-                        {{ $pengeluaran->kode_pengeluaran }}
-                    </div>
-                </div>
+        <div class="card p-3 h-100">
 
-                <div class="col-md-6 mb-3">
-                    <strong>Tanggal</strong>
-                    <div>
-                        {{ $pengeluaran->tanggal }}
-                    </div>
-                </div>
+            <small class="text-muted">
+                Status
+            </small>
 
-                <div class="col-md-6 mb-3">
-                    <strong>Gudang Tujuan</strong>
-                    <div>
-                        {{ $pengeluaran->gudang->nama ?? '-' }}
-                    </div>
-                </div>
+            <div class="mt-2">
 
-                <div class="col-md-6 mb-3">
-                    <strong>Status</strong>
+                @if($pengeluaran->status == 'approved')
 
-                    <div>
+                    <span class="badge bg-success">
+                        Approved
+                    </span>
 
-                        @if($pengeluaran->status == 'draft')
+                @else
 
-                            <span class="badge bg-warning text-dark">
-                                Draft
-                            </span>
+                    <span class="badge bg-warning text-dark">
+                        Draft
+                    </span>
 
-                        @else
+                @endif
 
-                            <span class="badge bg-success">
-                                Disetujui
-                            </span>
+            </div>
 
-                        @endif
+        </div>
 
-                    </div>
-                </div>
+    </div>
 
-                <div class="col-md-12 mb-3">
-                    <strong>Keterangan</strong>
+    <div class="col-md-3 mb-3">
 
-                    <div>
-                        {{ $pengeluaran->keterangan ?? '-' }}
-                    </div>
+        <div class="card p-3 h-100">
+
+            <small class="text-muted">
+                Gudang Tujuan
+            </small>
+
+            <h6 class="fw-bold mb-0">
+                {{ $pengeluaran->gudang->nama ?? '-' }}
+            </h6>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-3 mb-3">
+
+        <div class="card p-3 h-100">
+
+            <small class="text-muted">
+                Tanggal
+            </small>
+
+            <h6 class="fw-bold mb-0">
+                {{ \Carbon\Carbon::parse($pengeluaran->tanggal)->format('d M Y H:i') }}
+            </h6>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="card mb-4">
+
+    <div
+        class="card-header text-white fw-bold"
+        style="
+            background:#9c4f18;
+            border-radius:24px 24px 0 0;
+        ">
+
+        <i class="bi bi-info-circle me-2"></i>
+        Informasi Pengeluaran
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-md-12">
+
+                <label class="fw-bold">
+                    Keterangan
+                </label>
+
+                <div class="mt-2 text-muted">
+
+                    {{ $pengeluaran->keterangan ?? '-' }}
+
                 </div>
 
             </div>
@@ -93,55 +155,44 @@
 
     </div>
 
-    {{-- DETAIL BARANG --}}
+</div>
 
-    <div class="card shadow-sm">
+<div class="card">
 
-        <div class="card-header bg-dark text-white">
-            Detail Barang
-        </div>
+    <div
+        class="card-header text-white fw-bold"
+        style="
+            background:#5a3416;
+            border-radius:24px 24px 0 0;
+        ">
 
-        <div class="card-body p-0">
+        <i class="bi bi-box-seam me-2"></i>
+        Detail Barang
 
-            <table class="table table-bordered mb-0">
+    </div>
 
-                <thead class="table-light">
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table align-middle mb-0">
+
+                <thead>
 
                     <tr>
 
-                        <th width="60">
-                            No
-                        </th>
-
-                        <th>
-                            Barang
-                        </th>
-
-                        <th width="120">
-                            Qty
-                        </th>
-
-                        <th width="120">
-                            Satuan
-                        </th>
-
-                        <th width="180">
-                            Harga FIFO
-                        </th>
-
-                        <th width="180">
-                            Total FIFO
-                        </th>
+                        <th width="70">No</th>
+                        <th>Barang</th>
+                        <th width="120">Qty</th>
+                        <th width="120">Satuan</th>
+                        <th width="180">Harga FIFO</th>
+                        <th width="200">Total FIFO</th>
 
                     </tr>
 
                 </thead>
 
                 <tbody>
-
-                    @php
-                        $grandTotal = 0;
-                    @endphp
 
                     @forelse($pengeluaran->details as $detail)
 
@@ -163,25 +214,30 @@
                             </td>
 
                             <td>
-                                {{ $detail->barang->nama ?? '-' }}
+
+                                <div class="fw-semibold">
+                                    {{ $detail->barang->nama ?? '-' }}
+                                </div>
+
                             </td>
 
                             <td>
-                                {{ number_format($detail->qty, 2) }}
+
+                                {{ number_format($detail->qty,2) }}
+
                             </td>
 
                             <td>
+
                                 {{ $detail->barang->satuan ?? '-' }}
+
                             </td>
 
                             <td>
 
-                                @if(
-                                    $pengeluaran->status == 'approved'
-                                )
+                                @if($pengeluaran->status == 'approved')
 
-                                    Rp
-                                    {{ number_format($hargaFIFO,0,',','.') }}
+                                    Rp {{ number_format($hargaFIFO,0,',','.') }}
 
                                 @else
 
@@ -195,12 +251,13 @@
 
                             <td>
 
-                                @if(
-                                    $pengeluaran->status == 'approved'
-                                )
+                                @if($pengeluaran->status == 'approved')
 
-                                    Rp
-                                    {{ number_format($detail->hpp_total,0,',','.') }}
+                                    <strong>
+
+                                        Rp {{ number_format($detail->hpp_total,0,',','.') }}
+
+                                    </strong>
 
                                 @else
 
@@ -219,7 +276,7 @@
                         <tr>
 
                             <td colspan="6"
-                                class="text-center text-muted">
+                                class="text-center text-muted py-4">
 
                                 Tidak ada detail barang
 
@@ -231,82 +288,85 @@
 
                 </tbody>
 
-                @if(
-                    $pengeluaran->status == 'approved'
-                )
-
-                <tfoot>
-
-                    <tr>
-
-                        <th colspan="5"
-                            class="text-end">
-
-                            TOTAL NILAI PENGELUARAN FIFO
-
-                        </th>
-
-                        <th>
-
-                            Rp
-                            {{ number_format($grandTotal,0,',','.') }}
-
-                        </th>
-
-                    </tr>
-
-                </tfoot>
-
-                @endif
-
             </table>
 
         </div>
 
     </div>
 
-    {{-- ACTION --}}
+</div>
 
-    @if($pengeluaran->status == 'draft')
+@if($pengeluaran->status == 'approved')
 
-        @php
+<div class="row mt-4">
 
-            $isWO =
-                str_contains(
-                    strtolower(
-                        $pengeluaran->keterangan ?? ''
-                    ),
-                    'permintaan bahan baku untuk'
-                );
+    <div class="col-md-4 ms-auto">
 
-        @endphp
+        <div class="card p-4">
 
-        <div class="mt-4 d-flex gap-2">
+            <small class="text-muted">
+                Total Nilai FIFO
+            </small>
 
-            @if(!$isWO)
+            <h3
+                class="fw-bold mt-2"
+                style="color:#9c4f18;">
 
-                <a href="{{ route('pengeluaran-bahan-baku.edit', $pengeluaran->id) }}"
-                   class="btn btn-warning">
+                Rp {{ number_format($grandTotal,0,',','.') }}
 
-                    Edit Pengeluaran
-
-                </a>
-
-            @endif
-
-            <a href="{{ route('pengeluaran-bahan-baku.approve', $pengeluaran->id) }}"
-               class="btn btn-success"
-               onclick="return confirm('Approve pengeluaran ini?')">
-
-                Approve Pengeluaran
-
-            </a>
+            </h3>
 
         </div>
 
-    @endif
+    </div>
 
 </div>
 
-</body>
-</html>
+@endif
+
+@if($pengeluaran->status == 'draft')
+
+    @php
+
+        $isWO =
+            str_contains(
+                strtolower(
+                    $pengeluaran->keterangan ?? ''
+                ),
+                'permintaan bahan baku untuk'
+            );
+
+    @endphp
+
+<div class="d-flex gap-2 mt-4">
+
+    @if(!$isWO)
+
+        <a href="{{ route('pengeluaran-bahan-baku.edit', $pengeluaran->id) }}"
+           class="btn"
+           style="
+                background:#d88656;
+                color:white;
+           ">
+
+            <i class="bi bi-pencil-square"></i>
+            Edit Pengeluaran
+
+        </a>
+
+    @endif
+
+    <a href="{{ route('pengeluaran-bahan-baku.approve', $pengeluaran->id) }}"
+       class="btn btn-success"
+       onclick="return confirm('Approve pengeluaran ini?')">
+
+        <i class="bi bi-check-circle"></i>
+        Approve Pengeluaran
+
+    </a>
+
+</div>
+
+@endif
+
+</x-app-layout>
