@@ -12,35 +12,20 @@ use App\Services\StockService;
 use App\Services\FifoService;
 
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PembelianController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | PROPERTY
-    |--------------------------------------------------------------------------
-    */
-
     protected StockService $stockService;
-
     protected FifoService $fifoService;
-
-    /*
-    |--------------------------------------------------------------------------
-    | CONSTRUCTOR
-    |--------------------------------------------------------------------------
-    */
 
     public function __construct(
         StockService $stockService,
         FifoService $fifoService
     ) {
-
         $this->stockService = $stockService;
-
-        $this->fifoService = $fifoService;
+        $this->fifoService  = $fifoService;
     }
 
     /*
@@ -51,37 +36,32 @@ class PembelianController extends Controller
 
     public function index()
     {
-        $pembelian = Pembelian::with([
-            'supplier',
-            'gudang',
-            'user'
-        ])
-            ->orderByDesc('tanggal')
+        $pembelian = Pembelian::with(['supplier', 'gudang', 'user'])
+            ->orderBy('tanggal', 'desc')
             ->paginate(10);
 
-    // Tambahkan ini
-    $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
-        $label = match($item->metode_pembayaran) {
-            'cod'    => 'COD',
-            'termin' => 'Termin',
-            'dp'     => 'DP ' . $item->persen_dp . '%',
-            default  => '-',
-        };
-        return [$item->id => [
-            'kode'                => $item->kode_pembelian,
-            'total'               => (float) $item->total,
-            'metode'              => $item->metode_pembayaran,
-            'label'               => $label,
-            'persen_dp'           => $item->persen_dp,
-            'tanggal_jatuh_tempo' => $item->tanggal_jatuh_tempo,
-            'tanggal_pelunasan'   => $item->tanggal_pelunasan,
-            'catatan'             => $item->catatan_pembayaran,
-            'dicatat_pada'        => $item->dicatat_pada,
-        ]];
-    });
+        $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
+            $label = match($item->metode_pembayaran) {
+                'cod'    => 'COD',
+                'termin' => 'Termin',
+                'dp'     => 'DP ' . $item->persen_dp . '%',
+                default  => '-',
+            };
+            return [$item->id => [
+                'kode'                => $item->kode_pembelian,
+                'total'               => (float) $item->total,
+                'metode'              => $item->metode_pembayaran,
+                'label'               => $label,
+                'persen_dp'           => $item->persen_dp,
+                'tanggal_jatuh_tempo' => $item->tanggal_jatuh_tempo,
+                'tanggal_pelunasan'   => $item->tanggal_pelunasan,
+                'catatan'             => $item->catatan_pembayaran,
+                'dicatat_pada'        => $item->dicatat_pada,
+            ]];
+        });
 
-    return view('pembelian.index', compact('pembelian', 'dataPembayaran'));
-}
+        return view('pembelian.index', compact('pembelian', 'dataPembayaran'));
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -92,29 +72,20 @@ class PembelianController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('nama')->get();
-
-        $gudangs = MasterGudang::orderBy('nama')->get();
-
-        $barangs = MasterBarang::query()
+        $gudangs   = MasterGudang::orderBy('nama')->get();
+        $barangs   = MasterBarang::query()
             ->where('is_bahan_baku', true)
             ->orWhere('is_operational', true)
             ->orWhere('is_direct_consumption', true)
             ->orderBy('nama')
             ->get();
 
-        return view(
-            'pembelian.create',
-            compact(
-                'suppliers',
-                'gudangs',
-                'barangs'
-            )
-        );
+        return view('pembelian.create', compact('suppliers', 'gudangs', 'barangs'));
     }
 
     /*
     |--------------------------------------------------------------------------
-    | STORE
+    | STORE — stok TIDAK langsung masuk, tunggu konfirmasi terima
     |--------------------------------------------------------------------------
     */
 
@@ -124,189 +95,149 @@ class PembelianController extends Controller
 
         DB::transaction(function () use ($data) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | HITUNG TOTAL PEMBELIAN
-            |--------------------------------------------------------------------------
-            |
-            | harga sekarang adalah TOTAL HARGA
-            |
-            */
-
-            $total = collect($data['items'])
-                ->sum(function ($item) {
-
-                    return (float) $item['harga'];
-                });
-
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE HEADER
-            |--------------------------------------------------------------------------
-            */
+            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']);
 
             $pembelian = Pembelian::create([
-
-                'kode_pembelian'
-                => $this->generateKodePembelian(
-                    $data['tanggal']
-                ),
-
-                'supplier_id'
-                => $data['supplier_id'],
-
-                'gudang_id'
-                => $data['gudang_id'],
-
-                'tanggal'
-                => $data['tanggal'],
-
-                'total'
-                => $total,
-
-                'created_by'
-                => auth()->id(),
+                'kode_pembelian' => $this->generateKodePembelian($data['tanggal']),
+                'supplier_id'    => $data['supplier_id'],
+                'gudang_id'      => $data['gudang_id'],
+                'tanggal'        => $data['tanggal'],
+                'total'          => $total,
+                'created_by'     => auth()->id(),
+                'is_diterima'    => false,
+                'is_lunas'       => false,
             ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE DETAIL
-            |--------------------------------------------------------------------------
-            */
 
             foreach ($data['items'] as $item) {
 
-                /*
-                |--------------------------------------------------------------------------
-                | HARGA PER QTY
-                |--------------------------------------------------------------------------
-                */
+                $hargaPerQty = (float) $item['qty'] > 0
+                    ? (float) $item['harga'] / (float) $item['qty']
+                    : 0;
 
-                $hargaPerQty = 0;
-
-                if ((float) $item['qty'] > 0) {
-
-                    $hargaPerQty =
-                        (float) $item['harga']
-                        /
-                        (float) $item['qty'];
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | CREATE DETAIL
-                |--------------------------------------------------------------------------
-                */
-
+                // Simpan detail dulu — FIFO & stok masuk saat "Terima"
                 $detail = $pembelian->details()->create([
-
-                    'barang_id'
-                    => $item['barang_id'],
-
-                    'qty'
-                    => $item['qty'],
-
-                    'harga'
-                    => $item['harga'],
-
-                    'harga_per_qty'
-                    => $hargaPerQty,
-
-                    /*
-    |--------------------------------------------------------------------------
-    | TEMP BATCH
-    |--------------------------------------------------------------------------
-    */
-
-                    'batch_number'
-                    => 'TEMP',
+                    'barang_id'    => $item['barang_id'],
+                    'qty'          => $item['qty'],
+                    'harga'        => $item['harga'],
+                    'harga_per_qty'=> $hargaPerQty,
+                    'batch_number' => 'TEMP',
                 ]);
-
-                /*
-|--------------------------------------------------------------------------
-| GENERATE BATCH UNIK
-|--------------------------------------------------------------------------
-*/
 
                 $detail->update([
-
-                    'batch_number'
-                    => Carbon::parse(
-                        $pembelian->tanggal
-                    )->format('Ymd')
-                        . '-PB'
-                        . $detail->id,
-                ]);
-
-                /*
-|--------------------------------------------------------------------------
-| GENERATE BATCH UNIK
-|--------------------------------------------------------------------------
-*/
-
-                $detail->update([
-
-                    'batch_number'
-                    => date('Ymd')
-                        . '-PB'
-                        . $detail->id,
-                ]);
-
-                /*
-                |--------------------------------------------------------------------------
-                | FIFO BATCH STOCK
-                |--------------------------------------------------------------------------
-                */
-
-                $this->fifoService->createBatchStock(
-                    $pembelian,
-                    $detail
-                );
-
-                /*
-                |--------------------------------------------------------------------------
-                | STOCK IN SUMMARY
-                |--------------------------------------------------------------------------
-                */
-
-                $this->stockService->stockIn([
-
-                    'barang_id'
-                    => $detail->barang_id,
-
-                    'gudang_tujuan_id'
-                    => $pembelian->gudang_id,
-
-                    'qty'
-                    => $detail->qty,
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | TOTAL HARGA
-                    |--------------------------------------------------------------------------
-                    */
-
-                    'total_harga'
-                    => $detail->harga,
-
-                    'source_type'
-                    => 'pembelian',
-
-                    'source_id'
-                    => $pembelian->id,
-
-                    'user_id'
-                    => auth()->id(),
+                    'batch_number' => date('Ymd') . '-PB' . $detail->id,
                 ]);
             }
         });
 
         return redirect()
             ->route('pembelian.index')
-            ->with(
-                'success',
-                'Pembelian berhasil disimpan dan stok berhasil ditambahkan.'
-            );
+            ->with('success', 'Pembelian berhasil disimpan. Klik Terima setelah barang tiba.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TERIMA BARANG — stok masuk di sini
+    |--------------------------------------------------------------------------
+    */
+
+    public function terima(Request $request, Pembelian $pembelian)
+    {
+        if ($pembelian->is_diterima) {
+            return back()->with('error', 'Barang sudah pernah diterima.');
+        }
+
+        DB::transaction(function () use ($pembelian) {
+
+            $pembelian->load('details');
+
+            foreach ($pembelian->details as $detail) {
+
+                // Buat FIFO batch
+                $this->fifoService->createBatchStock($pembelian, $detail);
+
+                // Tambah stok gudang
+                $this->stockService->stockIn([
+                    'barang_id'       => $detail->barang_id,
+                    'gudang_tujuan_id'=> $pembelian->gudang_id,
+                    'qty'             => $detail->qty,
+                    'total_harga'     => $detail->harga,
+                    'source_type'     => 'pembelian',
+                    'source_id'       => $pembelian->id,
+                    'user_id'         => auth()->id(),
+                ]);
+            }
+
+            $pembelian->update([
+                'is_diterima'  => true,
+                'diterima_at'  => now(),
+                'diterima_oleh'=> auth()->id(),
+            ]);
+        });
+
+        return back()->with('success', 'Barang berhasil diterima dan stok sudah diperbarui.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LUNASI — untuk DP & Termin
+    |--------------------------------------------------------------------------
+    */
+
+    public function lunasi(Request $request, Pembelian $pembelian)
+    {
+        if ($pembelian->is_lunas) {
+            return back()->with('error', 'Pembelian ini sudah lunas.');
+        }
+
+        if (!in_array($pembelian->metode_pembayaran, ['dp', 'termin'])) {
+            return back()->with('error', 'Hanya pembelian DP atau Termin yang perlu dilunasi.');
+        }
+
+        $request->validate([
+            'nominal_pelunasan' => 'required|numeric|min:1',
+            'catatan_pelunasan' => 'nullable|string|max:500',
+        ]);
+
+        $pembelian->update([
+            'is_lunas'          => true,
+            'lunas_at'          => now(),
+            'nominal_pelunasan' => $request->nominal_pelunasan,
+            'catatan_pelunasan' => $request->catatan_pelunasan,
+        ]);
+
+        return back()->with('success', 'Pembayaran lunas berhasil dicatat.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CATAT PEMBAYARAN
+    |--------------------------------------------------------------------------
+    */
+
+    public function catatPembayaran(Request $request, Pembelian $pembelian)
+    {
+        $validated = $request->validate([
+            'metode_pembayaran'   => 'required|in:cod,termin,dp',
+            'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
+            'persen_dp'           => 'required_if:metode_pembayaran,dp|nullable|integer|min:1|max:99',
+            'tanggal_pelunasan'   => 'nullable|date',
+            'catatan_pembayaran'  => 'nullable|string|max:500',
+        ]);
+
+        // COD langsung lunas
+        $isLunas = $validated['metode_pembayaran'] === 'cod';
+
+        $pembelian->update([
+            ...$validated,
+            'dicatat_oleh' => auth()->id(),
+            'dicatat_pada' => now(),
+            'is_lunas'     => $isLunas,
+            'lunas_at'     => $isLunas ? now() : null,
+        ]);
+
+        return redirect()
+            ->route('pembelian.index')
+            ->with('success', 'Informasi pembayaran berhasil disimpan.');
     }
 
     /*
@@ -317,17 +248,8 @@ class PembelianController extends Controller
 
     public function show(Pembelian $pembelian)
     {
-        $pembelian->load([
-            'supplier',
-            'gudang',
-            'details.barang',
-            'user'
-        ]);
-
-        return view(
-            'pembelian.show',
-            compact('pembelian')
-        );
+        $pembelian->load(['supplier', 'gudang', 'details.barang', 'user']);
+        return view('pembelian.show', compact('pembelian'));
     }
 
     /*
@@ -338,28 +260,22 @@ class PembelianController extends Controller
 
     public function edit(Pembelian $pembelian)
     {
+        if ($pembelian->isTerkunci()) {
+            return redirect()->route('pembelian.index')
+                ->with('error', 'Pembelian ini tidak bisa diedit karena sudah diterima atau lunas.');
+        }
+
         $pembelian->load('details');
-
         $suppliers = Supplier::orderBy('nama')->get();
-
-        $gudangs = MasterGudang::orderBy('nama')->get();
-
-        $barangs = MasterBarang::query()
+        $gudangs   = MasterGudang::orderBy('nama')->get();
+        $barangs   = MasterBarang::query()
             ->where('is_bahan_baku', true)
             ->orWhere('is_operational', true)
             ->orWhere('is_direct_consumption', true)
             ->orderBy('nama')
             ->get();
 
-        return view(
-            'pembelian.edit',
-            compact(
-                'pembelian',
-                'suppliers',
-                'gudangs',
-                'barangs'
-            )
-        );
+        return view('pembelian.edit', compact('pembelian', 'suppliers', 'gudangs', 'barangs'));
     }
 
     /*
@@ -368,201 +284,54 @@ class PembelianController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function update(
-        StorePembelianRequest $request,
-        Pembelian $pembelian
-    ) {
+    public function update(StorePembelianRequest $request, Pembelian $pembelian)
+    {
+        if ($pembelian->isTerkunci()) {
+            return redirect()->route('pembelian.index')
+                ->with('error', 'Pembelian ini tidak bisa diubah.');
+        }
 
         $data = $request->validated();
 
-        DB::transaction(function () use (
-            $data,
-            $pembelian
-        ) {
+        DB::transaction(function () use ($data, $pembelian) {
 
             $pembelian->load('details');
 
-            /*
-            |--------------------------------------------------------------------------
-            | KELUARKAN STOK LAMA
-            |--------------------------------------------------------------------------
-            */
-
-            foreach ($pembelian->details as $detail) {
-
-                $this->stockService->stockOut([
-
-                    'gudang_asal_id'
-                    => $pembelian->gudang_id,
-
-                    'barang_id'
-                    => $detail->barang_id,
-
-                    'qty'
-                    => $detail->qty,
-
-                    'total_harga'
-                    => $detail->harga,
-
-                    'source_type'
-                    => 'edit_pembelian',
-
-                    'source_id'
-                    => $pembelian->id,
-
-                    'user_id'
-                    => auth()->id(),
-                ]);
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | HAPUS DETAIL LAMA
-            |--------------------------------------------------------------------------
-            */
-
+            // Hapus detail lama (belum ada stok karena belum diterima)
             $pembelian->details()->delete();
 
-            /*
-            |--------------------------------------------------------------------------
-            | HITUNG TOTAL BARU
-            |--------------------------------------------------------------------------
-            */
-
-            $total = collect($data['items'])
-                ->sum(function ($item) {
-
-                    return (float) $item['harga'];
-                });
-
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE HEADER
-            |--------------------------------------------------------------------------
-            */
+            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']);
 
             $pembelian->update([
-
-                'supplier_id'
-                => $data['supplier_id'],
-
-                'gudang_id'
-                => $data['gudang_id'],
-
-                'tanggal'
-                => $data['tanggal'],
-
-                'total'
-                => $total,
+                'supplier_id' => $data['supplier_id'],
+                'gudang_id'   => $data['gudang_id'],
+                'tanggal'     => $data['tanggal'],
+                'total'       => $total,
             ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | SIMPAN DETAIL BARU
-            |--------------------------------------------------------------------------
-            */
 
             foreach ($data['items'] as $item) {
 
-                /*
-                |--------------------------------------------------------------------------
-                | HARGA PER QTY
-                |--------------------------------------------------------------------------
-                */
-
-                $hargaPerQty = 0;
-
-                if ((float) $item['qty'] > 0) {
-
-                    $hargaPerQty =
-                        (float) $item['harga']
-                        /
-                        (float) $item['qty'];
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | CREATE DETAIL
-                |--------------------------------------------------------------------------
-                */
+                $hargaPerQty = (float) $item['qty'] > 0
+                    ? (float) $item['harga'] / (float) $item['qty']
+                    : 0;
 
                 $detail = $pembelian->details()->create([
-
-                    'barang_id'
-                    => $item['barang_id'],
-
-                    'qty'
-                    => $item['qty'],
-
-                    'harga'
-                    => $item['harga'],
-
-                    'harga_per_qty'
-                    => $hargaPerQty,
-
-                    'batch_number'
-                    => 'TEMP',
+                    'barang_id'     => $item['barang_id'],
+                    'qty'           => $item['qty'],
+                    'harga'         => $item['harga'],
+                    'harga_per_qty' => $hargaPerQty,
+                    'batch_number'  => 'TEMP',
                 ]);
 
                 $detail->update([
-
-                    'batch_number'
-                    => Carbon::parse(
-                        $pembelian->tanggal
-                    )->format('Ymd')
-                        . '-PB'
-                        . $detail->id,
-                ]);
-
-                /*
-                |--------------------------------------------------------------------------
-                | FIFO BATCH
-                |--------------------------------------------------------------------------
-                */
-
-                $this->fifoService->createBatchStock(
-                    $pembelian,
-                    $detail
-                );
-
-                /*
-                |--------------------------------------------------------------------------
-                | STOCK IN BARU
-                |--------------------------------------------------------------------------
-                */
-
-                $this->stockService->stockIn([
-
-                    'barang_id'
-                    => $detail->barang_id,
-
-                    'gudang_tujuan_id'
-                    => $pembelian->gudang_id,
-
-                    'qty'
-                    => $detail->qty,
-
-                    'total_harga'
-                    => $detail->harga,
-
-                    'source_type'
-                    => 'edit_pembelian',
-
-                    'source_id'
-                    => $pembelian->id,
-
-                    'user_id'
-                    => auth()->id(),
+                    'batch_number' => date('Ymd') . '-PB' . $detail->id,
                 ]);
             }
         });
 
         return redirect()
             ->route('pembelian.index')
-            ->with(
-                'success',
-                'Pembelian berhasil diperbarui dan stok berhasil disesuaikan.'
-            );
+            ->with('success', 'Pembelian berhasil diperbarui.');
     }
 
     /*
@@ -573,105 +342,37 @@ class PembelianController extends Controller
 
     public function destroy(Pembelian $pembelian)
     {
+        if ($pembelian->isTerkunci()) {
+            return back()->with('error', 'Pembelian yang sudah diterima atau lunas tidak bisa dihapus.');
+        }
+
         DB::transaction(function () use ($pembelian) {
-
-            $pembelian->load('details');
-
-            foreach ($pembelian->details as $detail) {
-
-                $this->stockService->stockOut([
-
-                    'gudang_asal_id'
-                    => $pembelian->gudang_id,
-
-                    'barang_id'
-                    => $detail->barang_id,
-
-                    'qty'
-                    => $detail->qty,
-
-                    'total_harga'
-                    => $detail->harga,
-
-                    'source_type'
-                    => 'hapus_pembelian',
-
-                    'source_id'
-                    => $pembelian->id,
-
-                    'user_id'
-                    => auth()->id(),
-                ]);
-            }
-
             $pembelian->details()->delete();
-
             $pembelian->delete();
         });
 
         return redirect()
             ->route('pembelian.index')
-            ->with(
-                'success',
-                'Pembelian berhasil dihapus dan stok berhasil dikurangi.'
-            );
+            ->with('success', 'Pembelian berhasil dihapus.');
     }
-public function catatPembayaran(Request $request, Pembelian $pembelian)
-{
-    $validated = $request->validate([
-        'metode_pembayaran'   => 'required|in:cod,termin,dp',
-        'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
-        'persen_dp'           => 'required_if:metode_pembayaran,dp|nullable|integer|min:1|max:99',
-        'tanggal_pelunasan'   => 'nullable|date',
-        'catatan_pembayaran'  => 'nullable|string|max:500',
-    ]);
 
-    $pembelian->update([
-        ...$validated,
-        'dicatat_oleh' => auth()->id(),
-        'dicatat_pada' => now(),
-    ]);
-
-    return redirect()
-        ->route('pembelian.index')
-        ->with('success', 'Informasi pembayaran berhasil disimpan.');
-}
     /*
     |--------------------------------------------------------------------------
     | GENERATE KODE
     |--------------------------------------------------------------------------
     */
 
-    private function generateKodePembelian(
-        string $tanggal
-    ): string {
+    private function generateKodePembelian(string $tanggal): string
+    {
+        $prefix = 'PB' . Carbon::parse($tanggal)->format('Ymd');
 
-        $prefix = 'PB'
-            . Carbon::parse($tanggal)
-            ->format('Ymd');
-
-        $last = Pembelian::where(
-            'kode_pembelian',
-            'like',
-            $prefix . '%'
-        )
+        $last = Pembelian::where('kode_pembelian', 'like', $prefix . '%')
             ->lockForUpdate()
             ->orderByDesc('id')
             ->first();
 
-        $number = $last
-            ? ((int) substr(
-                $last->kode_pembelian,
-                -4
-            )) + 1
-            : 1;
+        $number = $last ? ((int) substr($last->kode_pembelian, -4)) + 1 : 1;
 
-        return $prefix
-            . str_pad(
-                $number,
-                4,
-                '0',
-                STR_PAD_LEFT
-            );
+        return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 }

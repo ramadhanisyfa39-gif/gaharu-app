@@ -4,6 +4,14 @@
         Master Supplier
 
     </x-slot>
+    @if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endif
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center"></div>
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div>
@@ -91,17 +99,26 @@
                     
                     <div class="mb-3">
                         <label class="fw-semibold">Nama Supplier</label>
-                        <input type="text" name="nama_supplier" class="form-control" required>
+                        <input type="text" name="nama" class="form-control" required>
+                    @error('nama')
+        <div class="text-danger small mt-1">{{ $message }}</div>
+    @enderror
                     </div>
 
                     <div class="mb-3">
                         <label class="fw-semibold">No HP / Telepon</label>
                         <input type="text" name="no_hp" class="form-control" required>
+                    @error('no_hp')
+        <div class="text-danger small mt-1">{{ $message }}</div>
+    @enderror
                     </div>
 
                     <div class="mb-3">
                         <label class="fw-semibold">Alamat</label>
                         <textarea name="alamat" class="form-control" rows="3" required></textarea>
+                    @error('alamat')
+        <div class="text-danger small mt-1">{{ $message }}</div>
+    @enderror
                     </div>
 
                 </div>
