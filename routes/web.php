@@ -126,6 +126,17 @@ Route::patch('barang/{barang}/toggle', [BarangController::class, 'toggle'])
         'update',
         'destroy'
     ]);
+    Route::post('pembelian/{pembelian}/terima',
+    [PembelianController::class, 'terima'])
+    ->name('pembelian.terima');
+
+Route::post('pembelian/{pembelian}/lunasi',
+    [PembelianController::class, 'lunasi'])
+    ->name('pembelian.lunasi');
+
+Route::post('pembelian/{pembelian}/catat-pembayaran',
+    [PembelianController::class, 'catatPembayaran'])
+    ->name('pembelian.catat-pembayaran');
 
     // yang sudah ada — jangan diubah
 Route::resource('pembelian', PembelianController::class)->only([
@@ -403,6 +414,7 @@ Route::prefix('laporan')->name('laporan.')->group(function () {
     Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'penjualanB2BStore'])->name('jurnal-penjualanb2b.store');
 
     Route::get('/buku-pembantu-utang', [JurnalController::class, 'bukuPembantuUtang'])->name('bukupembantu-utang.index');
-});
+    
+    });
 
 require __DIR__ . '/auth.php';
