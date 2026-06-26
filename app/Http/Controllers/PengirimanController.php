@@ -7,23 +7,25 @@ use App\Models\Pesanan;
 use App\Models\Pengiriman;
 use App\Models\PengirimanDetail;
 use App\Models\MasterGudang;
+use App\Models\ProduksiPesanan;
 use Illuminate\Support\Facades\DB;
-// use Illuminate\Support\Facades\Schema; // Dihapus karena sudah tidak dibutuhkan
 
 class PengirimanController extends Controller
 {
     public function index()
     {
-        $pengirimans = Pengiriman::with('pesanan.customer')->orderBy('created_at', 'desc')->get();
+        $pengirimans = Pengiriman::with('pesanan.customer')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('pengiriman.index', compact('pengirimans'));
     }
 
-    // 1. Tampilkan form kosong dengan list pesanan di dropdown
+    /**
+     * Tampilkan form pengiriman
+     */
     public function create()
     {
-        // Ambil pesanan yang statusnya belum 'Selesai' 
-        // 💡 TIPS: Jika ingin pesanan yang belum Lunas TIDAK MUNCUL sama sekali di dropdown,
-        // kamu bisa tambahkan: ->where('status_bayar', 'Lunas') di bawah ini.
         $pesanans = Pesanan::with('customer')
             ->where('status_pesanan', '!=', 'Selesai')
             ->orderBy('created_at', 'desc')
@@ -32,7 +34,9 @@ class PengirimanController extends Controller
         return view('pengiriman.create', compact('pesanans'));
     }
 
-    // 2. Fungsi khusus AJAX 
+    /**
+     * Ambil detail pesanan melalui AJAX
+     */
     public function getPesananDetail($id)
     {
         $pesanan = DB::table('pesanan')
@@ -40,27 +44,29 @@ class PengirimanController extends Controller
             ->where('pesanan.id', $id)
             ->select('pesanan.*', 'customers.nama as customer_nama')
             ->first();
-        
+
         if (!$pesanan) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
         }
 
-        // Ambil detail dari tabel pesanan_detail dan hubungkan ke master_barang memakai produk_id
         $details = DB::table('pesanan_detail')
             ->leftJoin('master_barang', 'pesanan_detail.produk_id', '=', 'master_barang.id')
             ->where('pesanan_detail.pesanan_id', $id)
-            ->select('pesanan_detail.*', 'master_barang.nama as barang_nama', 'master_barang.satuan as barang_satuan')
+            ->select(
+                'pesanan_detail.*',
+                'master_barang.nama as barang_nama',
+                'master_barang.satuan as barang_satuan'
+            )
             ->get();
 
-        // Format data agar serasi dengan variabel yang dibaca JavaScript di file Blade
-        $formattedDetails = $details->map(function($item) {
+        $formattedDetails = $details->map(function ($item) {
             return [
-                'barang_id' => $item->produk_id, 
+                'barang_id' => $item->produk_id,
                 'qty' => $item->qty ?? 0,
                 'barang' => [
                     'nama' => $item->barang_nama ?? 'Produk Tanpa Nama',
-                    'satuan' => $item->barang_satuan ?? 'Unit'
-                ]
+                    'satuan' => $item->barang_satuan ?? 'Unit',
+                ],
             ];
         });
 
@@ -68,13 +74,15 @@ class PengirimanController extends Controller
             'id' => $pesanan->id,
             'kode_pesanan' => $pesanan->kode_pesanan,
             'customer' => [
-                'nama' => $pesanan->customer_nama
+                'nama' => $pesanan->customer_nama,
             ],
-            'details' => $formattedDetails
+            'details' => $formattedDetails,
         ]);
     }
 
-    // 3. Simpan data pengiriman, potong stok, & update status pesanan
+    /**
+     * Simpan pengiriman, potong stok, update alokasi, dan status pesanan
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -82,25 +90,29 @@ class PengirimanController extends Controller
             'tanggal_pengiriman' => 'required|date',
             'details' => 'required|array',
             'details.*.barang_id' => 'required',
-            'details.*.qty_kirim' => 'required|numeric|min:0.01', 
+            'details.*.qty_kirim' => 'required|numeric|min:0.01',
         ]);
 
-        // --- ATURAN BARU: CEK STATUS LUNAS ---
-        $pesanan = DB::table('pesanan')->where('id', $request->pesanan_id)->first();
-        
+        $pesanan = DB::table('pesanan')
+            ->where('id', $request->pesanan_id)
+            ->first();
+
         if (!$pesanan) {
             return back()->with('error', 'Data pesanan tidak ditemukan.');
         }
 
-        // Tolak jika status bayar bukan "Lunas" (Misal masih "DP 30%")
         if (strtolower($pesanan->status_pembayaran) !== 'lunas') {
-            return back()->with('error', 'Pengiriman ditolak! Pesanan ini belum lunas, Silakahkan hubungi kepala outlet untuk konfirmasi!');
+            return back()->with(
+                'error',
+                'Pengiriman ditolak! Pesanan ini belum lunas. Silakan hubungi kepala outlet untuk konfirmasi.'
+            );
         }
-        // --------------------------------------
 
         DB::beginTransaction();
+
         try {
             $gudangB2B = MasterGudang::where('kategori', 'Produksi')->first();
+
             if (!$gudangB2B) {
                 throw new \Exception('Gudang kategori Produksi tidak ditemukan.');
             }
@@ -113,44 +125,131 @@ class PengirimanController extends Controller
             ]);
 
             foreach ($request->details as $detail) {
-                PengirimanDetail::create([
-                    'pengiriman_id' => $pengiriman->id,
-                    'barang_id' => $detail['barang_id'],
-                    'qty_kirim' => $detail['qty_kirim'],
-                ]);
+                $barangId = $detail['barang_id'];
+                $qtyKirim = floatval($detail['qty_kirim']);
 
-                // POTONG STOK DI TABEL stok_gudang
-                $stok = DB::table('stok_gudang')
-                    ->where('gudang_id', $gudangB2B->id)
-                    ->where('barang_id', $detail['barang_id'])
+                /*
+                |--------------------------------------------------------------------------
+                | 1. Cari alokasi produksi untuk pesanan dan produk yang dikirim
+                |--------------------------------------------------------------------------
+                */
+                $alokasi = ProduksiPesanan::where('pesanan_id', $request->pesanan_id)
+                    ->where('produk_id', $barangId)
+                    ->whereRaw('qty_terkirim < qty_alokasi')
+                    ->orderBy('id')
+                    ->lockForUpdate()
                     ->first();
 
-                if ($stok) {
-                    DB::table('stok_gudang')
-                        ->where('id', $stok->id)
-                        ->decrement('jumlah', $detail['qty_kirim']);
-                } else {
-                    DB::table('stok_gudang')->insert([
-                        'gudang_id' => $gudangB2B->id,
-                        'barang_id' => $detail['barang_id'],
-                        'jumlah' => -$detail['qty_kirim'],
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                if (!$alokasi) {
+                    throw new \Exception(
+                        'Alokasi produksi untuk produk yang dikirim belum tersedia atau sudah habis.'
+                    );
+                }
+
+                $sisaAlokasi = floatval($alokasi->qty_alokasi) - floatval($alokasi->qty_terkirim);
+
+                if ($qtyKirim > $sisaAlokasi) {
+                    throw new \Exception(
+                        'Qty kirim melebihi sisa alokasi produksi. Sisa alokasi: ' . $sisaAlokasi
+                    );
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | 2. Cek stok barang jadi
+                |--------------------------------------------------------------------------
+                */
+                $stok = DB::table('stok_gudang')
+                    ->where('gudang_id', $gudangB2B->id)
+                    ->where('barang_id', $barangId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$stok || floatval($stok->jumlah) < $qtyKirim) {
+                    throw new \Exception(
+                        'Stok barang jadi tidak mencukupi untuk pengiriman.'
+                    );
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | 3. Simpan detail pengiriman
+                |--------------------------------------------------------------------------
+                */
+                PengirimanDetail::create([
+                    'pengiriman_id' => $pengiriman->id,
+                    'barang_id' => $barangId,
+                    'qty_kirim' => $qtyKirim,
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | 4. Update qty terkirim pada alokasi produksi
+                |--------------------------------------------------------------------------
+                */
+                $alokasi->increment('qty_terkirim', $qtyKirim);
+
+                /*
+                |--------------------------------------------------------------------------
+                | 5. Kurangi stok barang jadi
+                |--------------------------------------------------------------------------
+                */
+                DB::table('stok_gudang')
+                    ->where('id', $stok->id)
+                    ->decrement('jumlah', $qtyKirim);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 6. Cek apakah seluruh produk dalam pesanan sudah terkirim
+            |--------------------------------------------------------------------------
+            */
+            $detailPesanan = DB::table('pesanan_detail')
+                ->where('pesanan_id', $request->pesanan_id)
+                ->get();
+
+            $semuaSudahTerkirim = true;
+
+            foreach ($detailPesanan as $detailPesananItem) {
+                $qtySudahKirim = DB::table('pengiriman_detail')
+                    ->join('pengiriman', 'pengiriman_detail.pengiriman_id', '=', 'pengiriman.id')
+                    ->where('pengiriman.pesanan_id', $request->pesanan_id)
+                    ->where('pengiriman_detail.barang_id', $detailPesananItem->produk_id)
+                    ->sum('pengiriman_detail.qty_kirim');
+
+                if (floatval($qtySudahKirim) < floatval($detailPesananItem->qty)) {
+                    $semuaSudahTerkirim = false;
+                    break;
                 }
             }
 
-            // UPDATE STATUS PESANAN (Kode lebih bersih & anti-error)
-            DB::table('pesanan')->where('id', $request->pesanan_id)->update([
-                'status_pesanan' => 'Selesai'
-            ]);
+            /*
+            |--------------------------------------------------------------------------
+            | 7. Update status pesanan
+            |--------------------------------------------------------------------------
+            */
+            DB::table('pesanan')
+                ->where('id', $request->pesanan_id)
+                ->update([
+                    'status_pesanan' => $semuaSudahTerkirim ? 'Selesai' : 'Siap kirim',
+                    'updated_at' => now(),
+                ]);
 
             DB::commit();
-            return redirect()->route('pengiriman.index')->with('success', 'Surat Jalan berhasil diterbitkan!');
+
+            return redirect()
+                ->route('pengiriman.index')
+                ->with(
+                    'success',
+                    'Surat Jalan berhasil diterbitkan, stok dikurangi, dan alokasi produksi diperbarui.'
+                );
         } catch (\Exception $e) {
             DB::rollBack();
-            // dd() dimatikan agar user dikembalikan ke halaman form dengan pesan error rapi
-            return back()->with('error', 'Gagal memproses pengiriman: ' . $e->getMessage());
+
+            return back()->with(
+                'error',
+                'Gagal memproses pengiriman: ' . $e->getMessage()
+            );
         }
     }
 }
