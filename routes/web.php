@@ -28,10 +28,10 @@ use App\Http\Controllers\ProduksiController;
 use App\Http\Controllers\HargaBarangPosController;
 use App\Http\Controllers\StokGudangBatchController;
 use App\Http\Controllers\LaporanController;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
-
-    if (auth()->check()) {
+    if (Auth::check()) {
         return redirect()->route('dashboard');
     }
 
@@ -90,6 +90,17 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::resource('penggajian', PenggajianController::class);
+    Route::get('/penggajian/create', [PenggajianController::class, 'create'])->name('penggajian.create');
+    Route::get('/penggajian/periode/{periode}', [PenggajianController::class, 'showPeriode'])->name('penggajian.periode');
+    Route::post('/penggajian/store', [PenggajianController::class, 'store'])->name('penggajian.store');
+
+    // Route Aksi Alur Kerja (Workflow)
+    Route::post('/penggajian/periode/{periode}/submit', [PenggajianController::class, 'submitToDirector'])->name('penggajian.submit');
+    Route::post('/penggajian/periode/{periode}/approve', [PenggajianController::class, 'approveByDirector'])->name('penggajian.approve');
+    Route::post('/penggajian/periode/{periode}/journal', [PenggajianController::class, 'sendToJournal'])->name('penggajian.journal');
+
+    Route::delete('/penggajian/{penggajian}', [PenggajianController::class, 'destroy'])->name('penggajian.destroy');
+
     Route::get('closing', [JurnalController::class, 'closingPage'])->name('closing.index');
     Route::post('closing', [JurnalController::class, 'closePeriod'])->name('closing.create');
     Route::resource('jurnal', JurnalController::class);
@@ -206,41 +217,40 @@ Route::middleware('auth')->group(function () {
     // TAMBAHKAN DUA BARIS BARU INI:
     Route::put('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'update'])->name('harga.update');
     Route::delete('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'destroy'])->name('harga.destroy');
-    });
+});
 
-    Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
-    Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
-        ->name('barang.generate-kode');
-    Route::get(
-        '/stok-gudang-batch',
-        [StokGudangBatchController::class, 'index']
-    )->name('stok-gudang-batch.index');
+Route::get('/penjualan_pos/get-harga/{produk_id}', [\App\Http\Controllers\PenjualanPosController::class, 'getHargaAktif']);
+Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])
+    ->name('barang.generate-kode');
+Route::get(
+    '/stok-gudang-batch',
+    [StokGudangBatchController::class, 'index']
+)->name('stok-gudang-batch.index');
 
-    Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
-    Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
-    Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
+Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
+Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
+Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
 
-    Route::prefix('laporan')->name('laporan.')->group(function () {
+Route::prefix('laporan')->name('laporan.')->group(function () {
 
-        Route::get('/', [LaporanController::class, 'labaRugiIndex'])->name('index');
+    Route::get('/', [LaporanController::class, 'labaRugiIndex'])->name('index');
 
-        // Laba Rugi
-        Route::get('/laba-rugi', [LaporanController::class, 'labaRugiIndex'])->name('laba-rugi.index');
-        Route::get('/laba-rugi/show', [LaporanController::class, 'labaRugiShow'])->name('laba-rugi.show');
+    // Laba Rugi
+    Route::get('/laba-rugi', [LaporanController::class, 'labaRugiIndex'])->name('laba-rugi.index');
+    Route::get('/laba-rugi/show', [LaporanController::class, 'labaRugiShow'])->name('laba-rugi.show');
 
-        // Neraca
-        Route::get('/neraca', [LaporanController::class, 'neracaIndex'])->name('neraca.index');
-        Route::get('/neraca/show', [LaporanController::class, 'neracaShow'])->name('neraca.show');
+    // Neraca
+    Route::get('/neraca', [LaporanController::class, 'neracaIndex'])->name('neraca.index');
+    Route::get('/neraca/show', [LaporanController::class, 'neracaShow'])->name('neraca.show');
 
-        // Arus Kas
-        Route::get('/arus-kas', [LaporanController::class, 'arusKasIndex'])->name('arus-kas.index');
-        Route::get('/arus-kas/show', [LaporanController::class, 'arusKasShow'])->name('arus-kas.show');
+    // Arus Kas
+    Route::get('/arus-kas', [LaporanController::class, 'arusKasIndex'])->name('arus-kas.index');
+    Route::get('/arus-kas/show', [LaporanController::class, 'arusKasShow'])->name('arus-kas.show');
 
-        // Buku Besar
-        Route::get('/buku-besar', [LaporanController::class, 'bukuBesar'])->name('buku-besar.index');
+    // Buku Besar
+    Route::get('/buku-besar', [LaporanController::class, 'bukuBesar'])->name('buku-besar.index');
 
-        Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
-    });
+    Route::get('/neraca-saldo', [LaporanController::class, 'neracaSaldo'])->name('neraca-saldo.index');
 
     Route::get('/jurnal-pembelian', [JurnalController::class, 'pembelianIndex'])->name('jurnal-pembelian.index');
 
@@ -256,7 +266,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/jurnal-penjualanpos/create/{id}', [JurnalController::class, 'penjualanposCreate'])->name('jurnal-penjualanpos.create');
 
     // 3. Proses pengiriman data form untuk menyimpan jurnal keuangan ke database
-    Route::post('/jurnal-penjualanpos/store/{id}', [JurnalController::class, 'prosesJurnalPenjualanpos'])->name('jurnal-penjualanpos.store');
+    Route::post('/jurnal-penjualanpos/store/{id}', [JurnalController::class, 'penjualanposStore'])->name('jurnal-penjualanpos.store');
+
+    Route::get('/jurnal-penjualanpos/show/{id}', [JurnalController::class, 'penjualanposShow'])->name('jurnal-penjualanpos.show');
 
     Route::get('/jurnal-penjualanb2b', [JurnalController::class, 'penjualanb2bIndex'])->name('jurnal-penjualanb2b.index');
 
@@ -264,7 +276,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/jurnal-penjualanb2b/create/{id}', [JurnalController::class, 'penjualanb2bCreate'])->name('jurnal-penjualanb2b.create');
 
     // 3. Proses pengiriman data form untuk menyimpan jurnal keuangan ke database
-    Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'prosesJurnalPenjualanB2B'])->name('jurnal-penjualanb2b.store');
+    Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'penjualanB2BStore'])->name('jurnal-penjualanb2b.store');
+
+    Route::get('/jurnal-penjualanb2b/show/{id}', [JurnalController::class, 'penjualanB2BShow'])->name('jurnal-penjualanb2b.show');
 
     Route::get('/buku-pembantu-utang', [JurnalController::class, 'bukuPembantuUtang'])->name('bukupembantu-utang.index');
 });

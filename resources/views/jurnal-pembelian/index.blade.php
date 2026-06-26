@@ -38,7 +38,7 @@
                                 <td class="fw-semibold text-dark">{{ $p->supplier->nama ?? 'Supplier Tidak Terdaftar' }}</td>
                                 <td class="text-end fw-bold text-dark">Rp {{ number_format($p->total, 2, ',', '.') }}</td>
                                 <td class="text-center">
-                                    <a href="{{ route('jurnal-pembelian.create', $p->id) }}" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm">
+                                    <a href="{{ route('laporan.jurnal-pembelian.create', $p->id) }}" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm">
                                         <i class="fas fa-edit me-1"></i> Input Jurnal
                                     </a>
                                 </td>
@@ -55,7 +55,6 @@
                 </div>
             </div>
         </div>
-
 
         <div class="card shadow border-0 rounded-3">
             <div class="card-header bg-success text-white py-3">
@@ -76,31 +75,31 @@
                         </thead>
                         <tbody>
                             @forelse($jurnalsSudah as $j)
-                            @foreach($j->details as $index => $detail)
                             <tr>
-                                @if($index === 0)
-                                <td rowspan="{{ count($j->details) }}" class="py-3 ps-4 fw-medium text-secondary align-top">
+                                <td class="py-3 ps-4 fw-medium text-secondary">
                                     {{ \Carbon\Carbon::parse($j->tanggal)->format('d/m/Y') }}
                                 </td>
-                                <td rowspan="{{ count($j->details) }}" class="font-monospace text-dark small align-top fw-bold">
+
+                                <td class="font-monospace text-dark small fw-bold">
                                     {{ $j->no_ref }}
                                 </td>
-                                <td rowspan="{{ count($j->details) }}" class="text-muted small align-top">
+
+                                <td class="text-muted small">
                                     {{ $j->deskripsi }}
                                 </td>
-                                @endif
 
-                                <td class="{{ $detail->kredit > 0 ? 'ps-5 text-secondary' : 'fw-medium text-dark' }}">
-                                    {{ $detail->coa->kode }} - {{ $detail->coa->nama }}
+                                <td class="small {{ $j->kredit > 0 ? 'ps-4 text-secondary' : 'fw-semibold text-dark' }}">
+                                    {{ $j->kode }} - {{ $j->nama ?? 'Akun Tidak Diketahui' }}
                                 </td>
-                                <td class="text-end font-monospace">
-                                    {{ $detail->debit > 0 ? 'Rp ' . number_format($detail->debit, 0, ',', '.') : '-' }}
+
+                                <td class="text-end font-monospace text-success fw-medium">
+                                    {{ $j->debit > 0 ? 'Rp ' . number_format($j->debit, 2, ',', '.') : '-' }}
                                 </td>
-                                <td class="text-end font-monospace">
-                                    {{ $detail->kredit > 0 ? 'Rp ' . number_format($detail->kredit, 0, ',', '.') : '-' }}
+
+                                <td class="text-end font-monospace text-danger fw-medium">
+                                    {{ $j->kredit > 0 ? 'Rp ' . number_format($j->kredit, 2, ',', '.') : '-' }}
                                 </td>
                             </tr>
-                            @endforeach
                             @empty
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-5">

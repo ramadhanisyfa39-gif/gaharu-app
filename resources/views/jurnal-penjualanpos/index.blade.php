@@ -1,118 +1,103 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Modul Jurnal Khusus Penjualan POS
-        </h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Modul Jurnal Khusus Penjualan POS</h2>
     </x-slot>
 
-    <div class="container py-4">
-
-        @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm mb-4">
-            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+    <div class="card shadow border-0 rounded-3 mb-5">
+        <div class="card-header bg-warning text-dark py-3 d-flex align-items-center justify-content-between">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-clock me-2"></i>1. Antrean Invoice Penjualan POS (Belum Dijurnal)</h5>
+            <span class="badge bg-dark text-white">{{ count($penjualanPosBelum ?? []) }} Transaksi</span>
         </div>
-        @endif
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary small text-uppercase fw-bold">
+                        <tr>
+                            <th class="py-3 ps-4" style="width: 15%">Tanggal Pembayaran</th>
+                            <th class="py-3" style="width: 25%">No. Invoice (Kode)</th>
+                            <th class="py-3" style="width: 25%">Gudang</th>
+                            <th class="py-3 text-end" style="width: 20%">Jumlah Uang Masuk</th>
+                            <th class="py-3 text-center" style="width: 15%">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($penjualanPosBelum as $p)
+                        <tr>
+                            <td class="py-3 ps-4 text-secondary">
+                                {{ \Carbon\Carbon::parse($p->tanggal)->format('d/m/Y') }}
+                            </td>
 
-        <div class="card shadow border-0 rounded-3 mb-5">
-            <div class="card-header bg-warning text-dark py-3 d-flex align-items-center justify-content-between">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-clock me-2"></i>1. Antrean Invoice Penjualan POS (Belum Dijurnal)</h5>
-                <span class="badge bg-dark text-white">{{ count($penjualanposBelum) }} Invoice</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light text-secondary small text-uppercase fw-bold">
-                            <tr>
-                                <th class="py-3 ps-4">Tanggal Nota</th>
-                                <th class="py-3">No. Invoice (Kode)</th>
-                                <th class="py-3">Nama Supplier</th>
-                                <th class="py-3 text-end">Total Belanja</th>
-                                <th class="py-3 text-center" style="width: 180px">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($penjualanposBelum as $p)
-                            <tr>
-                                <td class="py-3 ps-4 text-secondary">{{ \Carbon\Carbon::parse($p->tanggal)->format('d/m/Y') }}</td>
-                                <td><span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5 fs-6">{{ $p->kode_penjualanpos }}</span></td>
-                                <td class="fw-semibold text-dark">{{ $p->customer->nama ?? 'Customer Tidak Terdaftar' }}</td>
-                                <td class="text-end fw-bold text-dark">Rp {{ number_format($p->total, 2, ',', '.') }}</td>
-                                <td class="text-center">
-                                    <a href="{{ route('jurnal-penjualanpos.create', $p->id) }}" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm">
-                                        <i class="fas fa-edit me-1"></i> Input Jurnal
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="fas fa-check-double text-success me-2"></i>Semua transaksi penjualanpos dari gudang sudah selesai dijurnal.
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                            <td>
+                                <span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5 fs-6">
+                                    {{ $p->kode_transaksi }}
+                                </span>
+                            </td>
 
+                            <td class="fw-semibold text-dark">
+                                {{ $p->nama_outlet }}
+                            </td>
 
-        <div class="card shadow border-0 rounded-3">
-            <div class="card-header bg-success text-white py-3">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-folder-open me-2"></i>2. Riwayat Buku Jurnal Khusus Penjualan POS (Sudah Disimpan)</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle mb-0">
-                        <thead class="table-light text-secondary small text-uppercase fw-bold">
-                            <tr>
-                                <th class="py-3 ps-4" style="width: 12%">Tanggal Jurnal</th>
-                                <th class="py-3" style="width: 18%">No. Jurnal (Ref)</th>
-                                <th class="py-3" style="width: 25%">Keterangan / Deskripsi</th>
-                                <th class="py-3" style="width: 25%">Akun Terikat (COA)</th>
-                                <th class="py-3 text-end" style="width: 10%">Debit</th>
-                                <th class="py-3 text-end" style="width: 10%">Kredit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($jurnalsSudah as $j)
-                            @foreach($j->details as $index => $detail)
-                            <tr>
-                                @if($index === 0)
-                                <td rowspan="{{ count($j->details) }}" class="py-3 ps-4 fw-medium text-secondary align-top">
-                                    {{ \Carbon\Carbon::parse($j->tanggal)->format('d/m/Y') }}
-                                </td>
-                                <td rowspan="{{ count($j->details) }}" class="font-monospace text-dark small align-top fw-bold">
-                                    {{ $j->no_ref }}
-                                </td>
-                                <td rowspan="{{ count($j->details) }}" class="text-muted small align-top">
-                                    {{ $j->deskripsi }}
-                                </td>
-                                @endif
+                            <td class="text-end fw-bold text-dark">
+                                Rp {{ number_format($p->total, 2, ',', '.') }}
+                            </td>
 
-                                <td class="{{ $detail->kredit > 0 ? 'ps-5 text-secondary' : 'fw-medium text-dark' }}">
-                                    {{ $detail->coa->kode }} - {{ $detail->coa->nama }}
-                                </td>
-                                <td class="text-end font-monospace">
-                                    {{ $detail->debit > 0 ? 'Rp ' . number_format($detail->debit, 0, ',', '.') : '-' }}
-                                </td>
-                                <td class="text-end font-monospace">
-                                    {{ $detail->kredit > 0 ? 'Rp ' . number_format($detail->kredit, 0, ',', '.') : '-' }}
-                                </td>
-                            </tr>
-                            @endforeach
-                            @empty
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-5">
-                                    Belum ada riwayat transaksi penjualanpos yang tersimpan di dalam buku jurnal khusus.
-                                </td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                            <td class="text-center">
+                                <a href="{{ route('laporan.jurnal-penjualanpos.create', $p->id) }}" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm">
+                                    <i class="fas fa-edit me-1"></i> Input Jurnal
+                                </a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                Semua transaksi penjualan kasir retail POS sudah selesai dijurnal.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
 
+    <div class="card shadow border-0 rounded-3">
+        <div class="card-header bg-success text-white py-3">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-folder-open me-2"></i>2. Riwayat Buku Jurnal Khusus Penjualan POS (Sudah Disimpan)</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary small text-uppercase fw-bold">
+                        <tr>
+                            <th class="py-3 ps-4" style="width: 15%">Tanggal Jurnal</th>
+                            <th class="py-3" style="width: 20%">No. Jurnal (Ref)</th>
+                            <th class="py-3" style="width: 35%">Keterangan / Deskripsi</th>
+                            <th class="py-3 text-end" style="width: 12%">Total Debit</th>
+                            <th class="py-3 text-end" style="width: 12%">Total Kredit</th>
+                            <th class="py-3 text-center" style="width: 6%">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($jurnalsSudah as $j)
+                        <tr>
+                            <td class="py-3 ps-4 text-secondary">{{ \Carbon\Carbon::parse($j->tanggal)->format('d/m/Y') }}</td>
+                            <td class="font-monospace text-dark small fw-bold"><span class="badge bg-light text-dark border px-2 py-1">{{ $j->no_ref }}</span></td>
+                            <td class="text-muted small">{{ Str::limit($j->deskripsi, 60, '...') }}</td>
+                            <td class="text-end font-monospace text-success fw-semibold">Rp {{ number_format($j->total_debit, 0, ',', '.') }}</td>
+                            <td class="text-end font-monospace text-danger fw-semibold">Rp {{ number_format($j->total_kredit, 0, ',', '.') }}</td>
+                            <td class="text-center">
+                                <a href="{{ route('laporan.jurnal-penjualanpos.show', $j->id) }}" class="btn btn-sm btn-outline-info fw-bold px-2.5 py-1">Detail</a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-5">Belum ada riwayat transaksi penjualan POS di dalam buku jurnal khusus.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     </div>
 </x-app-layout>

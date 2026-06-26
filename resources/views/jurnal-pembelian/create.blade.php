@@ -19,7 +19,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('jurnal-pembelian.store', $pembelian->id) }}" method="POST" id="form-jurnal">
+                <form action="{{ route('laporan.jurnal-pembelian.store', $pembelian->id) }}" method="POST" id="form-jurnal">
                     @csrf
                     <div class="row mb-4">
                         <div class="col-md-4">
@@ -96,7 +96,7 @@
                     <button type="button" class="btn btn-outline-primary btn-sm mb-4" onclick="addRow()">+ Tambah Baris</button>
 
                     <div class="d-flex justify-content-between border-top pt-3">
-                        <a href="{{ route('jurnal-pembelian.index') }}" class="btn btn-light border">Batal</a>
+                        <a href="{{ route('laporan.jurnal-pembelian.index') }}" class="btn btn-light border">Batal</a>
                         <button type="submit" class="btn btn-success px-5 shadow">Simpan Jurnal</button>
                     </div>
                 </form>

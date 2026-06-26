@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\MasterGudang;
 
 class Pesanan extends Model
 {
@@ -18,13 +19,13 @@ class Pesanan extends Model
         'status_pembayaran', // Tambahkan ini
         'created_by'
     ];
-    
+
     // Hubungkan ke tabel pembayaran yang akan kita buat nanti
     public function pembayaran()
     {
         return $this->hasMany(Pembayaran::class, 'pesanan_id');
     }
-    
+
     // Fungsi bantu untuk cek sisa tagihan
     public function getSisaTagihanAttribute()
     {
@@ -47,12 +48,17 @@ class Pesanan extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function gudang()
+    {
+        return $this->belongsTo(MasterGudang::class, 'gudang_id');
+    }
+
     //untuk membatasi pengeditan setelah WO dibuat
     public function workOrder()
-{
-    return $this->hasMany(
-        WorkOrder::class,
-        'pesanan_id'
-    );
-}
+    {
+        return $this->hasMany(
+            WorkOrder::class,
+            'pesanan_id'
+        );
+    }
 }

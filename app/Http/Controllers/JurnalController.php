@@ -325,8 +325,11 @@ class JurnalController extends Controller
 
     public function pembelianIndex()
     {
-        // 1. Ambil ID Pembelian yang sudah pernah dijurnal
-        $sudahDijurnal = Journal::where('source_type', 'pembelian')->pluck('source_id')->toArray();
+        // 1. Ambil semua ID Pembelian yang sudah pernah dijurnal
+        $sudahDijurnal = DB::table('jurnal_pembelian')
+            ->where('source_type', 'pembelian')
+            ->pluck('source_id')
+            ->toArray();
 
         // 2. Data untuk TABEL ATAS: Invoice yang BELUM dijurnal
         $pembeliansBelum = Pembelian::with(['supplier', 'gudang'])
@@ -334,13 +337,25 @@ class JurnalController extends Controller
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        // 3. Data untuk TABEL BAWAH: Riwayat Jurnal Pembelian yang SUDAH disimpan
-        $jurnalsSudah = Journal::with('details.coa')
-            ->where('source_type', 'pembelian')
-            ->orderBy('tanggal', 'desc')
+        // 3. Data untuk TABEL BAWAH: Hubungkan jurnal_pembelian -> journal_items -> pembelian
+        $jurnalsSudah = DB::table('jurnal_pembelian')
+            ->join('journal_items', 'journal_items.journal_id', '=', 'jurnal_pembelian.id')
+            ->join('pembelian', 'jurnal_pembelian.source_id', '=', 'pembelian.id')
+            ->leftJoin('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
+            ->where('jurnal_pembelian.source_type', 'pembelian') // Filter hanya data bertipe pembelian
+            ->select(
+                'jurnal_pembelian.tanggal',
+                'jurnal_pembelian.no_ref',
+                'jurnal_pembelian.deskripsi',
+                'journal_items.debit',
+                'journal_items.kredit',
+                'chart_of_accounts.nama as nama',
+                'chart_of_accounts.kode as kode',
+                'pembelian.total as total_belanja'
+            )
+            ->orderBy('jurnal_pembelian.tanggal', 'desc')
             ->get();
 
-        // Kirim kedua variabel ke satu halaman view index yang sama
         return view('jurnal-pembelian.index', compact('pembeliansBelum', 'jurnalsSudah'));
     }
 
@@ -350,9 +365,8 @@ class JurnalController extends Controller
     |--------------------------------------------------------------------------
     */
     public function prosesJurnalPembelian(Request $request, $id)
-
     {
-        // 1. Validasi data form sesuai dengan input field dari view
+        // 1. Validasi data form
         $request->validate([
             'tanggal'              => 'required|date',
             'deskripsi'            => 'required|string',
@@ -365,59 +379,49 @@ class JurnalController extends Controller
 
         $pembelian = Pembelian::findOrFail($id);
 
-        // 2. Cek apakah periode akuntansi sudah dikunci (Closing)
-        $isClosed = Journal::where('source_type', 'closing')
-            ->whereMonth('tanggal', date('m', strtotime($request->tanggal)))
-            ->whereYear('tanggal', date('Y', strtotime($request->tanggal)))
-            ->exists();
-
-        if ($isClosed) {
-            return back()->with('error', 'Gagal! Periode akuntansi untuk tanggal jurnal ini sudah ditutup (Closing).')->withInput();
-        }
-
         try {
             DB::beginTransaction();
 
-            // 3. Simpan Header Jurnal (Hubungkan ke ID Pembelian sebagai pengunci antrean)
-            $jurnal = Journal::create([
+            // Validasi Keseimbangan Saldo (Balance Check)
+            $totalDebit = 0;
+            $totalKredit = 0;
+            foreach ($request->details as $item) {
+                $totalDebit += floatval($item['debit'] ?? 0);
+                $totalKredit += floatval($item['kredit'] ?? 0);
+            }
+
+            if (round($totalDebit, 2) != round($totalKredit, 2)) {
+                throw new \Exception("Total Debit (Rp " . number_format($totalDebit) . ") dan Kredit (Rp " . number_format($totalKredit) . ") tidak seimbang!");
+            }
+
+            // 2. Simpan Header LANGSUNG ke tabel jurnal_pembelian dan ambil ID-nya
+            $jurnalPembelianId = DB::table('jurnal_pembelian')->insertGetId([
                 'tanggal'     => $request->tanggal,
                 'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'pembelian', // Disimpan sebagai tipe pembelian agar hilang dari antrean
-                'source_id'   => $pembelian->id, // Mengunci ID pembelian ini
-                'created_by'  => Auth::id(),
+                'no_ref'      => $request->no_ref ?? 'JR-PEMB-' . time(),
+                'source_type' => 'pembelian',
+                'source_id'   => $pembelian->id, // Mengunci ID pembelian agar hilang dari antrean atas
+                'created_by'  => Auth::id() ?? 1,
             ]);
 
-            // 4. Simpan baris detail debit/kredit dari tabel form
+            // 3. Simpan baris detail debit/kredit ke tabel journal_items
             foreach ($request->details as $item) {
-                // Lewati baris jika debit dan kredit sama-sama nol (opsional)
                 if ($item['debit'] == 0 && $item['kredit'] == 0) {
                     continue;
                 }
 
-                $jurnal->details()->create([
+                DB::table('journal_items')->insert([
+                    'journal_id' => $jurnalPembelianId, // Sekarang aman diisi ID dari jurnal_pembelian karena FK sudah dilepas
                     'account_id' => $item['account_id'],
                     'debit'      => $item['debit'],
                     'kredit'     => $item['kredit'],
                 ]);
             }
 
-            // 5. Validasi keseimbangan saldo (Balance Check) di level backend
-            if (round($jurnal->details->sum('debit'), 2) != round($jurnal->details->sum('kredit'), 2)) {
-                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
-            }
-
-            DB::table('jurnal_pembelian')->insert([
-                'tanggal'     => $request->tanggal,
-                'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'pembelian', // Disimpan sebagai tipe pembelian agar hilang dari antrean
-                'source_id'   => $pembelian->id, // Mengunci ID pembelian ini
-                'created_by'  => Auth::id(),
-            ]);
-
             DB::commit();
-            return redirect()->route('jurnal-pembelian.index', $pembelian->id)->with('success', 'Invoice ' . $pembelian->kode_pembelian . ' berhasil dijurnal manual!');
+            return redirect()
+                ->route('laporan.jurnal-pembelian.index')
+                ->with('success', 'Invoice ' . $pembelian->kode_pembelian . ' berhasil disimpan ke Jurnal Pembelian!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
@@ -426,227 +430,462 @@ class JurnalController extends Controller
 
     public function pembelianCreate($id)
     {
-        // Ambil daftar akun COA untuk dropdown di dalam tabel form view
-        $coas = ChartOfAccount::orderBy('kode', 'asc')->get();
+        // 1. Ambil data master transaksi pembelian beserta relasi suppliernya
+        $pembelian = \App\Models\Pembelian::with(['supplier'])->findOrFail($id);
 
-        // Langsung cari data pembelian menggunakan parameter $id dari rute URL
-        $pembelian = Pembelian::findOrFail($id);
+        // 2. Ambil semua daftar akun COA untuk dropdown penyesuaian jika akuntan mau edit akun
+        $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
-        return view('jurnal-pembelian.create', compact('coas', 'pembelian'));
+        // 3. Tentukan ID default Chart of Account (COA) sesuai master data di database-mu
+        $idPersediaanBahan  = 4;  // Contoh ID COA: Persediaan Bahan Baku
+        $idUtangUsaha       = 7;  // Contoh ID COA: Utang Usaha (jika pembelian kredit)
+
+        // 4. Susun struktur baris jurnal otomatis seimbang (Debit & Kredit)
+        // Nilai nominal diambil langsung dari kolom total di tabel pembelian kamu
+        $defaultDetails = [
+            ['account_id' => $idPersediaanBahan, 'debit' => $pembelian->total, 'kredit' => 0],
+            ['account_id' => $idUtangUsaha, 'debit' => 0, 'kredit' => $pembelian->total]
+        ];
+
+        // 5. Kirim data ke view jurnal-pembelian/create dengan aman
+        return view('jurnal-pembelian.create', compact('pembelian', 'coas', 'defaultDetails'));
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | 1. INDEKS ANTREAN JURNAL PENJUALAN POS
+    |--------------------------------------------------------------------------
+    */
     public function penjualanposIndex()
     {
-        // 1. Ambil ID PenjualanPos yang sudah pernah dijurnal
-        $sudahDijurnal = Journal::where('source_type', 'penjualanpos')->pluck('source_id')->toArray();
+        // 1. Ambil semua ID transaksi POS yang sudah pernah dijurnal
+        $sudahDijurnal = DB::table('jurnal_penjualan_pos')
+            ->where('source_type', 'penjualan_pos')
+            ->pluck('source_id')
+            ->toArray();
 
-        // 2. Data untuk TABEL ATAS: Invoice yang BELUM dijurnal
-        $penjualanposBelum = PenjualanPos::with(['customer', 'gudang'])
+        // 2. Antrean Atas: Tarik data transaksi POS harian yang BELUM dijurnal
+        $penjualanPosBelum = DB::table('penjualan_pos')
             ->whereNotIn('id', $sudahDijurnal)
+            ->select(
+                'id',
+                'tanggal',
+                'kode_transaksi',
+                'total',
+                DB::raw("'Outlet Utama' as nama_outlet")
+            )
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        // 3. Data untuk TABEL BAWAH: Riwayat Jurnal PenjualanPos yang SUDAH disimpan
-        $jurnalsSudah = Journal::with('details.coa')
-            ->where('source_type', 'penjualanpos')
-            ->orderBy('tanggal', 'desc')
+        // 3. Riwayat Bawah: Ringkas menjadi satu baris per dokumen (Group By No. Ref)
+        $jurnalsSudah = DB::table('jurnal_penjualan_pos')
+            ->join('journal_items', 'journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
+            ->where('jurnal_penjualan_pos.source_type', 'penjualan_pos')
+            ->select(
+                'jurnal_penjualan_pos.id',
+                'jurnal_penjualan_pos.tanggal',
+                'jurnal_penjualan_pos.no_ref',
+                'jurnal_penjualan_pos.deskripsi',
+                DB::raw('SUM(journal_items.debit) as total_debit'),
+                DB::raw('SUM(journal_items.kredit) as total_kredit')
+            )
+            ->groupBy(
+                'jurnal_penjualan_pos.id',
+                'jurnal_penjualan_pos.tanggal',
+                'jurnal_penjualan_pos.no_ref',
+                'jurnal_penjualan_pos.deskripsi'
+            )
+            ->orderBy('jurnal_penjualan_pos.tanggal', 'desc')
+            ->orderBy('jurnal_penjualan_pos.id', 'desc')
             ->get();
 
-        // Kirim kedua variabel ke satu halaman view index yang sama
-        return view('jurnal-penjualanpos.index', compact('penjualanposBelum', 'jurnalsSudah'));
-    }
-
-    public function prosesJurnalPenjualanPos(Request $request, $id)
-
-    {
-        // 1. Validasi data form sesuai dengan input field dari view
-        $request->validate([
-            'tanggal'              => 'required|date',
-            'deskripsi'            => 'required|string',
-            'no_ref'               => 'nullable|string',
-            'details'              => 'required|array|min:2',
-            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
-            'details.*.debit'      => 'required|numeric|min:0',
-            'details.*.kredit'     => 'required|numeric|min:0',
-        ]);
-
-        $penjualanpos = PenjualanPos::findOrFail($id);
-
-        // 2. Cek apakah periode akuntansi sudah dikunci (Closing)
-        $isClosed = Journal::where('source_type', 'closing')
-            ->whereMonth('tanggal', date('m', strtotime($request->tanggal)))
-            ->whereYear('tanggal', date('Y', strtotime($request->tanggal)))
-            ->exists();
-
-        if ($isClosed) {
-            return back()->with('error', 'Gagal! Periode akuntansi untuk tanggal jurnal ini sudah ditutup (Closing).')->withInput();
-        }
-
-        try {
-            DB::beginTransaction();
-
-            // 3. Simpan Header Jurnal (Hubungkan ke ID PenjualanPos sebagai pengunci antrean)
-            $jurnal = Journal::create([
-                'tanggal'     => $request->tanggal,
-                'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'penjualanpos', // Disimpan sebagai tipe penjualanpos agar hilang dari antrean
-                'source_id'   => $penjualanpos->id, // Mengunci ID penjualanpos ini
-                'created_by'  => Auth::id(),
-            ]);
-
-            // 4. Simpan baris detail debit/kredit dari tabel form
-            foreach ($request->details as $item) {
-                // Lewati baris jika debit dan kredit sama-sama nol (opsional)
-                if ($item['debit'] == 0 && $item['kredit'] == 0) {
-                    continue;
-                }
-
-                $jurnal->details()->create([
-                    'account_id' => $item['account_id'],
-                    'debit'      => $item['debit'],
-                    'kredit'     => $item['kredit'],
-                ]);
-            }
-
-            // 5. Validasi keseimbangan saldo (Balance Check) di level backend
-            if (round($jurnal->details->sum('debit'), 2) != round($jurnal->details->sum('kredit'), 2)) {
-                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
-            }
-
-            DB::table('jurnal_penjualanpos')->insert([
-                'tanggal'     => $request->tanggal,
-                'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'penjualanpos', // Disimpan sebagai tipe penjualanpos agar hilang dari antrean
-                'source_id'   => $penjualanpos->id, // Mengunci ID penjualanpos ini
-                'created_by'  => Auth::id(),
-            ]);
-
-            DB::commit();
-            return redirect()->route('jurnal-penjualanpos.index', $penjualanpos->id)->with('success', 'Invoice ' . $penjualanpos->kode_penjualanpos . ' berhasil dijurnal manual!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
-        }
+        return view('jurnal-penjualanpos.index', compact('penjualanPosBelum', 'jurnalsSudah'));
     }
 
     public function penjualanposCreate($id)
     {
-        // Ambil daftar akun COA untuk dropdown di dalam tabel form view
-        $coas = ChartOfAccount::orderBy('kode', 'asc')->get();
+        // 1. Ambil data induk penjualan POS berdasarkan ID antrean
+        $penjualan = DB::table('penjualan_pos')->where('id', $id)->first();
 
-        // Langsung cari data penjualanpos menggunakan parameter $id dari rute URL
-        $penjualanpos = PenjualanPos::findOrFail($id);
+        if (!$penjualan) {
+            return back()->with('error', 'Data induk penjualan POS tidak ditemukan.');
+        }
 
-        return view('jurnal-penjualanpos.create', compact('coas', 'penjualanpos'));
+        // 2. Ambil master data COA untuk dropdown penyesuaian di form view
+        $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
+
+        // 3. SOLUSI PRESTASI: Hitung akumulasi nilai total HPP riil dari tabel detail POS
+        $totalHppRiil = DB::table('penjualanpos_detail')
+            ->where('penjualan_id', $id)
+            ->selectRaw('SUM(qty * hpp_satuan) as total_hpp')
+            ->value('total_hpp') ?? 0;
+
+        // ===================================================================
+        // ID COA DUMMY UNTUK MODUL PENJUALAN POS (Sesuai Pertanyaan Kedua)
+        // ===================================================================
+        $idKasOutlet      = 1;  // ID Dummy Akun Kas/Bank (Debit)
+        $idHppPos         = 5; // ID Dummy Akun Harga Pokok Penjualan POS (Debit)
+        $idPenjualanPos   = 4;  // ID Dummy Akun Penjualan POS (Kredit)
+        $idPersediaanJadi = 1;  // ID Dummy Akun Persediaan Barang Jadi (Kredit)
+        // ===================================================================
+
+        // 4. Susun Draf Jurnal Otomatis (4 Baris Berpasangan - Pastikan Seimbang)
+        $defaultDetails = [
+            // --- Kelompok Penerimaan Arus Kas Omzet ---
+            [
+                'account_id' => $idKasOutlet,
+                'debit'      => floatval($penjualan->total),
+                'kredit'     => 0
+            ],
+            [
+                'account_id' => $idPenjualanPos,
+                'debit'      => 0,
+                'kredit'     => floatval($penjualan->total)
+            ],
+            // --- Kelompok Matching Concept Pengurangan Stok Harian ---
+            [
+                'account_id' => $idHppPos,
+                'debit'      => floatval($totalHppRiil),
+                'kredit'     => 0
+            ],
+            [
+                'account_id' => $idPersediaanJadi,
+                'debit'      => 0,
+                'kredit'     => floatval($totalHppRiil)
+            ]
+        ];
+
+        return view('jurnal-penjualanpos.create', compact('penjualan', 'coas', 'defaultDetails'));
     }
 
-    public function penjualanb2bIndex()
+    public function penjualanposStore(Request $request, $id)
     {
-        // 1. Ambil ID PenjualanB2B yang sudah pernah dijurnal
-        $sudahDijurnal = Journal::where('source_type', 'pesanan')->pluck('source_id')->toArray();
+        $penjualan = DB::table('penjualan_pos')->where('id', $id)->first();
 
-        // 2. Data untuk TABEL ATAS: Invoice yang BELUM dijurnal
-        $pesananBelum = Pesanan::with(['customer', 'gudang'])
-            ->whereNotIn('id', $sudahDijurnal)
-            ->orderBy('tanggal', 'desc')
-            ->get();
-
-        // 3. Data untuk TABEL BAWAH: Riwayat Jurnal PenjualanB2B yang SUDAH disimpan
-        $jurnalsSudah = Journal::with('details.coa')
-            ->where('source_type', 'penjualanb2b')
-            ->orderBy('tanggal', 'desc')
-            ->get();
-
-        // Kirim kedua variabel ke satu halaman view index yang sama
-        return view('jurnal-penjualanb2b.index', compact('pesananBelum', 'jurnalsSudah'));
-    }
-
-    public function prosesJurnalPenjualanB2B(Request $request, $id)
-
-    {
-        // 1. Validasi data form sesuai dengan input field dari view
         $request->validate([
             'tanggal'              => 'required|date',
+            'no_ref'               => 'required|string',
             'deskripsi'            => 'required|string',
-            'no_ref'               => 'nullable|string',
             'details'              => 'required|array|min:2',
             'details.*.account_id' => 'required|exists:chart_of_accounts,id',
             'details.*.debit'      => 'required|numeric|min:0',
             'details.*.kredit'     => 'required|numeric|min:0',
         ]);
 
-        $pesanan = Pesanan::findOrFail($id);
-
-        // 2. Cek apakah periode akuntansi sudah dikunci (Closing)
-        $isClosed = Journal::where('source_type', 'closing')
-            ->whereMonth('tanggal', date('m', strtotime($request->tanggal)))
-            ->whereYear('tanggal', date('Y', strtotime($request->tanggal)))
-            ->exists();
-
-        if ($isClosed) {
-            return back()->with('error', 'Gagal! Periode akuntansi untuk tanggal jurnal ini sudah ditutup (Closing).')->withInput();
-        }
-
         try {
             DB::beginTransaction();
 
-            // 3. Simpan Header Jurnal (Hubungkan ke ID PenjualanPos sebagai pengunci antrean)
-            $jurnal = Journal::create([
+            // Cek Keseimbangan saldo form sebelum masuk database
+            $totalDebit = 0;
+            $totalKredit = 0;
+            foreach ($request->details as $item) {
+                $totalDebit += floatval($item['debit'] ?? 0);
+                $totalKredit += floatval($item['kredit'] ?? 0);
+            }
+
+            if (round($totalDebit, 2) != round($totalKredit, 2)) {
+                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
+            }
+
+            // Simpan Header ke tabel jurnal_penjualan_pos
+            $jurnalId = DB::table('jurnal_penjualan_pos')->insertGetId([
                 'tanggal'     => $request->tanggal,
+                'no_ref'      => $request->no_ref,
                 'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'penjualanb2b', // Disimpan sebagai tipe penjualanb2b agar hilang dari antrean
-                'source_id'   => $pesanan->id, // Mengunci ID pesanan ini
-                'created_by'  => Auth::id(),
+                'source_type' => 'penjualan_pos',
+                'source_id'   => $penjualan->id, // Mengunci ID POS agar keluar dari antrean index atas
+                'created_by'  => auth()->id() ?? 1,
             ]);
 
-            // 4. Simpan baris detail debit/kredit dari tabel form
+            // Simpan Detail baris jurnal secara dinamis dari form browser
             foreach ($request->details as $item) {
-                // Lewati baris jika debit dan kredit sama-sama nol (opsional)
-                if ($item['debit'] == 0 && $item['kredit'] == 0) {
+                if (floatval($item['debit']) == 0 && floatval($item['kredit']) == 0) {
                     continue;
                 }
 
-                $jurnal->details()->create([
+                DB::table('journal_items')->insert([
+                    'journal_id' => $jurnalId,
                     'account_id' => $item['account_id'],
                     'debit'      => $item['debit'],
                     'kredit'     => $item['kredit'],
                 ]);
             }
 
-            // 5. Validasi keseimbangan saldo (Balance Check) di level backend
-            if (round($jurnal->details->sum('debit'), 2) != round($jurnal->details->sum('kredit'), 2)) {
-                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
-            }
-
-            DB::table('jurnal_penjualanb2b')->insert([
-                'tanggal'     => $request->tanggal,
-                'deskripsi'   => $request->deskripsi,
-                'no_ref'      => $request->no_ref ?? 'JR-' . time(),
-                'source_type' => 'penjualanb2b', // Disimpan sebagai tipe penjualanb2b agar hilang dari antrean
-                'source_id'   => $pesanan->id, // Mengunci ID pesanan ini
-                'created_by'  => Auth::id(),
-            ]);
-
             DB::commit();
-            return redirect()->route('jurnal-penjualanb2b.index', $pesanan->id)->with('success', 'Invoice ' . $pesanan->kode_pesanan . ' berhasil dijurnal manual!');
+            return redirect()
+                ->route('laporan.jurnal-penjualanpos.index')
+                ->with('success', 'Jurnal Penjualan POS No. Ref ' . $request->no_ref . ' berhasil dibukukan harian!');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
+            return back()->with('error', 'Gagal memproses draf jurnal POS: ' . $e->getMessage())->withInput();
         }
+    }
+
+    public function penjualanposShow($id)
+    {
+        // 1. Ambil data induk/header jurnal khusus POS dari tabel jurnal_penjualan_pos
+        $jurnal = DB::table('jurnal_penjualan_pos')
+            ->where('id', $id)
+            ->where('source_type', 'penjualan_pos') // Menyelaraskan token identitas asal pos
+            ->first();
+
+        if (!$jurnal) {
+            return redirect()
+                ->route('laporan.jurnal-penjualanpos.index')
+                ->with('error', 'Data riwayat jurnal Penjualan POS tidak ditemukan.');
+        }
+
+        // 2. Ambil rincian item debit/kredit yang terikat dengan ID jurnal POS ini
+        $details = DB::table('journal_items')
+            ->leftJoin('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
+            ->where('journal_items.journal_id', $id)
+            ->select(
+                'journal_items.debit',
+                'journal_items.kredit',
+                'chart_of_accounts.kode',
+                'chart_of_accounts.nama'
+            )
+            ->orderBy('journal_items.debit', 'desc') // Mengurutkan akun Debit agar di atas demi estetika akuntansi
+            ->get();
+
+        // 3. Hitung total nilai saldo debit & kredit global untuk tfoot balance check
+        $totalDebit = $details->sum('debit');
+        $totalKredit = $details->sum('kredit');
+
+        return view('jurnal-penjualanpos.show', compact('jurnal', 'details', 'totalDebit', 'totalKredit'));
+    }
+
+    public function penjualanb2bIndex()
+    {
+        // 1. Ambil semua ID PEMBAYARAN yang sudah pernah dijurnal
+        $sudahDijurnal = DB::table('jurnal_penjualan_b2b')
+            ->where('source_type', 'pembayaran')
+            ->pluck('source_id')
+            ->toArray();
+
+        // 2. Antrean Atas: Ambil daftar transaksi PEMBAYARAN yang BELUM dijurnal
+        $pesananBelum = \App\Models\Pembayaran::with(['pesanan.customer'])
+            ->whereNotIn('id', $sudahDijurnal)
+            ->orderBy('tanggal_bayar', 'desc')
+            ->get();
+
+        // 3. PERBAIKAN: Ringkas data buku jurnal (Satu baris per No. Ref)
+        $jurnalsSudah = DB::table('jurnal_penjualan_b2b')
+            ->join('journal_items', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+            ->where('jurnal_penjualan_b2b.source_type', 'pembayaran')
+            ->select(
+                'jurnal_penjualan_b2b.id',
+                'jurnal_penjualan_b2b.tanggal',
+                'jurnal_penjualan_b2b.no_ref',
+                'jurnal_penjualan_b2b.deskripsi',
+                DB::raw('SUM(journal_items.debit) as total_debit'),
+                DB::raw('SUM(journal_items.kredit) as total_kredit')
+            )
+            ->groupBy(
+                'jurnal_penjualan_b2b.id',
+                'jurnal_penjualan_b2b.tanggal',
+                'jurnal_penjualan_b2b.no_ref',
+                'jurnal_penjualan_b2b.deskripsi'
+            )
+            ->orderBy('jurnal_penjualan_b2b.tanggal', 'desc')
+            ->orderBy('jurnal_penjualan_b2b.id', 'desc')
+            ->get();
+
+        return view('jurnal-penjualanb2b.index', compact('pesananBelum', 'jurnalsSudah'));
     }
 
     public function penjualanb2bCreate($id)
     {
-        // Ambil daftar akun COA untuk dropdown di dalam tabel form view
-        $coas = ChartOfAccount::orderBy('kode', 'asc')->get();
+        // 1. Ambil data Pembayaran saat ini beserta relasi induk pesanan dan customernya
+        $pembayaran = \App\Models\Pembayaran::with(['pesanan.customer'])->findOrFail($id);
+        $pesanan = $pembayaran->pesanan;
 
-        // Langsung cari data pesanan menggunakan parameter $id dari rute URL
-        $pesanan = Pesanan::findOrFail($id);
+        if (!$pesanan) {
+            return back()->with('error', 'Data induk pesanan untuk pembayaran ini tidak ditemukan.');
+        }
 
-        return view('jurnal-penjualanb2b.create', compact('coas', 'pesanan'));
+        // 2. Ambil daftar COA untuk kebutuhan dropdown di view screen
+        $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
+
+        // 3. Ambil data akumulasi nominal DP yang dibayar SEBELUM baris pembayaran pelunasan saat ini
+        $totalBayarSebelumnya = DB::table('pembayaran')
+            ->where('pesanan_id', $pesanan->id)
+            ->where('id', '<', $pembayaran->id)
+            ->sum('jumlah_bayar');
+
+        $statusPesanan = $pesanan->status_pesanan; // Membaca status_pesanan ('pending' / 'Selesai')
+
+        // ===================================================================
+        // ID COA DUMMY UNTUK KEBUTUHAN UJI COBA SISTEM (Dibuat unik agar tidak bentrok)
+        // ===================================================================
+        $idKasBank        = 1;  // ID Dummy Akun Kas
+        $idUangMuka       = 2;  // ID Dummy Akun Uang Muka Penjualan
+        $idPendapatan     = 4;  // ID Dummy Akun Pendapatan Penjualan B2B
+        $idHPP            = 5;  // ID Dummy Akun Harga Pokok Penjualan
+        $idPersediaanJadi = 3;  // ID Dummy Akun Persediaan Barang Jadi (Diubah dari 1 ke 3 agar tidak kembar dengan Kas)
+        // ===================================================================
+
+        $defaultDetails = [];
+
+        // KONDISI A: JIKA BARANG BELUM DIKIRIM (STATUS MASIH PENDING / BUKAN SELESAI) -> JURNAL DP
+        if (strtolower($statusPesanan) !== 'selesai') {
+            $defaultDetails = [
+                [
+                    'account_id' => $idKasBank,
+                    'debit'      => floatval($pembayaran->jumlah_bayar),
+                    'kredit'     => 0
+                ],
+                [
+                    'account_id' => $idUangMuka,
+                    'debit'      => 0,
+                    'kredit'     => floatval($pembayaran->jumlah_bayar)
+                ]
+            ];
+        }
+        // KONDISI B: JIKA BARANG SUDAH DIKIRIM (STATUS SELESAI) -> GABUNGAN PELUNASAN, REALISASI REVENUE & HPP
+        else {
+            // PERBAIKAN EMAS: Mengganti tabel pesanan_detail ke alokasi_produksi_pesanan untuk menarik total HPP riil
+            $totalHppRiil = DB::table('alokasi_produksi_pesanan')
+                ->where('pesanan_id', $pesanan->id)
+                ->sum('total_hpp_alokasi') ?? 0;
+
+            // --- PART JURNAL 1: REALISASI PENDAPATAN & ARUS KAS ---
+
+            // 1. Debit: Terima sisa Kas dari nominal transaksi pembayaran saat ini
+            $defaultDetails[] = [
+                'account_id' => $idKasBank,
+                'debit'      => floatval($pembayaran->jumlah_bayar),
+                'kredit'     => 0
+            ];
+
+            // 2. Debit: Balik / Tutup saldo Uang Muka Penjualan sebesar nilai DP masa lalu
+            if ($totalBayarSebelumnya > 0) {
+                $defaultDetails[] = [
+                    'account_id' => $idUangMuka,
+                    'debit'      => floatval($totalBayarSebelumnya),
+                    'kredit'     => 0
+                ];
+            }
+
+            // 3. Kredit: Akui total Penjualan B2B 100% utuh dari kolom total_pesanan milik model pesanan
+            $defaultDetails[] = [
+                'account_id' => $idPendapatan,
+                'debit'      => 0,
+                'kredit'     => floatval($pesanan->total_pesanan)
+            ];
+
+            // --- PART JURNAL 2: MATCHING COST PENGURANGAN BARANG GUDANG ---
+
+            // 4. Debit: Akui Beban Harga Pokok Penjualan B2B dari akumulasi nilai alokasi produksi
+            $defaultDetails[] = [
+                'account_id' => $idHPP,
+                'debit'      => floatval($totalHppRiil),
+                'kredit'     => 0
+            ];
+
+            // 5. Kredit: Kurangi Aset Lancar Persediaan Barang Jadi karena barang keluar dikirim
+            $defaultDetails[] = [
+                'account_id' => $idPersediaanJadi,
+                'debit'      => 0,
+                'kredit'     => floatval($totalHppRiil)
+            ];
+        }
+
+        return view('jurnal-penjualanb2b.create', compact('pembayaran', 'pesanan', 'coas', 'defaultDetails', 'statusPesanan'));
+    }
+
+    public function penjualanb2bStore(Request $request, $id)
+    {
+        $pembayaran = \App\Models\Pembayaran::findOrFail($id);
+
+        $request->validate([
+            'tanggal'              => 'required|date',
+            'no_ref'               => 'required|string',
+            'deskripsi'            => 'required|string',
+            'details'              => 'required|array|min:2',
+            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
+            'details.*.debit'      => 'required|numeric|min:0',
+            'details.*.kredit'     => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Cek Keseimbangan Debit & Kredit sebelum simpan
+            $totalDebit = 0;
+            $totalKredit = 0;
+            foreach ($request->details as $item) {
+                $totalDebit += floatval($item['debit'] ?? 0);
+                $totalKredit += floatval($item['kredit'] ?? 0);
+            }
+
+            if (round($totalDebit, 2) != round($totalKredit, 2)) {
+                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
+            }
+
+            // Simpan Header Jurnal murni dari form review screen
+            $jurnalsId = DB::table('jurnal_penjualan_b2b')->insertGetId([
+                'tanggal'     => $request->tanggal,
+                'no_ref'      => $request->no_ref,
+                'deskripsi'   => $request->deskripsi,
+                'source_type' => 'pembayaran',
+                'source_id'   => $pembayaran->id,
+                'created_by'  => auth()->id() ?? 1,
+            ]);
+
+            // Simpan Detail Jurnal secara dinamis berdasarkan pilihan form user
+            foreach ($request->details as $item) {
+                if (floatval($item['debit']) == 0 && floatval($item['kredit']) == 0) {
+                    continue;
+                }
+
+                DB::table('journal_items')->insert([
+                    'journal_id' => $jurnalsId,
+                    'account_id' => $item['account_id'],
+                    'debit'      => $item['debit'],
+                    'kredit'     => $item['kredit'],
+                ]);
+            }
+
+            DB::commit();
+            return redirect()
+                ->route('laporan.jurnal-penjualanb2b.index')
+                ->with('success', 'Transaksi No. Ref ' . $request->no_ref . ' berhasil dibukukan!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal memproses simpan jurnal: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function penjualanb2bShow($id)
+    {
+        $jurnal = DB::table('jurnal_penjualan_b2b')
+            ->where('id', $id)
+            ->where('source_type', 'pembayaran')
+            ->first();
+
+        if (!$jurnal) {
+            return redirect()
+                ->route('laporan.jurnal-penjualanb2b.index')
+                ->with('error', 'Data riwayat jurnal B2B tidak ditemukan.');
+        }
+
+        $details = DB::table('journal_items')
+            ->leftJoin('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
+            ->where('journal_items.journal_id', $id)
+            ->select(
+                'journal_items.debit',
+                'journal_items.kredit',
+                'chart_of_accounts.kode',
+                'chart_of_accounts.nama'
+            )
+            ->orderBy('journal_items.debit', 'desc')
+            ->get();
+
+        $totalDebit = $details->sum('debit');
+        $totalKredit = $details->sum('kredit');
+
+        return view('jurnal-penjualanb2b.show', compact('jurnal', 'details', 'totalDebit', 'totalKredit'));
     }
 
     public function bukuPembantuUtang()
