@@ -120,20 +120,22 @@ $barang = DB::table('stok_gudang')
 
 foreach ($barang as $item) {
 
-    $hargaFIFO =
-        DB::table('stok_gudang_batch')
-        ->where(
-            'gudang_id',
-            $request->gudang_id
-        )
-        ->where(
-            'barang_id',
-            $item->id
-        )
+    // Coba ambil dari batch yang masih punya sisa
+    $hargaFIFO = DB::table('stok_gudang_batch')
+        ->where('gudang_id', $request->gudang_id)
+        ->where('barang_id', $item->id)
+        ->where('qty_sisa', '>', 0)
         ->avg('harga_per_qty');
 
-    $item->harga_fifo =
-        $hargaFIFO ?? 0;
+    // Fallback ke rata-rata semua batch jika qty_sisa semua 0
+    if (!$hargaFIFO) {
+        $hargaFIFO = DB::table('stok_gudang_batch')
+            ->where('gudang_id', $request->gudang_id)
+            ->where('barang_id', $item->id)
+            ->avg('harga_per_qty');
+    }
+
+    $item->harga_fifo = $hargaFIFO ?? 0;
 }
 
 return response()->json($barang);
@@ -270,60 +272,42 @@ public function hitungFIFORealtime(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    private function hitungNilaiFIFO(
-        $gudangId,
-        $barangId,
-        $qty
-    ) {
+    private function hitungNilaiFIFO($gudangId, $barangId, $qty)
+{
+    if ($qty <= 0) return 0;
 
-        $sisa = $qty;
+    $sisa  = $qty;
+    $nilai = 0;
 
-        $nilai = 0;
+    // ── Coba FIFO normal (batch yang masih punya sisa) ──
+    $batches = DB::table('stok_gudang_batch')
+        ->where('gudang_id', $gudangId)
+        ->where('barang_id', $barangId)
+        ->where('qty_sisa', '>', 0)
+        ->orderBy('id')
+        ->get();
 
-        $batches =
-            DB::table('stok_gudang_batch')
-
-            ->where(
-                'gudang_id',
-                $gudangId
-            )
-
-            ->where(
-                'barang_id',
-                $barangId
-            )
-
-            ->where(
-                'qty_sisa',
-                '>',
-                0
-            )
-
-            ->orderBy('id')
-
-            ->get();
-
-        foreach ($batches as $batch) {
-
-            if ($sisa <= 0) {
-                break;
-            }
-
-            $ambil =
-                min(
-                    $sisa,
-                    $batch->qty_sisa
-                );
-
-            $nilai +=
-                $ambil *
-                $batch->harga_per_qty;
-
-            $sisa -= $ambil;
-        }
-
-        return $nilai;
+    foreach ($batches as $batch) {
+        if ($sisa <= 0) break;
+        $ambil  = min($sisa, $batch->qty_sisa);
+        $nilai += $ambil * $batch->harga_per_qty;
+        $sisa  -= $ambil;
     }
+
+    // ── Fallback: qty_sisa habis semua → pakai harga rata-rata batch terakhir ──
+    if ($sisa > 0) {
+        $hargaRata = DB::table('stok_gudang_batch')
+            ->where('gudang_id', $gudangId)
+            ->where('barang_id', $barangId)
+            ->avg('harga_per_qty');
+
+        if ($hargaRata) {
+            $nilai += $sisa * $hargaRata;
+        }
+    }
+
+    return $nilai;
+}
 
     /*
     |--------------------------------------------------------------------------

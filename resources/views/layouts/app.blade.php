@@ -119,6 +119,22 @@
             /* sedikit lebih gelap dari sidebar */
         }
 
+        .submenu-divider {
+            padding: 8px 24px 4px 24px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #a08060;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-top: 4px;
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        .submenu-divider:first-child {
+            margin-top: 0;
+        }
+
         .menu-group.open .submenu {
             display: flex;
         }
