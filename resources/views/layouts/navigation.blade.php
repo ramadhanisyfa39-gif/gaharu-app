@@ -25,7 +25,7 @@
                 $masterActive = request()->routeIs([
                     'kategori.*','barang.*','suppliers.*',
                     'customer.*','gudangs.*','karyawan.*',
-                    'resep.*','harga.*'
+                    'resep.*','harga.*','coa.*'
                 ]);
             @endphp
             <div class="menu-group {{ $masterActive ? 'open' : '' }}">
@@ -45,6 +45,7 @@
                     <a href="{{ route('customer.index') }}"  class="{{ request()->routeIs('customer.*')  ? 'active' : '' }}">Customer</a>
                     <a href="{{ route('gudangs.index') }}"   class="{{ request()->routeIs('gudangs.*')   ? 'active' : '' }}">Warehouse</a>
                     <a href="{{ route('karyawan.index') }}"  class="{{ request()->routeIs('karyawan.*')  ? 'active' : '' }}">Employee</a>
+                    <a href="{{ route('coa.index') }}"       class="{{ request()->routeIs('coa.*')       ? 'active' : '' }}">Chart of Accounts</a>
                 </div>
             </div>
 
@@ -103,11 +104,60 @@
                 </div>
             </div>
 
-            {{-- REPORTS (semua laporan jadi satu) --}}
+            {{-- FINANCE (Semua komponen akuntansi & jurnal ada di sini) --}}
+            @php
+                $financeActive = request()->routeIs([
+                    'jurnal.*','laporan.jurnal-penjualanb2b.*','laporan.jurnal-penjualanpos.*',
+                    'adjustment.*','closing.*','laporan.laba-rugi.*','laporan.neraca.*',
+                    'laporan.arus-kas.*','laporan.neraca-saldo.*'
+                ]);
+            @endphp
+            <div class="menu-group {{ $financeActive ? 'open' : '' }}">
+                <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-wallet2 me-3 fs-5"></i>
+                        <span>FINANCE</span>
+                    </div>
+                    <i class="bi {{ $financeActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
+                </div>
+                <div class="submenu">
+                    
+                    {{-- SUBMENU JURNAL --}}
+                    <div class="submenu-divider">JOURNALS</div>
+                    <a href="{{ route('jurnal.index') }}"
+                       class="{{ request()->routeIs('jurnal.*') ? 'active' : '' }}">General Journal</a>
+                    <a href="{{ route('laporan.jurnal-penjualanb2b.index') }}"
+                       class="{{ request()->routeIs('laporan.jurnal-penjualanb2b.*') ? 'active' : '' }}">B2B Sales Journal</a>
+                    <a href="{{ route('laporan.jurnal-penjualanpos.index') }}"
+                       class="{{ request()->routeIs('laporan.jurnal-penjualanpos.*') ? 'active' : '' }}">POS Sales Journal</a>
+                    <a href="{{ route('adjustment.index') }}"
+                       class="{{ request()->routeIs('adjustment.*') ? 'active' : '' }}">Adjustment Journal</a>
+                    <a href="{{ route('closing.index') }}"
+                       class="{{ request()->routeIs('closing.*') ? 'active' : '' }}">Closing Journal</a>
+
+                    {{-- SUBMENU REPORT --}}
+                    <div class="submenu-divider">REPORTS</div>
+                    <a href="{{ route('laporan.laba-rugi.index') }}"
+                       class="{{ request()->routeIs('laporan.laba-rugi.*') ? 'active' : '' }}">Profit & Loss</a>
+                    <a href="{{ route('laporan.neraca.index') }}"
+                       class="{{ request()->routeIs('laporan.neraca.*') ? 'active' : '' }}">Balance Sheet</a>
+                    <a href="{{ route('laporan.arus-kas.index') }}"
+                       class="{{ request()->routeIs('laporan.arus-kas.*') ? 'active' : '' }}">Cash Flow</a>
+
+                    {{-- SUBMENU OTHERS --}}
+                    <div class="submenu-divider">OTHERS</div>
+                    <a href="{{ route('laporan.neraca-saldo.index') }}"
+                       class="{{ request()->routeIs('laporan.neraca-saldo.*') ? 'active' : '' }}">Trial Balance</a>
+                </div>
+            </div>
+
+            {{-- REPORTS (Hanya memuat laporan operasional logistik/sales) --}}
             @php
                 $reportsActive = request()->routeIs([
-                    'reports.*','laporan.*',
-                    'penjualan_pos.laporan',
+                    'reports.*','penjualan_pos.laporan','laporan.pembelian',
+                    'laporan.stok-gudang','laporan.pengeluaran-bahan-baku',
+                    'laporan.stock-opname','laporan.penjualan','laporan.hpp',
+                    'laporan.rekapitulasi'
                 ]);
             @endphp
             <div class="menu-group {{ $reportsActive ? 'open' : '' }}">
@@ -161,32 +211,6 @@
                         <i class="bi bi-gear me-2" style="font-size:12px;"></i>Production Report
                     </a>
 
-                </div>
-            </div>
-
-            {{-- FINANCE --}}
-            @php
-                $financeActive = request()->routeIs([
-                    'coa.*','jurnal.*','adjustment.*','closing.*'
-                ]);
-            @endphp
-            <div class="menu-group {{ $financeActive ? 'open' : '' }}">
-                <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-wallet2 me-3 fs-5"></i>
-                        <span>FINANCE</span>
-                    </div>
-                    <i class="bi {{ $financeActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
-                </div>
-                <div class="submenu">
-                    <a href="{{ route('coa.index') }}"
-                       class="{{ request()->routeIs('coa.*') ? 'active' : '' }}">Chart of Accounts</a>
-                    <a href="{{ route('jurnal.index') }}"
-                       class="{{ request()->routeIs('jurnal.*') ? 'active' : '' }}">General Journal</a>
-                    <a href="{{ route('adjustment.index') }}"
-                       class="{{ request()->routeIs('adjustment.*') ? 'active' : '' }}">Adjustment</a>
-                    <a href="{{ route('closing.index') }}"
-                       class="{{ request()->routeIs('closing.*') ? 'active' : '' }}">Period Closing</a>
                 </div>
             </div>
 

@@ -230,7 +230,7 @@
 
                     <td>
                         <select
-                            name="items[\${rowIndex}][barang_id]"
+                            name="items[${rowIndex}][barang_id]"
                             class="form-control barang-select"
                             required>
 
@@ -259,7 +259,7 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][qty]"
+                            name="items[${rowIndex}][qty]"
                             class="form-control qty-input"
                             required>
                     </td>
@@ -268,7 +268,7 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][harga]"
+                            name="items[${rowIndex}][harga]"
                             class="form-control harga-input"
                             required>
                     </td>
@@ -277,7 +277,7 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][harga_per_qty]"
+                            name="items[${rowIndex}][harga_per_qty]"
                             class="form-control harga-per-qty"
                             readonly>
                     </td>
@@ -285,7 +285,7 @@
                     <td>
                         <input
                             type="text"
-                            name="items[\${rowIndex}][batch_number]"
+                            name="items[${rowIndex}][batch_number]"
                             class="form-control batch-number"
                             readonly>
                     </td>

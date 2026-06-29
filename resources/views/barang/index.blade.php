@@ -165,40 +165,18 @@
                             </div>
                         </div>
 
-                        <hr>
-
-                        <div id="group-harga" class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Harga B2B</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="text" name="harga_jual_b2b" class="form-control uang">
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Harga POS</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="text" name="harga_jual_pos" class="form-control uang">
-                                </div>
-                            </div>
                         </div>
 
-                    </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
-                        <button type="submit" class="btn text-white" style="background-color: #d88656;">Simpan</button>
+                        <button type="submit" class="btn text-white" style="background-color: #d88656">Simpan</button>
                     </div>
-                </form>
+                
             </div>
         </div>
     </div>
 
     <style>
-    input.uang {
-        text-align: right;
-    }
     .btn-close-white {
         filter: invert(1) grayscale(1) brightness(2);
     }
@@ -207,43 +185,14 @@
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         const jenis = document.getElementById('jenis');
-        const groupHarga = document.getElementById('group-harga');
         const groupMinStock = document.getElementById('group-min-stock');
 
-        const b2b = document.querySelector('[name="harga_jual_b2b"]');
-        const pos = document.querySelector('[name="harga_jual_pos"]');
         const minStockInput = document.getElementById('minimum_stock');
-        const inputs = document.querySelectorAll('.uang');
-
-        // FORMAT RUPIAH
-        inputs.forEach(input => {
-            input.addEventListener('input', function() {
-                let angka = this.value.replace(/\D/g, '');
-                this.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-            });
-        });
-
-        // BERSIHKAN TITIK RUPIAH SEBELUM SUBMIT POP-UP
-        document.getElementById("formTambahBarang").addEventListener("submit", function() {
-            inputs.forEach(input => {
-                input.value = input.value.replace(/\./g, '');
-            });
-        });
 
         // TOGGLE FORM DINAMIS (Harga & Minimum Stock)
         function toggleForm() {
-            if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {
-                groupHarga.style.opacity = "0.3";
-                b2b.disabled = true;
-                pos.disabled = true;
+            if (jenis.value === 'BAHAN_BAKU') {
                 groupMinStock.style.display = "block";
-            }
-            else if (jenis.value === 'BARANG_JADI') {
-                groupHarga.style.opacity = "1";
-                b2b.disabled = false;
-                pos.disabled = false;
-                groupMinStock.style.display = "none";
-                minStockInput.value = ''; 
             } else {
                 groupMinStock.style.display = "none";
                 minStockInput.value = '';
