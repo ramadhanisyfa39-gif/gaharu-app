@@ -50,14 +50,23 @@ class PengeluaranBahanBakuService
 
             /*
             |--------------------------------------------------------------------------
-            | GUDANG UTAMA
+            | GUDANG ASAL
             |--------------------------------------------------------------------------
+            |
+            | Untuk transfer antar gudang, stok selalu keluar dari Gudang Utama.
+            | Namun jika pengeluaran memiliki gudang_id sendiri yang valid dan
+            | berbeda dari Gudang Utama, gunakan gudang itu sebagai asal.
+            | Fallback ke Gudang Utama jika tidak ada.
+            |
             */
 
             $gudangUtama = MasterGudang::where(
                 'nama',
                 'Gudang Utama'
             )->firstOrFail();
+
+            // Gudang asal = Gudang Utama (sumber seluruh pembelian)
+            $gudangAsalId = $gudangUtama->id;
 
             /*
             |--------------------------------------------------------------------------
@@ -72,16 +81,16 @@ class PengeluaranBahanBakuService
                 | EKSEKUSI TRANSFER BATCH FIFO
                 |--------------------------------------------------------------------------
                 |
-                | 1. Panggil consumeFIFO untuk memotong batch lama dari Gudang Utama
+                | 1. Panggil consumeFIFO untuk memotong batch lama dari Gudang Asal
                 | 2. Looping layer yang terpotong untuk dimasukkan ke Gudang Tujuan
                 |
                 */
 
-                // Kurangi batch FIFO tertua di Gudang Utama
+                // Kurangi batch FIFO tertua di Gudang Asal
                 $fifoResult = $this->fifoService->consumeFIFO(
                     $detail->barang_id,
                     $detail->qty,
-                    $gudangUtama->id
+                    $gudangAsalId
                 );
 
                 // Buat batch FIFO baru di Gudang Tujuan dengan harga modal aslinya
@@ -115,7 +124,7 @@ class PengeluaranBahanBakuService
                     'barang_id'
                         => $detail->barang_id,
                     'gudang_asal_id'
-                        => $gudangUtama->id,
+                        => $gudangAsalId,
                     'qty'
                         => $detail->qty,
                     'source_type'

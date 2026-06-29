@@ -17,64 +17,47 @@ class StockOpname extends Model
         'created_by',
     ];
 
+    protected $casts = [
+        'tanggal' => 'datetime',
+    ];
+
     /*
     |--------------------------------------------------------------------------
-    | RELATION
+    | RELATIONS
     |--------------------------------------------------------------------------
     */
 
     public function gudang()
     {
-        return $this->belongsTo(
-            MasterGudang::class,
-            'gudang_id'
-        );
+        return $this->belongsTo(MasterGudang::class, 'gudang_id');
     }
 
     public function user()
     {
-        return $this->belongsTo(
-            User::class,
-            'created_by'
-        );
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function details()
     {
-        return $this->hasMany(
-            StockOpnameDetail::class,
-            'stock_opname_id'
-        );
+        return $this->hasMany(StockOpnameDetail::class, 'stock_opname_id');
     }
-    public function loadBarang(Request $request)
-    {
-        $barang = DB::table('stok_gudang')
-            ->join(
-                'master_barang',
-                'stok_gudang.barang_id',
-                '=',
-                'master_barang.id'
-            )
-            ->where(
-                'stok_gudang.gudang_id',
-                $request->gudang_id
-            )
-            ->select(
-                'master_barang.id',
-                'master_barang.kode_barang',
-                'master_barang.nama',
-                'master_barang.satuan',
-                DB::raw('SUM(stok_gudang.jumlah) as stok')
-            )
-            ->groupBy(
-                'master_barang.id',
-                'master_barang.kode_barang',
-                'master_barang.nama',
-                'master_barang.satuan'
-            )
-            ->orderBy('master_barang.nama')
-            ->get();
 
-        return response()->json($barang);
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Cek apakah opname ini sudah punya pengeluaran bahan baku otomatis.
+     * Berguna untuk ditampilkan di view show.
+     */
+    public function pengeluaranOtomatis()
+    {
+        return \App\Models\PengeluaranBahanBaku::where(
+            'keterangan',
+            'like',
+            '%' . $this->kode_opname . '%'
+        )->first();
     }
 }

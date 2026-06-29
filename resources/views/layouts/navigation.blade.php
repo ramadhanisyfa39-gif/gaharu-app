@@ -37,13 +37,13 @@
                     <i class="bi {{ $masterActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
                 </div>
                 <div class="submenu">
+                    <a href="{{ route('gudangs.index') }}"   class="{{ request()->routeIs('gudangs.*')   ? 'active' : '' }}">Warehouse</a>
+                    <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Supplier</a>
                     <a href="{{ route('kategori.index') }}"  class="{{ request()->routeIs('kategori.*')  ? 'active' : '' }}">Category</a>
                     <a href="{{ route('barang.index') }}"    class="{{ request()->routeIs('barang.*')    ? 'active' : '' }}">Items</a>
                     <a href="{{ route('resep.index') }}"     class="{{ request()->routeIs('resep.*')     ? 'active' : '' }}">Recipe</a>
                     <a href="{{ route('harga.index') }}"     class="{{ request()->routeIs('harga.*')     ? 'active' : '' }}">POS Price</a>
-                    <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Supplier</a>
                     <a href="{{ route('customer.index') }}"  class="{{ request()->routeIs('customer.*')  ? 'active' : '' }}">Customer</a>
-                    <a href="{{ route('gudangs.index') }}"   class="{{ request()->routeIs('gudangs.*')   ? 'active' : '' }}">Warehouse</a>
                     <a href="{{ route('karyawan.index') }}"  class="{{ request()->routeIs('karyawan.*')  ? 'active' : '' }}">Employee</a>
                     <a href="{{ route('coa.index') }}"       class="{{ request()->routeIs('coa.*')       ? 'active' : '' }}">Chart of Accounts</a>
                 </div>
@@ -71,14 +71,14 @@
 
                     {{-- INVENTORY header --}}
                     <div class="submenu-divider">INVENTORY</div>
-                    <a href="{{ route('stock-opname.index') }}"
-                       class="{{ request()->routeIs('stock-opname.*') ? 'active' : '' }}">Stock Opname</a>
                     <a href="{{ route('pembelian.index') }}"
                        class="{{ request()->routeIs('pembelian.*') ? 'active' : '' }}">Purchase</a>
+                    <a href="{{ route('pengeluaran-bahan-baku.index') }}"
+                       class="{{ request()->routeIs('pengeluaran-bahan-baku.*') ? 'active' : '' }}">Material Output</a>
                     <a href="{{ route('stok-gudang.index') }}"
                        class="{{ request()->routeIs('stok-gudang.*') ? 'active' : '' }}">Warehouse Stock</a>
-                    <a href="{{ route('pengeluaran-bahan-baku.index') }}"
-                       class="{{ request()->routeIs('pengeluaran-bahan-baku.*') ? 'active' : '' }}">Raw Material Output</a>
+                    <a href="{{ route('stock-opname.index') }}"
+                       class="{{ request()->routeIs('stock-opname.*') ? 'active' : '' }}">Stock Opname</a>
 
                     {{-- SALES header --}}
                     <div class="submenu-divider">SALES</div>

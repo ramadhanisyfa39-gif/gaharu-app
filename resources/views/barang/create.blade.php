@@ -73,7 +73,8 @@
 
         <input type="text"
                name="satuan"
-               class="form-control">
+               class="form-control"
+               required>
 
     </div>
 

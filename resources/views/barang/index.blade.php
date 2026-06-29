@@ -146,7 +146,7 @@
 
                             <div class="col-md-6 mb-3">
                                 <label class="fw-semibold">Satuan</label>
-                                <input type="text" name="satuan" class="form-control">
+                                <input type="text" name="satuan" class="form-control" required placeholder="Contoh: kg, pcs, liter">
                             </div>
 
                             <div class="col-md-6 mb-3">
