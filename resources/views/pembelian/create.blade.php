@@ -147,23 +147,23 @@
                                 required>
                         </td>
 
-                        {{-- HARGA PER QTY --}}
+                        {{-- HARGA PER QTY (display only, tidak dikirim ke server) --}}
                         <td>
                             <input
                                 type="number"
                                 step="0.01"
-                                name="items[0][harga_per_qty]"
                                 class="form-control harga-per-qty"
-                                readonly>
+                                readonly
+                                tabindex="-1">
                         </td>
 
-                        {{-- BATCH --}}
+                        {{-- BATCH (display only, digenerate ulang di controller) --}}
                         <td>
                             <input
                                 type="text"
-                                name="items[0][batch_number]"
                                 class="form-control batch-number"
-                                readonly>
+                                readonly
+                                tabindex="-1">
                         </td>
 
                         {{-- AKSI --}}
@@ -230,7 +230,7 @@
 
                     <td>
                         <select
-                            name="items[\${rowIndex}][barang_id]"
+                            name="items[${rowIndex}][barang_id]"
                             class="form-control barang-select"
                             required>
 
@@ -259,7 +259,7 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][qty]"
+                            name="items[${rowIndex}][qty]"
                             class="form-control qty-input"
                             required>
                     </td>
@@ -268,7 +268,7 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][harga]"
+                            name="items[${rowIndex}][harga]"
                             class="form-control harga-input"
                             required>
                     </td>
@@ -277,17 +277,17 @@
                         <input
                             type="number"
                             step="0.01"
-                            name="items[\${rowIndex}][harga_per_qty]"
                             class="form-control harga-per-qty"
-                            readonly>
+                            readonly
+                            tabindex="-1">
                     </td>
 
                     <td>
                         <input
                             type="text"
-                            name="items[\${rowIndex}][batch_number]"
                             class="form-control batch-number"
-                            readonly>
+                            readonly
+                            tabindex="-1">
                     </td>
 
                     <td>
@@ -310,7 +310,7 @@
 
         /*
         |--------------------------------------------------------------------------
-        | REMOVE ROW
+        | REMOVE ROW + REINDEX
         |--------------------------------------------------------------------------
         */
 
@@ -324,9 +324,22 @@
                 if (rows.length > 1) {
 
                     e.target.closest('tr').remove();
+
+                    // Reindex semua baris agar tidak ada gap di array
+                    reindexRows();
                 }
             }
         });
+
+        function reindexRows() {
+            document.querySelectorAll('#table-items tbody tr').forEach((row, i) => {
+                row.querySelector('[name*="[barang_id]"]').name = `items[${i}][barang_id]`;
+                row.querySelector('[name*="[qty]"]').name       = `items[${i}][qty]`;
+                row.querySelector('[name*="[harga]"]').name     = `items[${i}][harga]`;
+                // rowIndex selalu lebih besar dari jumlah row yang ada
+                rowIndex = document.querySelectorAll('#table-items tbody tr').length;
+            });
+        }
 
         /*
         |--------------------------------------------------------------------------

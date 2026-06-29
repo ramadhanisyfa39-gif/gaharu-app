@@ -146,7 +146,7 @@
 
                             <div class="col-md-6 mb-3">
                                 <label class="fw-semibold">Satuan</label>
-                                <input type="text" name="satuan" class="form-control">
+                                <input type="text" name="satuan" class="form-control" required placeholder="Contoh: kg, pcs, liter">
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -232,23 +232,27 @@
 
         // TOGGLE FORM DINAMIS (Harga & Minimum Stock)
         function toggleForm() {
-            if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {
-                groupHarga.style.opacity = "0.3";
-                b2b.disabled = true;
-                pos.disabled = true;
-                groupMinStock.style.display = "block";
-            }
-            else if (jenis.value === 'BARANG_JADI') {
-                groupHarga.style.opacity = "1";
-                b2b.disabled = false;
-                pos.disabled = false;
-                groupMinStock.style.display = "none";
-                minStockInput.value = ''; 
-            } else {
-                groupMinStock.style.display = "none";
-                minStockInput.value = '';
-            }
-        }
+    if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {
+        groupHarga.style.opacity = "0.3";
+        b2b.readOnly = true;   // ← pakai readonly, nilai tetap terkirim (0)
+        pos.readOnly = true;
+        b2b.value = '0';
+        pos.value = '0';
+        groupMinStock.style.display = "block";
+    }
+    else if (jenis.value === 'BARANG_JADI') {
+        groupHarga.style.opacity = "1";
+        b2b.readOnly = false;
+        pos.readOnly = false;
+        b2b.value = '';
+        pos.value = '';
+        groupMinStock.style.display = "none";
+        minStockInput.value = ''; 
+    } else {
+        groupMinStock.style.display = "none";
+        minStockInput.value = '';
+    }
+}
 
         jenis.addEventListener('change', toggleForm);
         toggleForm();

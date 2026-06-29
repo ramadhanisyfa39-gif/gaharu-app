@@ -237,7 +237,7 @@
 
                                 @if($pengeluaran->status == 'approved')
 
-                                    Rp {{ number_format($hargaFIFO,0,',','.') }}
+                                    Rp {{ number_format($hargaFIFO,2,',','.') }}
 
                                 @else
 
@@ -255,7 +255,7 @@
 
                                     <strong>
 
-                                        Rp {{ number_format($detail->hpp_total,0,',','.') }}
+                                        Rp {{ number_format($detail->hpp_total,2,',','.') }}
 
                                     </strong>
 
@@ -312,7 +312,7 @@
                 class="fw-bold mt-2"
                 style="color:#9c4f18;">
 
-                Rp {{ number_format($grandTotal,0,',','.') }}
+                Rp {{ number_format($grandTotal,2,',','.') }}
 
             </h3>
 
