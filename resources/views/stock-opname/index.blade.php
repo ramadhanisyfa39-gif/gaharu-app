@@ -33,6 +33,13 @@
         </button>
 
     </div>
+    @if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger">{{ session('error') }}</div>
+@endif
 
     {{-- SUMMARY CARD --}}
 
@@ -190,30 +197,14 @@
 
                                 <td>
 
-    <a href="{{ route('stock-opname.show',$row->id) }}"
-       class="btn btn-sm btn-outline-primary">
+    <button
+        type="button"
+        class="btn btn-sm btn-outline-primary"
+        onclick="showDetailOpname({{ $row->id }})">
+
         Detail
-    </a>
 
-    @if($row->status == 'draft')
-
-        <a href="{{ route('stock-opname.approve',$row->id) }}"
-           class="btn btn-sm btn-success"
-           onclick="return confirm('Approve stock opname ini?')">
-
-            Approve
-
-        </a>
-
-    @else
-
-        <span class="badge bg-secondary">
-
-            Sudah Approve
-
-        </span>
-
-    @endif
+    </button>
 
 </td>
 
@@ -287,11 +278,6 @@
 
             <div class="modal-body">
 
-                <div class="alert alert-light border">
-
-                    Pilih gudang yang akan dilakukan stock opname.
-
-                </div>
 
                 <div class="mb-3">
 
@@ -350,6 +336,152 @@
 </div>
 
 </div>
+{{-- MODAL DETAIL & APPROVE --}}
+<div class="modal fade" id="detailOpnameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background:#7A4517;">
+                <h5 class="modal-title">Detail Stock Opname</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailOpnameBody">
+                <div class="text-center text-muted py-5">
+                    <div class="spinner-border" role="status"></div>
+                    <p class="mt-3 mb-0">Memuat data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+function showDetailOpname(id) {
+    let modalEl = document.getElementById('detailOpnameModal');
+    let modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    let body = document.getElementById('detailOpnameBody');
+
+    body.innerHTML = `
+        <div class="text-center text-muted py-5">
+            <div class="spinner-border" role="status"></div>
+            <p class="mt-3 mb-0">Memuat data...</p>
+        </div>
+    `;
+
+    modal.show();
+
+    fetch(`/stock-opname/${id}/detail-json`)
+        .then(response => response.json())
+        .then(data => renderDetailOpname(data))
+        .catch(() => {
+            body.innerHTML = `
+                <div class="text-center text-danger py-5">
+                    Gagal memuat data stock opname.
+                </div>
+            `;
+        });
+}
+
+function renderDetailOpname(data) {
+    let body = document.getElementById('detailOpnameBody');
+
+    let statusBadge = data.status === 'approved'
+        ? '<span class="badge bg-success">Approved</span>'
+        : '<span class="badge bg-warning text-dark">Draft</span>';
+
+    let rows = '';
+
+    data.details.forEach(function (detail, index) {
+        let selisihBadge = '<span class="badge bg-secondary">0</span>';
+
+        if (detail.selisih < 0) {
+            selisihBadge = `<span class="badge bg-danger">${detail.selisih.toLocaleString('id-ID')}</span>`;
+        } else if (detail.selisih > 0) {
+            selisihBadge = `<span class="badge bg-success">+${detail.selisih.toLocaleString('id-ID')}</span>`;
+        }
+
+        rows += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${detail.barang}</td>
+                <td>${detail.stok_sistem.toLocaleString('id-ID')}</td>
+                <td>${detail.stok_fisik.toLocaleString('id-ID')}</td>
+                <td>${selisihBadge}</td>
+                <td>Rp ${detail.nilai_selisih.toLocaleString('id-ID')}</td>
+            </tr>
+        `;
+    });
+
+    let approveButton = '';
+
+    if (data.status === 'draft') {
+        approveButton = `
+            <button type="button" class="btn btn-success" onclick="approveOpname('${data.approve_url}')">
+                <i class="bi bi-check-circle"></i>
+                Approve Stock Opname
+            </button>
+        `;
+    }
+
+    body.innerHTML = `
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <small class="text-muted">Kode Opname</small>
+                <h6 class="fw-bold mt-1">${data.kode_opname}</h6>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Gudang</small>
+                <h6 class="fw-bold mt-1">${data.gudang}</h6>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Tanggal</small>
+                <h6 class="fw-bold mt-1">${data.tanggal}</h6>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Status</small>
+                <div class="mt-1">${statusBadge}</div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <small class="text-muted">Keterangan</small>
+            <p class="mb-0">${data.keterangan}</p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr style="background:#7A4517;color:white">
+                        <th>No</th>
+                        <th>Barang</th>
+                        <th>Stok Sistem</th>
+                        <th>Stok Fisik</th>
+                        <th>Selisih</th>
+                        <th>Nilai Selisih</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="5" class="text-end">TOTAL NILAI SELISIH</th>
+                        <th>Rp ${data.grand_total.toLocaleString('id-ID')}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mt-4 text-end">
+            ${approveButton}
+        </div>
+    `;
+}
+
+function approveOpname(url) {
+    if (confirm('Approve stock opname ini? Selisih negatif akan otomatis membuat draft pengeluaran bahan baku.')) {
+        window.location.href = url;
+    }
+}
+</script>
 
 </x-app-layout>

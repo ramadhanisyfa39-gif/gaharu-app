@@ -73,7 +73,8 @@
 
         <input type="text"
                name="satuan"
-               class="form-control">
+               class="form-control"
+               required>
 
     </div>
 
@@ -103,74 +104,27 @@
         </select>
     </div>
 
-    <div class="col-md-6 mb-3" id="group-min-stock" style="display: none;">
-        
+    <div class="col-md-6 mb-3" id="group-min-stock" style="display:none;">
         <label>Minimum Stock (Batas Kritis)</label>
-        
+
         <input type="number"
                name="minimum_stock"
                id="minimum_stock"
                class="form-control"
-               placeholder="Contoh: 10"
+               placeholder="Contoh : 10"
                min="0">
-
-    </div>
-
-</div>
-
-<hr>
-
-<div id="group-harga" class="row">
-
-    <div class="col-md-6 mb-3">
-
-        <label>Harga B2B</label>
-
-        <div class="input-group">
-
-            <span class="input-group-text">
-                Rp
-            </span>
-
-            <input type="text"
-                   name="harga_jual_b2b"
-                   class="form-control uang">
-
-        </div>
-
-    </div>
-
-    <div class="col-md-6 mb-3">
-
-        <label>Harga POS</label>
-
-        <div class="input-group">
-
-            <span class="input-group-text">
-                Rp
-            </span>
-
-            <input type="text"
-                   name="harga_jual_pos"
-                   class="form-control uang">
-
-        </div>
-
     </div>
 
 </div>
 
 <div class="mt-3">
 
-    <button class="btn btn-primary">
-        Simpan
-    </button>
+    <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-success">Simpan</button>
 
     <a href="{{ route('barang.index') }}"
        class="btn btn-secondary">
-
        Kembali
-
     </a>
 
 </div>
@@ -182,123 +136,59 @@
 
 </div>
 
-<style>
-
-input.uang {
-    text-align: right;
-}
-
-</style>
-
 <script>
 
 document.addEventListener("DOMContentLoaded", function () {
 
     const jenis = document.getElementById('jenis');
-
-    const groupHarga = document.getElementById('group-harga');
     const groupMinStock = document.getElementById('group-min-stock');
-
-    const b2b = document.querySelector('[name="harga_jual_b2b"]');
-    const pos = document.querySelector('[name="harga_jual_pos"]');
     const minStockInput = document.getElementById('minimum_stock');
 
-    const inputs = document.querySelectorAll('.uang');
+    function toggleForm(){
 
-    // FORMAT RUPIAH
-    inputs.forEach(input => {
+        if(jenis.value==="BAHAN_BAKU"){
 
-        input.addEventListener('input', function() {
+            groupMinStock.style.display="block";
 
-            let angka = this.value.replace(/\D/g, '');
+        }else{
 
-            this.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-
-        });
-
-    });
-
-    // BERSIHKAN SEBELUM SUBMIT
-    document.querySelector("form").addEventListener("submit", function() {
-
-        inputs.forEach(input => {
-
-            input.value = input.value.replace(/\./g, '');
-
-        });
-
-    });
-
-    // TOGGLE FORM (Harga dan Minimum Stock)
-    function toggleForm() {
-
-        if (jenis.value === 'BAHAN_BAKU' || jenis.value === 'OPERATIONAL') {
-
-            // Nonaktifkan Harga
-            groupHarga.style.opacity = "0.3";
-            b2b.disabled = true;
-            pos.disabled = true;
-
-            // Tampilkan Minimum Stock
-            groupMinStock.style.display = "block";
+            groupMinStock.style.display="none";
+            minStockInput.value="";
 
         }
-        else if (jenis.value === 'BARANG_JADI') {
 
-            // Aktifkan Harga
-            groupHarga.style.opacity = "1";
-            b2b.disabled = false;
-            pos.disabled = false;
-
-            // Sembunyikan Minimum Stock
-            groupMinStock.style.display = "none";
-            minStockInput.value = ''; // Kosongkan input saat disembunyikan
-
-        } else {
-            
-            // Sembunyikan Minimum Stock jika opsi "-- Pilih Jenis --" dipilih
-            groupMinStock.style.display = "none";
-            minStockInput.value = '';
-
-        }
     }
 
-    jenis.addEventListener('change', toggleForm);
+    jenis.addEventListener('change',toggleForm);
 
-    // Panggil saat halaman pertama kali load (untuk menangani old input jika ada error validasi)
     toggleForm();
 
-    // =====================================================
-    // AUTO GENERATE KODE BARANG
-    // =====================================================
+    const kategori=document.getElementById('kategori_id');
 
-    const kategori = document.getElementById('kategori_id');
+    kategori.addEventListener('change',function(){
 
-    kategori.addEventListener('change', function () {
+        let kategoriId=this.value;
 
-        let kategoriId = this.value;
+        if(kategoriId==""){
 
-        if (kategoriId == '') {
-
-            document.getElementById('kode_barang').value = '';
-
+            document.getElementById('kode_barang').value="";
             return;
+
         }
 
-        fetch('/barang/generate-kode/' + kategoriId)
+        fetch('/barang/generate-kode/'+kategoriId)
 
-            .then(response => response.json())
+        .then(response=>response.json())
 
-            .then(data => {
+        .then(data=>{
 
-                document.getElementById('kode_barang').value = data.kode_barang;
+            document.getElementById('kode_barang').value=data.kode_barang;
 
-            });
+        });
 
     });
 
-    // AUTO GENERATE SAAT HALAMAN DIBUKA
-    if (kategori.value != '') {
+    if(kategori.value!=""){
 
         kategori.dispatchEvent(new Event('change'));
 

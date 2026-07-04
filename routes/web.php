@@ -358,6 +358,8 @@ Route::middleware('auth')->group(function () {
         'stock-opname/{id}/approve',
         [StockOpnameController::class, 'approve']
     )->name('stock-opname.approve');
+    Route::get('stock-opname/{id}/detail-json', [StockOpnameController::class, 'detailJson'])
+    ->name('stock-opname.detail-json');
     /*
     | Harga Barang POS
     |--------------------------------------------------------------------------

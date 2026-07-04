@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Pembelian;
 use App\Models\PembelianDetail;
 use App\Models\StokGudangBatch;
+use Illuminate\Support\Facades\DB;
 
 class FifoService
 {
@@ -95,12 +96,19 @@ class FifoService
     | - Batch A habis 5
     | - Batch B ambil 2
     |
+    | Parameter $allowNegative:
+    | - false (default) : throw Exception jika stok tidak cukup
+    | - true            : lanjutkan meski stok kurang (untuk Stock Opname),
+    |                     sisa qty yang tidak ada batch-nya akan menggunakan
+    |                     harga fallback (avg historis / hpp_referensi)
+    |
     */
 
     public function consumeFIFO(
         int $barangId,
         float $qtyKeluar,
-        int $gudangId
+        int $gudangId,
+        bool $allowNegative = false
     ): array {
 
         /*
@@ -133,14 +141,19 @@ class FifoService
         |--------------------------------------------------------------------------
         | VALIDASI STOK FIFO
         |--------------------------------------------------------------------------
+        |
+        | Jika $allowNegative = true (dari Stock Opname), stok boleh tidak cukup.
+        | Sistem akan menguras semua batch yang tersedia, sisanya dicatat
+        | dengan harga fallback (rata-rata batch historis / hpp_referensi).
+        |
         */
 
         $totalSisa = $batches->sum('qty_sisa');
 
-        if ($totalSisa < $qtyKeluar) {
+        if ($totalSisa < $qtyKeluar && !$allowNegative) {
 
             throw new \Exception(
-                'Stok FIFO tidak mencukupi.'
+                'Stok FIFO tidak mencukupi. Tersedia: ' . $totalSisa . ', Dibutuhkan: ' . $qtyKeluar . '.'
             );
         }
 
@@ -243,6 +256,37 @@ class FifoService
             */
 
             $sisaPermintaan -= $ambilQty;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FALLBACK: SISA QTY TIDAK ADA BATCH-NYA (allowNegative = true)
+        |--------------------------------------------------------------------------
+        |
+        | Terjadi saat stok FIFO tidak cukup tapi tetap diproses (Stock Opname).
+        | Harga diambil dari: avg historis batch → hpp_referensi master barang → 0
+        |
+        */
+
+        if ($sisaPermintaan > 0 && $allowNegative) {
+
+            $hargaFallback = DB::table('stok_gudang_batch')
+                ->where('gudang_id', $gudangId)
+                ->where('barang_id', $barangId)
+                ->avg('harga_per_qty');
+
+            if (!$hargaFallback) {
+                $hargaFallback = DB::table('master_barang')
+                    ->where('id', $barangId)
+                    ->value('hpp_referensi') ?? 0;
+            }
+
+            $result[] = [
+                'batch_id'      => null,
+                'batch_number'  => 'FALLBACK-OPNAME',
+                'qty_keluar'    => $sisaPermintaan,
+                'harga_per_qty' => (float) $hargaFallback,
+            ];
         }
 
         /*

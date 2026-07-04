@@ -13,6 +13,8 @@ use App\Models\PengeluaranBahanBakuDetail;
 use App\Services\PengeluaranBahanBakuService;
 use App\Services\FifoService;
 use App\Models\PengeluaranBahanBakuFifo;
+use App\Models\StokGudang;
+use App\Models\TransaksiStok;
 
 class PengeluaranBahanBakuController extends Controller
 {
@@ -454,7 +456,7 @@ class PengeluaranBahanBakuController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            if ($data->status === 'approved') {
+            if ($data->status === 'approved' || $data->status === 'disetujui') {
 
                 throw new \Exception(
                     'Pengeluaran sudah diapprove.'
@@ -462,118 +464,141 @@ class PengeluaranBahanBakuController extends Controller
             }
 
             /*
-|--------------------------------------------------------------------------
-| FIFO CONSUME
-|--------------------------------------------------------------------------
-|
-| FIFO selalu diambil dari Gudang Utama
-| karena seluruh pembelian masuk ke Gudang Utama.
-|
-*/
-
-$gudangUtama = MasterGudang::where(
-    'nama',
-    'Gudang Utama'
-)->firstOrFail();
-
-foreach ($data->details as $detail) {
-
-    $fifoResult =
-        $this->fifoService->consumeFIFO(
-
-            barangId:
-                $detail->barang_id,
-
-            qtyKeluar:
-                $detail->qty,
-
-            gudangId:
-                $gudangUtama->id,
-        );
-
-    /*
-    |--------------------------------------------------------------------------
-    | TOTAL HPP DETAIL
-    |--------------------------------------------------------------------------
-    */
-
-    $hppTotal = 0;
-
-    /*
-    |--------------------------------------------------------------------------
-    | SIMPAN HISTORI FIFO
-    |--------------------------------------------------------------------------
-    */
-
-    foreach ($fifoResult as $fifo) {
-
-        $totalHarga =
-            $fifo['qty_keluar']
-            *
-            $fifo['harga_per_qty'];
-
-        $hppTotal += $totalHarga;
-
-        PengeluaranBahanBakuFifo::create([
-
-            'pengeluaran_id'
-                => $data->id,
-
-            'detail_id'
-                => $detail->id,
-
-            'batch_id'
-                => $fifo['batch_id'],
-
-            'batch_number'
-                => $fifo['batch_number'],
-
-            'qty_keluar'
-                => $fifo['qty_keluar'],
-
-            'harga_per_qty'
-                => $fifo['harga_per_qty'],
-
-            'total_harga'
-                => $totalHarga,
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SIMPAN HPP DETAIL
-    |--------------------------------------------------------------------------
-    */
-
-    $detail->update([
-
-        'hpp_total'
-            => $hppTotal,
-    ]);
-}
-
-            /*
             |--------------------------------------------------------------------------
-            | STOCK OUT SUMMARY
+            | DETEKSI JENIS PENGELUARAN
             |--------------------------------------------------------------------------
+            |
+            | Ada 2 jenis pengeluaran dengan alur yang BERBEDA:
+            |
+            | 1. DARI STOCK OPNAME (kode PBK-SO-*)
+            |    → Pengurangan stok murni dari gudang opname
+            |    → consumeFIFO dengan allowNegative = true
+            |    → Hanya stockOut, TIDAK ada stockIn / batch baru di gudang lain
+            |    → Status akhir: 'approved'
+            |
+            | 2. TRANSFER ANTAR GUDANG (pengeluaran manual / dari WO)
+            |    → Dikerjakan sepenuhnya oleh PengeluaranBahanBakuService->approve()
+            |    → Service sudah handle: consumeFIFO + batch baru + stockOut + stockIn
+            |    → Status akhir: 'disetujui' (set oleh service)
+            |    → Controller TIDAK boleh memanggil consumeFIFO lagi agar tidak dobel
+            |
             */
 
-            $this->service->approve(
-                $data,
-                auth()->id()
-            );
+            $isFromOpname = str_starts_with($data->kode_pengeluaran, 'PBK-SO-');
 
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE STATUS
-            |--------------------------------------------------------------------------
-            */
+            if ($isFromOpname) {
 
-            $data->update([
+                /*
+                |----------------------------------------------------------------------
+                | ALUR 1: STOCK OPNAME — pengurangan stok murni
+                |----------------------------------------------------------------------
+                */
 
-                'status'
-                    => 'approved',
-            ]);
+                $gudangOpname = $data->gudang_id;
+
+                foreach ($data->details as $detail) {
+
+                    /*
+                    | consumeFIFO dengan allowNegative = true:
+                    | stok boleh tidak cukup (selisih opname tetap diproses)
+                    */
+                    $fifoResult = $this->fifoService->consumeFIFO(
+                        barangId:       $detail->barang_id,
+                        qtyKeluar:      $detail->qty,
+                        gudangId:       $gudangOpname,
+                        allowNegative:  true,
+                    );
+
+                    $hppTotal = 0;
+
+                    foreach ($fifoResult as $fifo) {
+
+                        $totalHarga = $fifo['qty_keluar'] * $fifo['harga_per_qty'];
+                        $hppTotal  += $totalHarga;
+
+                        // Hanya simpan histori jika ada batch nyata (bukan fallback)
+                        if ($fifo['batch_id'] !== null) {
+                            PengeluaranBahanBakuFifo::create([
+                                'pengeluaran_id' => $data->id,
+                                'detail_id'      => $detail->id,
+                                'batch_id'       => $fifo['batch_id'],
+                                'batch_number'   => $fifo['batch_number'],
+                                'qty_keluar'     => $fifo['qty_keluar'],
+                                'harga_per_qty'  => $fifo['harga_per_qty'],
+                                'total_harga'    => $totalHarga,
+                            ]);
+                        }
+                    }
+
+                    $detail->update(['hpp_total' => $hppTotal]);
+
+                    /*
+                    |------------------------------------------------------------------
+                    | KURANGI STOK SUMMARY (stok_gudang)
+                    |------------------------------------------------------------------
+                    |
+                    | stockOut() biasanya validasi stok_gudang dulu, tapi untuk
+                    | Stock Opname kita bypass validasi dan langsung decrement
+                    | karena selisih negatif opname memang harus tetap diproses
+                    | meski summary sudah menunjukkan 0.
+                    |
+                    */
+
+                    $stokGudang = StokGudang::where('barang_id', $detail->barang_id)
+                        ->where('gudang_id', $gudangOpname)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($stokGudang) {
+                        // Decrement langsung, boleh jadi negatif untuk koreksi opname
+                        $stokGudang->decrement('jumlah', $detail->qty);
+                    }
+                    // Jika baris stok_gudang tidak ada, tidak perlu dibuat
+                    // (barang ini memang tidak ada di gudang — konsisten dengan opname)
+
+                    TransaksiStok::create([
+                        'tanggal'        => now(),
+                        'tipe'           => 'keluar',
+                        'source_type'    => 'pengeluaran_bahan_baku',
+                        'source_id'      => $data->id,
+                        'gudang_asal_id' => $gudangOpname,
+                        'barang_id'      => $detail->barang_id,
+                        'qty'            => $detail->qty,
+                        'total_harga'    => $hppTotal,
+                        'created_by'     => auth()->id(),
+                    ]);
+                }
+
+                // Update status langsung (service tidak dipanggil)
+                $data->update([
+                    'status'      => 'approved',
+                    'approved_by' => auth()->id(),
+                    'approved_at' => now(),
+                ]);
+
+            } else {
+
+                /*
+                |----------------------------------------------------------------------
+                | ALUR 2: TRANSFER ANTAR GUDANG — delegasi penuh ke service
+                |----------------------------------------------------------------------
+                |
+                | Service->approve() sudah menangani:
+                |   - consumeFIFO dari Gudang Utama
+                |   - Buat batch baru di gudang tujuan
+                |   - stockOut dari gudang asal
+                |   - stockIn ke gudang tujuan
+                |   - Update status → 'disetujui'
+                |
+                | Controller TIDAK memanggil consumeFIFO lagi di sini.
+                |
+                */
+
+                $this->service->approve(
+                    $data,
+                    auth()->id()
+                );
+            }
         });
 
         return redirect()
