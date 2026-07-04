@@ -218,6 +218,18 @@
         .badge.bg-success {
             background: #d88656 !important;
         }
+
+        .badge.bg-purple {
+            background: #b49476 !important;
+        }
+
+        .badge.bg-success-100 {
+            background: #a1ce86 !important;
+        }
+
+        .badge.bg-cyan-500 {
+            background: #92c4e6 !important;
+        }
     </style>
 </head>
 

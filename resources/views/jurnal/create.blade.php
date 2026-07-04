@@ -31,61 +31,81 @@
                             <input type="text" name="no_ref" class="form-control" placeholder="Kosongkan untuk otomatis">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">Deskripsi</label>
-                            <textarea name="deskripsi" class="form-control" rows="1" required placeholder="Keterangan transaksi..."></textarea>
+                            <label class="form-label fw-bold">Deskripsi / Keterangan</label>
+                            <input type="text" name="deskripsi" class="form-control" placeholder="Contoh: Pembayaran Gaji Karyawan" required>
                         </div>
                     </div>
 
+                    <h5 class="fw-bold mb-3">Item Jurnal</h5>
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="jurnal-table">
+                        <table class="table table-bordered" id="table-items">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 40%">Akun (COA)</th>
-                                    <th>Debit</th>
-                                    <th>Kredit</th>
-                                    <th style="width: 50px"></th>
+                                    <th style="width: 40%">Akun / COA</th>
+                                    <th style="width: 25%">Debit</th>
+                                    <th style="width: 25%">Kredit</th>
+                                    <th style="width: 10%">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @php $oldDetails = old('details', [0, 1]); @endphp
-                                @foreach($oldDetails as $index => $oldValue)
+                            <tbody id="wrapper-items">
                                 <tr>
                                     <td>
-                                        <select name="details[{{ $index }}][account_id]" class="form-select" required>
+                                        <select name="details[0][account_id]" class="form-select select2" required>
                                             <option value="">-- Pilih Akun --</option>
                                             @foreach($coas as $coa)
-                                            <option value="{{ $coa->id }}" {{ (isset($oldValue['account_id']) && $oldValue['account_id'] == $coa->id) ? 'selected' : '' }}>
-                                                {{ $coa->kode }} - {{ $coa->nama }}
-                                            </option>
+                                            <option value="{{ $coa->id }}">[{{ $coa->kode_akun }}] {{ $coa->nama_akun }}</option>
                                             @endforeach
                                         </select>
                                     </td>
-                                    <td><input type="number" name="details[{{ $index }}][debit]" class="form-control text-end input-debit" value="{{ $oldValue['debit'] ?? 0 }}" step="0.01" required></td>
-                                    <td><input type="number" name="details[{{ $index }}][kredit]" class="form-control text-end input-kredit" value="{{ $oldValue['kredit'] ?? 0 }}" step="0.01" required></td>
+                                    <td>
+                                        <input type="number" name="details[0][debit]" class="form-control input-debit" min="0" step="0.01" value="0" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="details[0][kredit]" class="form-control input-kredit" min="0" step="0.01" value="0" required>
+                                    </td>
                                     <td class="text-center">
-                                        @if($index > 1)
-                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove(); hitungTotal();">×</button>
-                                        @endif
+                                        <button type="button" class="btn btn-sm btn-danger disabled"><i class="bi bi-trash"></i></button>
                                     </td>
                                 </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot class="table-secondary fw-bold">
                                 <tr>
-                                    <td class="text-center">TOTAL</td>
-                                    <td class="text-end" id="total-debit">Rp 0</td>
-                                    <td class="text-end" id="total-kredit">Rp 0</td>
+                                    <td>
+                                        <select name="details[1][account_id]" class="form-select select2" required>
+                                            <option value="">-- Pilih Akun --</option>
+                                            @foreach($coas as $coa)
+                                            <option value="{{ $coa->id }}">[{{ $coa->kode }}] {{ $coa->nama }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="details[1][debit]" class="form-control input-debit" min="0" step="0.01" value="0" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="details[1][kredit]" class="form-control input-kredit" min="0" step="0.01" value="0" required>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-danger disabled"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light fw-bold">
+                                    <td class="text-end">Total:</td>
+                                    <td id="total-debit" class="text-end text-success">Rp 0</td>
+                                    <td id="total-kredit" class="text-end text-success">Rp 0</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
 
-                    <button type="button" class="btn btn-outline-primary btn-sm mb-4" onclick="addRow()">+ Tambah Baris</button>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="tambahBaris()">
+                            <i class="bi bi-plus-circle"></i> Tambah Baris
+                        </button>
+                    </div>
 
-                    <div class="d-flex justify-content-between border-top pt-3">
-                        <a href="{{ route('jurnal.index') }}" class="btn btn-light border">Batal</a>
-                        <button type="submit" class="btn btn-success px-5 shadow">Simpan Jurnal</button>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary px-4">Simpan Transaksi</button>
                     </div>
                 </form>
             </div>
@@ -93,28 +113,39 @@
     </div>
 
     <script>
-        let rowIndex = Number("{{ count($oldDetails) }}");
+        let rowIndex = 2;
 
-        function addRow() {
-            let table = document.getElementById('jurnal-table').getElementsByTagName('tbody')[0];
-            let row = table.insertRow();
+        function tambahBaris() {
+            let wrapper = document.getElementById('wrapper-items');
+            let row = document.createElement('tr');
+
             row.innerHTML = `
-            <td>
-                <select name="details[${rowIndex}][account_id]" class="form-select" required>
-                    <option value="">-- Pilih Akun --</option>
-                    @foreach($coas as $coa)
-                        <option value="{{ $coa->id }}">{{ $coa->kode }} - {{ $coa->nama }}</option>
-                    @endforeach
-                </select>
-            </td>
-            <td><input type="number" name="details[${rowIndex}][debit]" class="form-control text-end input-debit" value="0" step="0.01" required></td>
-            <td><input type="number" name="details[${rowIndex}][kredit]" class="form-control text-end input-kredit" value="0" step="0.01" required></td>
-            <td class="text-center">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove(); hitungTotal();">×</button>
-            </td>
-        `;
+                <td>
+                    <select name="details[\${rowIndex}][account_id]" class="form-select" required>
+                        <option value="">-- Pilih Akun --</option>
+                        @foreach($coas as $coa)
+                        <option value="{{ $coa->id }}">[{{ $coa->kode }}] {{ $coa->nama }}</option>
+                        @endforeach
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="details[\${rowIndex}][debit]" class="form-control input-debit" min="0" step="0.01" value="0" required>
+                </td>
+                <td>
+                    <input type="number" name="details[\${rowIndex}][kredit]" class="form-control input-kredit" min="0" step="0.01" value="0" required>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="hapusBaris(this)"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+            wrapper.appendChild(row);
             rowIndex++;
             attachEvents();
+        }
+
+        function hapusBaris(button) {
+            button.closest('tr').remove();
+            hitungTotal();
         }
 
         function hitungTotal() {
@@ -129,23 +160,26 @@
             document.getElementById('total-debit').innerText = "Rp " + totalD.toLocaleString('id-ID');
             document.getElementById('total-kredit').innerText = "Rp " + totalK.toLocaleString('id-ID');
 
-            // Visual warning jika tidak balance
+            // Peringatan visual jika tidak balance
             if (totalD.toFixed(2) !== totalK.toFixed(2)) {
-                document.getElementById('total-debit').className = 'text-end text-danger';
-                document.getElementById('total-kredit').className = 'text-end text-danger';
+                document.getElementById('total-debit').className = 'text-end text-danger fw-bold';
+                document.getElementById('total-kredit').className = 'text-end text-danger fw-bold';
             } else {
-                document.getElementById('total-debit').className = 'text-end text-success';
-                document.getElementById('total-kredit').className = 'text-end text-success';
+                document.getElementById('total-debit').className = 'text-end text-success fw-bold';
+                document.getElementById('total-kredit').className = 'text-end text-success fw-bold';
             }
         }
 
         function attachEvents() {
             document.querySelectorAll('.input-debit, .input-kredit').forEach(el => {
+                el.removeEventListener('input', hitungTotal); // Hindari duplikasi event
                 el.addEventListener('input', hitungTotal);
             });
         }
 
-        attachEvents();
-        hitungTotal();
+        // Jalankan event listener saat pertama kali halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            attachEvents();
+        });
     </script>
 </x-app-layout>

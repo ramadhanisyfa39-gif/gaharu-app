@@ -16,7 +16,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('laporan.jurnal-penjualanpos.store', $penjualan->id) }}" method="POST" id="form-jurnal">
+                <form action="{{ route('jurnal-penjualanpos.store', $penjualan->id) }}" method="POST" id="form-jurnal">
                     @csrf
                     <div class="row mb-4">
                         <div class="col-md-4">
@@ -43,8 +43,17 @@
                                     <th style="width: 50px"></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @php $renderDetails = old('details', $defaultDetails); @endphp
+                            <tbody id="jurnal-tbody">
+                                @php
+                                $oldDetails = old('details');
+
+                                // Validasi Session: Jika ada data lama dari menu lain yang tidak sinkron, paksa pakai draf asli POS
+                                if ($oldDetails && isset($oldDetails['account_id']) && $oldDetails['account_id'] != $defaultDetails['account_id']) {
+                                $renderDetails = $defaultDetails;
+                                } else {
+                                $renderDetails = $oldDetails ?? $defaultDetails;
+                                }
+                                @endphp
                                 @foreach($renderDetails as $index => $val)
                                 <tr>
                                     <td>
@@ -73,7 +82,7 @@
                     </div>
                     <div class="mt-3 mb-4"><button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">+ Tambah Baris Penyesuaian</button></div>
                     <div class="d-flex justify-content-between border-top pt-3">
-                        <a href="{{ route('laporan.jurnal-penjualanpos.index') }}" class="btn btn-light border">Kembali</a>
+                        <a href="{{ route('jurnal-penjualanpos.index') }}" class="btn btn-light border">Kembali</a>
                         <button type="submit" class="btn btn-success px-5 shadow">Konfirmasi & Simpan Jurnal</button>
                     </div>
                 </form>
@@ -85,8 +94,8 @@
         let rowIndex = Number("{{ count($renderDetails) }}");
 
         function addRow() {
-            let table = document.getElementById('jurnal-table').getElementsByTagName('tbody');
-            let row = table.insertRow();
+            let tbody = document.getElementById('jurnal-tbody');
+            let row = tbody.insertRow();
             row.innerHTML = `
             <td>
                 <select name="details[${rowIndex}][account_id]" class="form-select select-coa" required>

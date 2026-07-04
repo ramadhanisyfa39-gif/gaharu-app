@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Detail Jurnal Khusus Penjualan POS</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Detail Jurnal Khusus Pembelian</h2>
     </x-slot>
 
     <div class="container py-4">
@@ -11,15 +11,15 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 mb-3 mb-md-0">
-                        <span class="text-secondary small d-block">No. Jurnal (Referensi)</span>
+                        <span class="text-secondary small d-block font-sans">No. Jurnal (Referensi)</span>
                         <strong class="fs-5 font-monospace text-dark">{{ $jurnal->no_ref }}</strong>
                     </div>
                     <div class="col-md-4 mb-3 mb-md-0">
-                        <span class="text-secondary small d-block">Tanggal Pembukuan</span>
+                        <span class="text-secondary small d-block font-sans">Tanggal Pembukuan</span>
                         <strong class="fs-5 text-dark">{{ \Carbon\Carbon::parse($jurnal->tanggal)->format('d F Y') }}</strong>
                     </div>
                     <div class="col-md-4">
-                        <span class="text-secondary small d-block">Keterangan / Deskripsi</span>
+                        <span class="text-secondary small d-block font-sans">Keterangan / Deskripsi</span>
                         <p class="mb-0 text-muted small fw-medium">{{ $jurnal->deskripsi }}</p>
                     </div>
                 </div>
@@ -46,9 +46,11 @@
                                 <td class="py-3 ps-4 small {{ $d->kredit > 0 ? 'ps-5 text-secondary' : 'fw-semibold text-dark' }}">
                                     {{ $d->kode }} - {{ $d->nama ?? 'Akun Tidak Diketahui' }}
                                 </td>
+
                                 <td class="text-end font-monospace text-success fw-medium">
                                     {{ $d->debit > 0 ? 'Rp ' . number_format($d->debit, 2, ',', '.') : '-' }}
                                 </td>
+
                                 <td class="text-end font-monospace text-danger fw-medium">
                                     {{ $d->kredit > 0 ? 'Rp ' . number_format($d->kredit, 2, ',', '.') : '-' }}
                                 </td>
@@ -61,12 +63,12 @@
                                 <td class="text-end text-success font-monospace">Rp {{ number_format($totalDebit, 2, ',', '.') }}</td>
                                 <td class="text-end text-success font-monospace">Rp {{ number_format($totalKredit, 2, ',', '.') }}</td>
                             </tr>
-                        </tfoot>
+                            </footer>
                     </table>
                 </div>
             </div>
             <div class="card-footer bg-white py-3 d-flex justify-content-end">
-                <a href="{{ route('jurnal-penjualanpos.index') }}" class="btn btn-secondary fw-bold px-4 shadow-sm">
+                <a href="{{ route('jurnal-pembelian.index') }}" class="btn btn-secondary fw-bold px-4 shadow-sm">
                     <i class="fas fa-arrow-left me-1"></i> Kembali ke Riwayat
                 </a>
             </div>

@@ -13,11 +13,15 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'nama' => 'Administrator',
-            'username' => 'admin',
-            'password' => Hash::make('password123'),
-            'role_id' => 1,
-        ]);
+        // Menyuntikkan data user admin default ke database
+        User::updateOrInsert(
+            ['username' => 'admin'], // Kondisi untuk mencari user dengan username 'admin'
+            [
+                'nama' => 'Administrator',
+                'username' => 'admin',
+                'password' => Hash::make('make123'), // Password di-hash sebelum disimpan
+                'role_id' => 1, // Role ID untuk Super Admin
+            ]
+        );
     }
 }

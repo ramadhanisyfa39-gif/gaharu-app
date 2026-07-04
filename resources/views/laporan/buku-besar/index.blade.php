@@ -82,9 +82,9 @@
                                 $subDebet += $item->debit; $subKredit += $item->kredit;
                                 @endphp
                                 <tr class="hover:bg-gray-50/50 transition">
-                                    <td class="py-4 px-2">{{ date('d/m/Y', strtotime($item->journal->tanggal)) }}</td>
-                                    <td class="py-4 px-2 text-gray-400 font-mono text-xs">{{ $item->journal->no_ref }}</td>
-                                    <td class="py-4 px-2 text-gray-700">{{ $item->journal->deskripsi }}</td>
+                                    <td class="py-4 px-2">{{ date('y/m/d', strtotime($item->tanggal)) }}</td>
+                                    <td class="py-4 px-2 text-gray-400 font-mono text-xs">{{ $item->no_ref }}</td>
+                                    <td class="py-4 px-2 text-gray-700">{{ $item->deskripsi }}</td>
                                     <td class="py-4 px-2 text-right {{ $item->debit > 0 ? 'text-green-600' : 'text-gray-400' }}">
                                         {{ number_format($item->debit, 2, ',', '.') }}
                                     </td>

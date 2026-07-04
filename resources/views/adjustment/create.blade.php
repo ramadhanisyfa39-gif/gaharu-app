@@ -24,16 +24,16 @@
                     <div class="row mb-4">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Tanggal</label>
-                            <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal', date('Y-m-d')) }}" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-8">
                             <label class="form-label fw-bold">Deskripsi</label>
-                            <textarea name="deskripsi" class="form-control" rows="1" required placeholder="Keterangan transaksi..."></textarea>
+                            <textarea name="deskripsi" class="form-control" rows="1" required placeholder="Keterangan transaksi...">{{ old('deskripsi') }}</textarea>
                         </div>
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="jurnal-table">
+                        <table class="table table-bordered align-middle" id="jurnal-table">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 40%">Akun (COA)</th>
@@ -43,7 +43,12 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $oldDetails = old('details', [0, 1]); @endphp
+                                @php
+                                $oldDetails = old('details', [
+                                ['account_id' => '', 'debit' => 0, 'kredit' => 0],
+                                ['account_id' => '', 'debit' => 0, 'kredit' => 0]
+                                ]);
+                                @endphp
                                 @foreach($oldDetails as $index => $oldValue)
                                 <tr>
                                     <td>
@@ -81,7 +86,7 @@
 
                     <div class="d-flex justify-content-between border-top pt-3">
                         <a href="{{ route('adjustment.index') }}" class="btn btn-light border">Batal</a>
-                        <button type="submit" class="btn btn-success px-5 shadow">Simpan Jurnal</button>
+                        <button type="submit" id="btn-submit" class="btn btn-success px-5 shadow">Simpan Jurnal</button>
                     </div>
                 </form>
             </div>
@@ -89,26 +94,29 @@
     </div>
 
     <script>
+        let rowIndex = Number("{{ count($oldDetails) }}");
+
         function addRow() {
-            let table = document.getElementById('jurnal-table').getElementsByTagName('tbody');
+            let table = document.getElementById('jurnal-table').getElementsByTagName('tbody')[0];
             let row = table.insertRow();
             row.innerHTML = `
-                    <td class="ps-3">
-                        <select name="details[${rowIndex}][account_id]" class="form-select border-0 bg-light rounded-3" required>
-                            <option value="">-- Pilih Akun --</option>
-                            @foreach($coas as $coa)
-                                <option value="{{ $coa->id }}">{{ $coa->kode }} - {{ $coa->nama }}</option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td><input type="number" name="details[${rowIndex}][debit]" class="form-control border-0 text-end fw-bold input-debit" value="0" step="0.01" required></td>
-                    <td><input type="number" name="details[${rowIndex}][kredit]" class="form-control border-0 text-end fw-bold input-kredit" value="0" step="0.01" required></td>
-                    <td class="text-center px-3">
-                        <button type="button" class="btn btn-link text-danger p-0" onclick="this.parentElement.parentElement.remove(); hitungTotal();">×</button>
-                    </td>
-                `;
+                <td>
+                    <select name="details[${rowIndex}][account_id]" class="form-select" required>
+                        <option value="">-- Pilih Akun --</option>
+                        @foreach($coas as $coa)
+                            <option value="{{ $coa->id }}">{{ $coa->kode }} - {{ $coa->nama }}</option>
+                        @endforeach
+                    </select>
+                </td>
+                <td><input type="number" name="details[${rowIndex}][debit]" class="form-control text-end input-debit" value="0" step="0.01" required></td>
+                <td><input type="number" name="details[${rowIndex}][kredit]" class="form-control text-end input-kredit" value="0" step="0.01" required></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove(); hitungTotal();">×</button>
+                </td>
+            `;
             rowIndex++;
             attachEvents();
+            hitungTotal();
         }
 
         function hitungTotal() {
@@ -117,29 +125,37 @@
             let totalD = 0;
             let totalK = 0;
 
-            debits.forEach(i => totalD += parseFloat(i.value || 0));
-            kredits.forEach(i => totalK += parseFloat(i.value || 0));
+            debits.forEach(i => totalD += parseFloat(i.value) || 0);
+            kredits.forEach(i => totalK += parseFloat(i.value) || 0);
 
             document.getElementById('total-debit').innerText = "Rp " + totalD.toLocaleString('id-ID');
             document.getElementById('total-kredit').innerText = "Rp " + totalK.toLocaleString('id-ID');
 
             const btn = document.getElementById('btn-submit');
-            if (totalD.toFixed(2) === totalK.toFixed(2) && totalD > 0) {
-                btn.disabled = false;
-                btn.className = "btn btn-indigo px-5 py-2 shadow-sm fw-bold"; // Sesuaikan class Anda
+
+            if (totalD.toFixed(2) !== totalK.toFixed(2)) {
+                document.getElementById('total-debit').className = 'text-end text-danger fw-bold';
+                document.getElementById('total-kredit').className = 'text-end text-danger fw-bold';
+                if (btn) btn.disabled = true;
             } else {
-                btn.disabled = true;
-                btn.style.opacity = "0.5";
+                document.getElementById('total-debit').className = 'text-end text-success fw-bold';
+                document.getElementById('total-kredit').className = 'text-end text-success fw-bold';
+                if (btn) btn.disabled = totalD > 0 ? false : true;
             }
         }
 
         function attachEvents() {
             document.querySelectorAll('.input-debit, .input-kredit').forEach(el => {
+                el.removeEventListener('input', hitungTotal);
+                el.removeEventListener('change', hitungTotal);
                 el.addEventListener('input', hitungTotal);
+                el.addEventListener('change', hitungTotal);
             });
         }
 
-        attachEvents();
-        hitungTotal();
+        document.addEventListener("DOMContentLoaded", function() {
+            attachEvents();
+            hitungTotal();
+        });
     </script>
 </x-app-layout>

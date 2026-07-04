@@ -12,14 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('chart_of_accounts', function (Blueprint $table) {
-            $table->id();
-            $table->string('kode')->unique();
-            $table->string('nama');
-            $table->string('tipe'); // aset, kewajiban, modal, dll
-            $table->string('saldo_normal'); // debit / kredit
+            $table->id(); //
+            $table->string('kode')->unique(); //
+            $table->string('nama'); //
+            $table->string('tipe'); //
+            $table->string('saldo_normal'); //
+
+            // Tambahkan ini di sini
+            $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */

@@ -68,7 +68,7 @@
                 </div>
             </div>
             <div class="card-footer bg-white py-3 d-flex justify-content-end">
-                <a href="{{ route('laporan.jurnal-penjualanb2b.index') }}" class="btn btn-secondary fw-bold px-4 shadow-sm">
+                <a href="{{ route('jurnal-penjualanb2b.index') }}" class="btn btn-secondary fw-bold px-4 shadow-sm">
                     <i class="fas fa-arrow-left me-1"></i> Kembali ke Riwayat
                 </a>
             </div>
