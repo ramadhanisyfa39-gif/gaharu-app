@@ -1,238 +1,336 @@
 <x-app-layout>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .table-custom-header th { background-color: #6a4126 !important; color: #ffffff !important; font-weight: 600; border-bottom: none; font-size: 0.85rem; padding: 14px 12px; }
+        .table-custom-body td { font-size: 0.85rem; padding: 14px 12px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+        .btn-custom-orange { background-color: #db7946; color: white; border: none; font-weight: 600; font-size: 0.85rem; padding: 8px 16px; border-radius: 8px; transition: all 0.2s; }
+        .btn-custom-orange:hover { background-color: #c06535; color: white; }
+        .summary-card { border-radius: 12px; border: 1px solid #eaeaea; background: #ffffff; padding: 16px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        /* Badge Status Subtle Modern & Clean */
+        .badge-subtle { border-radius: 6px; padding: 5px 12px; font-weight: 600; font-size: 0.75rem; display: inline-block; text-transform: capitalize; }
+        .badge-status-pending { background-color: #fef3c7; color: #d97706; }
+        .badge-status-proses { background-color: #e0f2fe; color: #0369a1; }
+        .badge-status-ready { background-color: #e0e7ff; color: #4338ca; }
+        .badge-status-selesai { background-color: #dcfce7; color: #15803d; }
+        .badge-status-batal { background-color: #fee2e2; color: #b91c1c; }
+        
+        /* Action Buttons Group Styling */
+        .action-btn-group { display: flex; justify-content: center; align-items: center; gap: 6px; }
+        .btn-action-base { border-radius: 8px; width: 32px; height: 32px; font-size: 0.85rem; border: none; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.2s; background-color: transparent; }
+        
+        .btn-action-eye { background-color: #f0f9ff; color: #0369a1 !important; border: 1px solid #e0f2fe; }
+        .btn-action-eye:hover { background-color: #0369a1; color: white !important; }
+        
+        .btn-action-edit { background-color: #fffbec; color: #b45309 !important; border: 1px solid #fef3c7; }
+        .btn-action-edit:hover { background-color: #b45309; color: white !important; }
+        
+        .btn-action-delete { background-color: #fef2f2; color: #b91c1c !important; border: 1px solid #fee2e2; cursor: pointer; }
+        .btn-action-delete:hover { background-color: #b91c1c; color: white !important; }
+
+        /* Tombol Bayar Soft Orange */
+        .btn-pay-small { 
+            background-color: #fff7ed; 
+            color: #db7946; 
+            font-weight: 700; 
+            font-size: 0.75rem; 
+            border-radius: 6px; 
+            padding: 5px 10px; 
+            border: 1px solid #fdba74; 
+            transition: all 0.2s; 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+        .btn-pay-small:hover { 
+            background-color: #db7946; 
+            color: white !important; 
+            border-color: #db7946;
+        }
+    </style>
+
+    <div class="container py-4" style="margin-top: 5.5rem !important;">
+        
+        {{-- HEADER SECTION --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-1 fw-bold text-dark" style="font-weight: 800; letter-spacing: -0.5px;">Data Pesanan & Transaksi</h4>
+                <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i> Validasi otomatis tombol aksi berdasarkan status alur kerja produksi (Work Order).</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('pesanan.create') }}" class="btn btn-custom-orange shadow-sm d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-plus-circle-fill"></i> Tambah Pesanan Baru
+                </a>
+            </div>
         </div>
-    @endif
 
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        {{-- DEFINISI VARIABEL --}}
+        @php
+            $dataPesanan = $pesanans ?? $pesanan ?? collect();
+            
+            $totalPesanan = $dataPesanan->count();
+            $totalProses = $dataPesanan->whereIn('status_pesanan', ['Draft', 'Proses', 'Siap kirim', 'pending', 'ready'])->count();
+            $totalSelesai = $dataPesanan->where('status_pesanan', 'Selesai')->count();
+        @endphp
+
+        {{-- SUMMARY CARDS --}}
+        <div class="row mb-4 g-3">
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-secondary mb-1 d-block fw-medium small">Total Order Masuk</span>
+                    <h4 class="fw-bold text-dark mb-0">{{ $totalPesanan }} Pesanan</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-secondary mb-1 d-block fw-medium small">Dalam Pengerjaan / Pengiriman</span>
+                    <h4 class="fw-bold text-warning mb-0">{{ $totalProses }} Transaksi</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-secondary mb-1 d-block fw-medium small">Selesai & Lunas</span>
+                    <h4 class="fw-bold text-success mb-0">{{ $totalSelesai }} Selesai</h4>
+                </div>
+            </div>
         </div>
-    @endif
 
-<div class="container mt-5">
+        {{-- NOTIFIKASI ALERTS --}}
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4 p-3 d-flex align-items-center" role="alert" style="background-color: #ecfdf5; border-left: 4px solid #10b981 !important;">
+                <i class="bi bi-check-circle-fill me-2 fs-5 text-success"></i>
+                <div>
+                    <span class="fw-bold text-success d-block">Transaksi Berhasil</span>
+                    <span class="small text-secondary">{{ session('success') }}</span>
+                </div>
+                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold mb-0">Data Pesanan</h2>
-            <small class="text-muted">Manajemen pesanan customer & pembayaran</small>
-        </div>
-        <a href="{{ route('pesanan.create') }}" class="btn btn-primary shadow-sm rounded-3">
-            <i class="bi bi-plus-circle"></i> Tambah Pesanan
-        </a>
-    </div>
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4 p-3 d-flex align-items-center" role="alert" style="background-color: #fef2f2; border-left: 4px solid #ef4444 !important;">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-5 text-danger"></i>
+                <div>
+                    <span class="fw-bold text-danger d-block">Sistem Terkunci</span>
+                    <span class="small text-secondary">{{ session('error') }}</span>
+                </div>
+                <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-body p-0"> 
+        {{-- MAIN TABLE CARD --}}
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5" style="background: white;">
             <div class="table-responsive">
-                <table class="table align-middle table-hover mb-0">
-                    <thead class="bg-light">
-                        <tr class="text-secondary">
-                            <th class="ps-4">Kode</th>
-                            <th>Customer</th>
-                            <th>Tanggal</th>
-                            <th>Total</th>
-                            <th class="text-center">Status Pesanan</th>
-                            <th class="text-center">Status Bayar</th>
-                            <th class="text-center pe-4">Aksi</th>
+                <table class="table table-hover align-middle mb-0 table-custom-body w-100">
+                    <thead class="table-custom-header text-center">
+                        <tr>
+                            <th width="5%">No</th>
+                            <th width="15%" class="text-start">Kode Pesanan</th>
+                            <th width="20%" class="text-start">Pelanggan</th>
+                            <th width="12%">Tanggal Input</th>
+                            <th width="15%" class="text-end">Total Nilai</th>
+                            <th width="10%">Status Pesanan</th>
+                            <th width="10%">Status Bayar</th>
+                            <th width="13%">Panel Kendali Aksi</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        @forelse($pesanan as $p)
-                        <tr>
-                            <td class="ps-4 fw-bold text-dark">{{ $p->kode_pesanan }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ $p->customer->nama ?? $p->customer->name ?? '-' }}</div>
-                                <small class="text-muted">{{ $p->customer->telepon ?? '' }}</small>
-                            </td>
-                            <td>
-                                <small>{{ date('d M Y', strtotime($p->tanggal ?? $p->created_at)) }}</small>
-                            </td>
-                            <td class="fw-bold text-success">
-                                Rp {{ number_format($p->total_pesanan, 0, ',', '.') }}
-                            </td>
-                            <td class="text-center">
-                            @php
-                                $statusClasses = [
-                                    'pending'    => 'bg-warning text-dark',
-                                    'siap kirim' => 'bg-primary text-white',
-                                    'selesai'    => 'bg-success text-white',
-                                ];
-                                // Ditambahkan strtolower() agar huruf besar di database otomatis terbaca oleh array
-                                $class = $statusClasses[strtolower($p->status_pesanan)] ?? 'bg-secondary text-white';
-                             @endphp
-                            <span class="badge rounded-pill {{ $class }} px-3 py-2">{{ ucfirst($p->status_pesanan) }}</span>
-                            </td>
-                            <td class="text-center">
-                                @if($p->status_pembayaran == 'Belum Bayar')
-                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3">Belum Bayar</span>
-                                @elseif($p->status_pembayaran == 'DP')
-                                    <span class="badge bg-warning-subtle text-warning-dark border border-warning-subtle px-3">DP 30%</span>
-                                @else
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3">Lunas</span>
-                                @endif
-                            </td>
-                            <td class="text-center pe-4">
-                                <div class="d-flex justify-content-center gap-2">
-                                    @if($p->status_pembayaran != 'Lunas')
-                                        <button type="button" class="btn btn-sm btn-success rounded-3 px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalBayar{{ $p->id }}">
-                                            <i class="bi bi-cash-coin"></i> Bayar
-                                        </button>
+                    <tbody class="bg-white">
+                        @php $no = 1; @endphp
+                        @forelse($dataPesanan as $item)
+                            <tr>
+                                <td class="text-center text-secondary fw-medium">{{ $no++ }}</td>
+                                <td class="text-start fw-bold" style="color: #6a4126;">#{{ $item->kode_pesanan }}</td>
+                                <td class="text-start">
+                                    <div class="fw-semibold text-dark mb-0">{{ $item->customer->nama ?? $item->customer->name ?? 'Umum / Tanpa Nama' }}</div>
+                                    @if(isset($item->customer->telepon))
+                                        <span class="text-muted d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;"><i class="bi bi-telephone text-secondary"></i> {{ $item->customer->telepon }}</span>
                                     @endif
+                                </td>
+                                <td class="text-center text-secondary">
+                                    {{ date('d M Y', strtotime($item->tanggal ?? $item->tanggal_pesanan ?? $item->created_at)) }}
+                                </td>
+                                <td class="text-end fw-bold text-dark">
+                                    Rp {{ number_format($item->total_harga ?? $item->total_pesanan ?? 0, 0, ',', '.') }}
+                                </td>
+                                <td class="text-center">
+                                    @php
+                                        $statusStr = strtolower($item->status_pesanan ?? 'pending');
+                                        $statusClass = match($statusStr) {
+                                            'pending', 'draft' => 'badge-status-pending',
+                                            'proses' => 'badge-status-proses',
+                                            'ready', 'siap kirim' => 'badge-status-ready',
+                                            'selesai' => 'badge-status-selesai',
+                                            'batal', 'dibatalkan' => 'badge-status-batal',
+                                            default => 'badge-status-pending'
+                                        };
+                                    @endphp
+                                    <span class="badge-subtle {{ $statusClass }}">
+                                        {{ $item->status_pesanan }}
+                                    </span>
+                                </td>
+                                
+                                {{-- KOLOM STATUS BAYAR DIKEMBALIKAN --}}
+                                <td class="text-center">
+                                    @if(isset($item->status_pembayaran))
+                                        @if($item->status_pembayaran == 'Belum Bayar')
+                                            <span class="badge-subtle badge-status-batal">Belum Bayar</span>
+                                        @elseif($item->status_pembayaran == 'DP')
+                                            <span class="badge-subtle badge-status-pending">DP 60%</span>
+                                        @else
+                                            <span class="badge-subtle badge-status-selesai">Lunas</span>
+                                        @endif
+                                    @else
+                                        <span class="badge-subtle badge-status-batal">Belum Bayar</span>
+                                    @endif
+                                </td>
+                                
+                                <td class="text-center">
+                                    <div class="action-btn-group">
+                                        
+                                        {{-- 1. TOMBOL DETAIL (Selalu Ada) --}}
+                                        <a href="{{ route('pesanan.show', $item->id) }}" class="btn-action-base btn-action-eye" data-bs-toggle="tooltip" title="Lihat Detail">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </a>
 
-                                    <div class="dropdown">
-                                        <button class="btn btn-light btn-sm border shadow-sm" type="button" data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                            <li><a class="dropdown-item" href="{{ route('pesanan.show', $p->id) }}"><i class="bi bi-eye me-2 text-info"></i> Detail Pesanan</a></li>
-                                            <li><a class="dropdown-item" href="{{ route('pesanan.edit', $p->id) }}"><i class="bi bi-pencil me-2 text-warning"></i> Edit Data</a></li>
-                                            
-                                            <li><hr class="dropdown-divider"></li>
-                                            
-                                            @php
-                                                $noHp = $p->customer->telepon ?? '';
-                                                if (str_starts_with($noHp, '0')) { $noHp = '62' . substr($noHp, 1); }
-                                                
-                                                $pesanWA = "Halo *" . ($p->customer->nama ?? 'Pelanggan') . "*,\n\n";
-                                                $pesanWA .= "Terima kasih telah memesan di *Gaharu App*.\n";
-                                                $pesanWA .= "No. Pesanan: *" . $p->kode_pesanan . "*\n";
-                                                $pesanWA .= "Total Tagihan: *Rp " . number_format($p->total_pesanan, 0, ',', '.') . "*\n";
-                                                $pesanWA .= "Status Bayar: *" . $p->status_pembayaran . "*\n\n";
-                                                $pesanWA .= "Lihat detail kwitansi digital Anda di sini:\n";
-                                                $pesanWA .= route('pesanan.kwitansi', $p->id) . "\n\n";
-                                                $pesanWA .= "Salam hangat!";
-                                            @endphp
-                                            <li>
-                                                <a class="dropdown-item" href="https://api.whatsapp.com/send?phone={{ $noHp }}&text={{ urlencode($pesanWA) }}" target="_blank">
-                                                    <i class="bi bi-whatsapp me-2 text-success"></i> Kirim Kwitansi WA
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="{{ route('pesanan.kwitansi', $p->id) }}" target="_blank">
-                                                    <i class="bi bi-printer me-2 text-secondary"></i> Cetak Kwitansi
-                                                </a>
-                                            </li>
+                                        {{-- 2. TOMBOL EDIT (Hanya Muncul Jika Belum Masuk WO) --}}
+                                        @if(!isset($item->wo_status) || $item->wo_status === null)
+                                            <a href="{{ route('pesanan.edit', $item->id) }}" class="btn-action-base btn-action-edit" data-bs-toggle="tooltip" title="Edit Pesanan">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </a>
+                                        @endif
 
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <form action="{{ route('pesanan.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Hapus pesanan ini?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i> Hapus</button>
+                                        {{-- 3. TOMBOL BATAL (Hanya Muncul Jika Belum Batal & Belum Diproses WO) --}}
+                                        @if(strtolower($item->status_pesanan ?? '') !== 'dibatalkan' && strtolower($item->status_pesanan ?? '') !== 'batal')
+                                            @if(!isset($item->wo_status) || $item->wo_status === null || $item->wo_status === 'draft')
+                                                <form action="{{ route('pesanan.batal', $item->id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Batalkan pesanan ini?')">
+                                                    @csrf
+                                                    <button type="submit" class="btn-action-base btn-action-delete" data-bs-toggle="tooltip" title="Batalkan Transaksi">
+                                                        <i class="bi bi-x-circle-fill"></i>
+                                                    </button>
                                                 </form>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
+                                            @endif
+                                        @endif
 
-                                @if($p->status_pembayaran != 'Lunas')
-                                <div class="modal fade text-start" id="modalBayar{{ $p->id }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <form action="{{ route('pesanan.bayar', $p->id) }}" method="POST">
-                                            @csrf
-                                            <div class="modal-content border-0 shadow">
-                                                <div class="modal-header bg-success text-white border-0">
-                                                    <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i> Pembayaran {{ $p->kode_pesanan }}</h5>
-                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body p-4">
-                                                    @php
-                                                        // Hitung yang sudah dibayar dan sisa tagihan
-                                                        $sudahDibayar = $p->pembayaran->sum('jumlah_bayar') ?? 0;
-                                                        $sisaTagihan = $p->total_pesanan - $sudahDibayar;
+                                        {{-- 4. TOMBOL HAPUS (Hanya Muncul Jika Belum Masuk WO) --}}
+                                        @if(!isset($item->wo_status) || $item->wo_status === null)
+                                            <form action="{{ route('pesanan.destroy', $item->id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                                                @csrf 
+                                                @method('DELETE')
+                                                <button type="submit" class="btn-action-base btn-action-delete" data-bs-toggle="tooltip" title="Hapus Permanen">
+                                                    <i class="bi bi-trash3-fill"></i>
+                                                </button>
+                                            </form>
+                                        @endif
 
-                                                        $minimalDP = $p->total_pesanan * 0.30;
-                                                        $minInput = ($p->status_pembayaran == 'Belum Bayar') ? $minimalDP : 1;
-                                                    @endphp
-
-                                                    <div class="card bg-light border-0 mb-3">
-                                                        <div class="card-body">
-                                                            <small class="text-muted d-block">Total Tagihan:</small>
-                                                            <h4 class="fw-bold text-dark">Rp {{ number_format($p->total_pesanan, 0, ',', '.') }}</h4>
-                                                            @if($p->status_pembayaran == 'Belum Bayar')
-                                                                <span class="text-danger small"><i class="bi bi-info-circle"></i> Minimal DP 30%: <strong>Rp {{ number_format($minimalDP, 0, ',', '.') }}</strong></span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-semibold">Jumlah Bayar (Rp)</label>
-                                                        <div class="input-group">
-                                                            <span class="input-group-text bg-white">Rp</span>
-                                                            <input type="number" name="jumlah_bayar" class="form-control" 
-                                                                   min="{{ $minInput }}" 
-                                                                   max="{{ $sisaTagihan }}" 
-                                                                   placeholder="Maks: {{ number_format($sisaTagihan, 0, ',', '.') }}" 
-                                                                   required>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between mt-1">
-                                                            @if($p->status_pembayaran == 'Belum Bayar')
-                                                                <small class="text-danger">Min. DP: Rp {{ number_format($minimalDP, 0, ',', '.') }}</small>
-                                                            @else
-                                                                <small class="text-muted">Sisa Tagihan: Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</small>
-                                                            @endif
-                                                            <small class="text-muted">Maks: Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</small>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="row">
-                                                        <div class="col-md-6 mb-3">
-                                                            <label class="form-label fw-semibold">Tanggal</label>
-                                                            <input type="date" name="tanggal_bayar" class="form-control" value="{{ date('Y-m-d') }}" required>
-                                                        </div>
-                                                        <div class="col-md-6 mb-3">
-                                                            <label class="form-label fw-semibold">Metode</label>
-                                                            <select name="metode_pembayaran" class="form-select" required>
-                                                                <option value="Cash">Cash</option>
-                                                                <option value="Transfer">Transfer</option>
-                                                                <option value="QRIS">QRIS</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="mb-0">
-                                                        <label class="form-label fw-semibold">Catatan</label>
-                                                        <textarea name="catatan" class="form-control" rows="2" placeholder="Nama bank / pengirim..."></textarea>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer border-0 p-4 pt-0">
-                                                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Batal</button>
-                                                    <button type="submit" class="btn btn-success px-4 shadow-sm">Simpan Pembayaran</button>
-                                                </div>
+                                        {{-- 5. TOMBOL KASIR / BAYAR CEPAT MODAL --}}
+                                        @if(isset($item->status_pembayaran) && $item->status_pembayaran != 'Lunas' && strtolower($item->status_pesanan ?? '') != 'dibatalkan' && strtolower($item->status_pesanan ?? '') != 'batal')
+                                            <div class="ms-1">
+                                                <button type="button" class="btn-pay-small" data-bs-toggle="modal" data-bs-target="#modalBayar{{ $item->id }}">
+                                                    <i class="bi bi-wallet2"></i> Bayar
+                                                </button>
                                             </div>
-                                        </form>
+                                        @endif
+
                                     </div>
-                                </div>
-                                @endif
-                            </td>
-                        </tr>
+
+                                    {{-- MODAL PEMBAYARAN UTUH ASLI DARI KODE ANDA --}}
+                                    @if(isset($item->status_pembayaran) && $item->status_pembayaran != 'Lunas' && strtolower($item->status_pesanan ?? '') != 'dibatalkan' && strtolower($item->status_pesanan ?? '') != 'batal')
+                                    <div class="modal fade text-start" id="modalBayar{{ $item->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <form action="{{ route('pesanan.bayar', $item->id) }}" method="POST" class="w-100">
+                                                @csrf
+                                                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                                                    <div class="modal-header text-white border-0 p-4" style="background-color: #6a4126;">
+                                                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2"><i class="bi bi-shield-check"></i> Form Input Pembayaran</h5>
+                                                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body p-4 bg-white">
+                                                        @php
+                                                            $totalNilai = $item->total_harga ?? $item->total_pesanan ?? 0;
+                                                            $sudahDibayar = isset($item->pembayaran) ? $item->pembayaran->sum('jumlah_bayar') : 0;
+                                                            $sisaTagihan = $totalNilai - $sudahDibayar;
+                                                            $minimalDP = $totalNilai * 0.60;
+                                                            $minInput = ($item->status_pembayaran == 'Belum Bayar') ? $minimalDP : 1;
+                                                        @endphp
+
+                                                        <div class="p-3 rounded-3 mb-4" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                                            <span class="text-muted d-block small mb-1">Invoice: <strong class="text-dark">#{{ $item->kode_pesanan }}</strong></span>
+                                                            <span class="text-muted d-block small">Total Piutang Kontrak:</span>
+                                                            <h3 class="fw-bold text-dark mb-2">Rp {{ number_format($totalNilai, 0, ',', '.') }}</h3>
+                                                            @if($item->status_pembayaran == 'Belum Bayar')
+                                                                <div class="text-danger small fw-medium"><i class="bi bi-info-circle-fill"></i> Pembayaran awal (DP minimal 60%): <strong>Rp {{ number_format($minimalDP, 0, ',', '.') }}</strong></div>
+                                                            @else
+                                                                <div class="text-muted small">Sisa Pelunasan: <strong class="text-success">Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</strong></div>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold small text-secondary">Jumlah Bayar (Rp)</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text bg-light border-end-0 fw-semibold text-muted">Rp</span>
+                                                                <input type="number" name="jumlah_bayar" class="form-control border-start-0" min="{{ $minInput }}" max="{{ $sisaTagihan }}" placeholder="Maksimal Rp {{ number_format($sisaTagihan, 0, '', '') }}" required style="outline: none; box-shadow: none;">
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="row">
+                                                            <div class="col-md-6 mb-3">
+                                                                <label class="form-label fw-semibold small text-secondary">Tanggal Bayar</label>
+                                                                <input type="date" name="tanggal_bayar" class="form-control" value="{{ date('Y-m-d') }}" required>
+                                                            </div>
+                                                            <div class="col-md-6 mb-3">
+                                                                <label class="form-label fw-semibold small text-secondary">Metode</label>
+                                                                <select name="metode_pembayaran" class="form-select text-secondary" required>
+                                                                    <option value="Cash">Cash / Tunai</option>
+                                                                    <option value="Transfer">Transfer Bank</option>
+                                                                    <option value="QRIS">QRIS</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="mb-0">
+                                                            <label class="form-label fw-semibold small text-secondary">Catatan Tambahan</label>
+                                                            <textarea name="catatan" class="form-control" rows="2" placeholder="Nama bank pengirim, nomor referensi..."></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-0 p-4 pt-0 bg-white">
+                                                        <button type="button" class="btn btn-light px-4 rounded-3 text-secondary" data-bs-dismiss="modal" style="font-size:0.85rem; font-weight:600;">Kembali</button>
+                                                        <button type="submit" class="btn btn-custom-orange px-4 rounded-3 fw-semibold border-0">Simpan Bayar</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    @endif
+                                </td>
+                            </tr>
                         @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                Belum ada data pesanan
-                            </td>
-                        </tr>
+                            <tr>
+                                <td colspan="8" class="text-center py-5 bg-white">
+                                    <div class="py-4">
+                                        <i class="bi bi-folder-x text-muted opacity-40 display-4 d-block mb-3"></i>
+                                        <span class="fw-semibold text-dark d-block">Belum Ada Data Kontrak</span>
+                                        <span class="small text-muted">Seluruh pesanan baru akan muncul di sini.</span>
+                                    </div>
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-</div>
 
-<style>
-    .table thead th { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: none; }
-    .table tbody td { border-bottom-color: #f8f9fa; }
-    .badge { font-weight: 500; padding: 0.5em 1em; }
-    .text-warning-dark { color: #856404; }
-    .dropdown-item { padding: 0.6rem 1.2rem; font-size: 0.9rem; }
-    .dropdown-item i { width: 20px; }
-    .btn-success-subtle { background-color: #d1e7dd; color: #0f5132; }
-    .bg-light { background-color: #f8f9fa !important; }
-</style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+        });
+    </script>
 </x-app-layout>

@@ -7,6 +7,7 @@ use App\Models\PesananDetail;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use App\Models\MasterBarang;
+use App\Models\WorkOrder;
 use App\Models\WorkOrderDetail;
 use App\Models\Pembayaran;
 
@@ -17,7 +18,18 @@ class PesananController extends Controller
      */
     public function index()
     {
-        $pesanan = Pesanan::with('customer')->get();
+        $pesanan = Pesanan::with(['customer', 'pembayaran'])->orderBy('created_at', 'desc')->get();
+
+        // Ambil status WO secara realtime untuk dilempar ke sistem UI Blade
+        foreach ($pesanan as $p) {
+            $woDetail = WorkOrderDetail::where('pesanan_id', $p->id)->first();
+            if ($woDetail) {
+                $wo = WorkOrder::find($woDetail->work_order_id);
+                $p->wo_status = $wo ? strtolower($wo->status_wo) : null;
+            } else {
+                $p->wo_status = null;
+            }
+        }
 
         return view('pesanan.index', compact('pesanan'));
     }
@@ -28,13 +40,9 @@ class PesananController extends Controller
     public function create()
     {
         $customers = Customer::all();
-
         $produk = MasterBarang::where('is_barang_jadi', 1)->get();
 
-        return view('pesanan.create', compact(
-            'customers',
-            'produk'
-        ));
+        return view('pesanan.create', compact('customers', 'produk'));
     }
 
     /**
@@ -49,38 +57,23 @@ class PesananController extends Controller
             'estimasi_kirim' => $request->estimasi_kirim,
             'total_pesanan' => $request->total_pesanan,
             'status_pesanan' => 'pending',
-            'status_pembayaran' => 'Belum Bayar', // Pastikan defaultnya ini
+            'status_pembayaran' => 'Belum Bayar',
             'created_by' => auth()->id(),
         ]);
     
-        // simpan detail pesanan
         foreach ($request->produk_id as $key => $produk) {
-
-            // skip kalau produk kosong
-            if (!$produk) {
-                continue;
-            }
+            if (!$produk) continue;
 
             PesananDetail::create([
-
                 'pesanan_id' => $pesanan->id,
-
                 'produk_id' => $produk,
-
                 'qty' => $request->qty[$key],
-
                 'harga' => $request->harga[$key],
-
                 'subtotal' => $request->subtotal[$key],
             ]);
         }
 
-        return redirect()
-            ->route('pesanan.index')
-            ->with(
-                'success',
-                'Pesanan berhasil ditambahkan'
-            );
+        return redirect()->route('pesanan.index')->with('success', 'Pesanan B2B baru berhasil ditambahkan');
     }
 
     /**
@@ -88,15 +81,8 @@ class PesananController extends Controller
      */
     public function show(string $id)
     {
-        $pesanan = Pesanan::with([
-            'customer',
-            'details.produk'
-        ])->findOrFail($id);
-
-        return view(
-            'pesanan.show',
-            compact('pesanan')
-        );
+        $pesanan = Pesanan::with(['customer', 'details.produk'])->findOrFail($id);
+        return view('pesanan.show', compact('pesanan'));
     }
 
     /**
@@ -104,41 +90,19 @@ class PesananController extends Controller
      */
     public function edit(string $id)
     {
-        $pesanan = Pesanan::with(
-            'details.produk'
-        )->findOrFail($id);
+        $pesanan = Pesanan::with('details.produk')->findOrFail($id);
 
-        // cek apakah pesanan sudah masuk WO
-        $sudahWO = WorkOrderDetail::where(
-            'pesanan_id',
-            $pesanan->id
-        )->exists();
-
+        // PROTEKSI NYATA: Jika sudah terdaftar di WO (baik draft/proses), blokir akses edit via URL
+        $sudahWO = WorkOrderDetail::where('pesanan_id', $pesanan->id)->exists();
         if ($sudahWO) {
-
-            return redirect()
-                ->route('pesanan.index')
-                ->with(
-                    'error',
-                    'Pesanan tidak bisa diedit karena sudah masuk Work Order'
-                );
+            return redirect()->route('pesanan.index')
+                ->with('error', 'Gagal membuka form! Kontrak pesanan ini sudah diproses ke dalam antrean Work Order.');
         }
 
         $customers = Customer::all();
+        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
 
-        $produk = MasterBarang::where(
-            'is_barang_jadi',
-            1
-        )->get();
-
-        return view(
-            'pesanan.edit',
-            compact(
-                'pesanan',
-                'customers',
-                'produk'
-            )
-        );
+        return view('pesanan.edit', compact('pesanan', 'customers', 'produk'));
     }
 
     /**
@@ -150,16 +114,11 @@ class PesananController extends Controller
     
         // update header pesanan
         $pesanan->update([
-    
             'customer_id' => $request->customer_id,
-    
             'tanggal' => $request->tanggal,
-    
             'estimasi_kirim' => $request->estimasi_kirim,
-    
             'total_pesanan' => $request->total_pesanan,
-    
-            'status_pesanan' => $request->status_pesanan,
+            //'status_pesanan' => $request->status_pesanan,
         ]);
     
         // hapus detail lama
@@ -176,54 +135,61 @@ class PesananController extends Controller
             }
     
             PesananDetail::create([
-    
                 'pesanan_id' => $pesanan->id,
-    
                 'produk_id' => $produk,
-    
                 'qty' => $request->qty[$key],
-    
                 'harga' => $request->harga[$key],
-    
                 'subtotal' => $request->subtotal[$key],
             ]);
         }
+    
+        // ===================================================================
+        // TAMBAHKAN LOGIKA OTOMATIS HITUNG ULANG STATUS PEMBAYARAN DI SINI
+        // ===================================================================
+        // 1. Hitung total uang yang sudah pernah dibayarkan sebelumnya
+        $totalBayarSelesai = $pesanan->pembayaran()->sum('jumlah_bayar');
+    
+        // 2. Bandingkan dengan total_pesanan yang baru setelah di-edit
+        if ($totalBayarSelesai >= $pesanan->total_pesanan) {
+            // Jika uang yang masuk pas atau lebih, status jadi Lunas
+            $pesanan->update(['status_pembayaran' => 'Lunas']);
+        } elseif ($totalBayarSelesai > 0) {
+            // Jika uang masuk kurang dari total baru tapi sudah pernah bayar, status turun ke DP
+            $pesanan->update(['status_pembayaran' => 'DP']);
+        } else {
+            // Jika memang belum pernah ada pembayaran sama sekali
+            $pesanan->update(['status_pembayaran' => 'Belum Bayar']);
+        }
+        // ===================================================================
     
         return redirect()
             ->route('pesanan.index')
             ->with(
                 'success',
-                'Pesanan berhasil diupdate'
+                'Pesanan berhasil diupdate dan status keuangan disesuaikan'
             );
     }
 
+    /**
+     * Simpan Pembayaran Modal (DP / Lunas)
+     */
     public function simpanPembayaran(Request $request, $id)
     {
         $pesanan = Pesanan::findOrFail($id);
-    
-        // Hitung uang yang sudah masuk sebelumnya
         $totalBayarSebelumnya = $pesanan->pembayaran()->sum('jumlah_bayar');
-        
-        // Hitung sisa tagihan
         $sisaTagihan = $pesanan->total_pesanan - $totalBayarSebelumnya;
     
-        // Tentukan minimal pembayaran (30% jika belum bayar, Rp 1 jika sudah DP)
         $minBayar = 1;
         if ($totalBayarSebelumnya == 0) {
             $minBayar = $pesanan->total_pesanan * 0.30;
         }
     
-        // Tambahkan validasi max:$sisaTagihan
         $request->validate([
             'tanggal_bayar' => 'required|date',
             'jumlah_bayar' => 'required|numeric|min:' . $minBayar . '|max:' . $sisaTagihan,
             'metode_pembayaran' => 'required|string'
-        ], [
-            'jumlah_bayar.min' => 'Pembayaran minimal adalah Rp ' . number_format($minBayar, 0, ',', '.') . '.',
-            'jumlah_bayar.max' => 'Pembayaran ditolak! Jumlah bayar tidak boleh melebihi sisa tagihan (Maks: Rp ' . number_format($sisaTagihan, 0, ',', '.') . ').'
         ]);
     
-        // 1. Simpan data ke tabel pembayaran
         Pembayaran::create([
             'pesanan_id' => $pesanan->id,
             'tanggal_bayar' => $request->tanggal_bayar,
@@ -233,17 +199,15 @@ class PesananController extends Controller
             'created_by' => auth()->id()
         ]);
     
-        // 2. Hitung total uang yang sudah masuk SETELAH pembayaran ini
         $totalBayarBaru = $totalBayarSebelumnya + $request->jumlah_bayar;
     
-        // 3. Update status pembayaran di tabel Pesanan
         if ($totalBayarBaru >= $pesanan->total_pesanan) {
             $pesanan->update(['status_pembayaran' => 'Lunas']);
         } elseif ($totalBayarBaru > 0) {
             $pesanan->update(['status_pembayaran' => 'DP']);
         }
     
-        return back()->with('success', 'Pembayaran berhasil disimpan. Status pesanan diperbarui!');
+        return back()->with('success', 'Catatan kas masuk berhasil divalidasi!');
     }
 
     /**
@@ -253,43 +217,48 @@ class PesananController extends Controller
     {
         $pesanan = Pesanan::findOrFail($id);
 
-        // cek apakah sudah masuk WO
-        $sudahWO = WorkOrderDetail::where(
-            'pesanan_id',
-            $pesanan->id
-        )->exists();
-
+        // PROTEKSI NYATA: Jika sudah masuk WO, tidak boleh dihapus sama sekali
+        $sudahWO = WorkOrderDetail::where('pesanan_id', $pesanan->id)->exists();
         if ($sudahWO) {
-
-            return redirect()
-                ->route('pesanan.index')
-                ->with(
-                    'error',
-                    'Pesanan tidak bisa dihapus karena sudah masuk Work Order'
-                );
+            return redirect()->route('pesanan.index')
+                ->with('error', 'Data tidak bisa dihapus karena relasi logistik Work Order (WO) sudah terbentuk.');
         }
 
-        // hapus detail dulu
-        PesananDetail::where(
-            'pesanan_id',
-            $pesanan->id
-        )->delete();
-
-        // hapus header
+        PesananDetail::where('pesanan_id', $pesanan->id)->delete();
         $pesanan->delete();
 
-        return redirect()
-            ->route('pesanan.index')
-            ->with(
-                'success',
-                'Pesanan berhasil dihapus'
-            );
+        return redirect()->route('pesanan.index')->with('success', 'Kontrak pesanan berhasil dihapus permanen');
     }
-    public function kwitansi($id)
-{
-    // Ambil data pesanan beserta customer dan riwayat pembayarannya
-    $pesanan = Pesanan::with(['customer', 'pembayaran'])->findOrFail($id);
     
-    return view('pesanan.kwitansi', compact('pesanan'));
-}
+    /**
+     * Batalkan Pesanan Kontrak
+     */
+    public function batal($id)
+    {
+        $pesanan = Pesanan::findOrFail($id);
+    
+        $woDetail = WorkOrderDetail::where('pesanan_id', $pesanan->id)->first();
+        if ($woDetail) {
+            $workOrder = WorkOrder::find($woDetail->work_order_id);
+    
+            // PROTEKSI NYATA: Jika WO berstatus selain draft (misal 'diproses'), gagalkan pembatalan
+            if ($workOrder && strtolower($workOrder->status_wo) !== 'draft') {
+                return redirect()->route('pesanan.index')
+                    ->with('error', 'Pembatalan ditolak! Dapur utama telah memproses bahan baku untuk pesanan ini.');
+            }
+        }
+    
+        $pesanan->update(['status_pesanan' => 'dibatalkan']);
+    
+        return redirect()->route('pesanan.index')->with('success', 'Status kontrak pesanan resmi dibatalkan.');
+    }
+
+    /**
+     * Kwitansi Cetak
+     */
+    public function kwitansi($id)
+    {
+        $pesanan = Pesanan::with(['customer', 'pembayaran'])->findOrFail($id);
+        return view('pesanan.kwitansi', compact('pesanan'));
+    }
 }

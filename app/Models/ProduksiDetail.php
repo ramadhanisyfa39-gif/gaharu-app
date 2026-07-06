@@ -9,7 +9,13 @@ class ProduksiDetail extends Model
     protected $table = 'produksi_detail';
     protected $fillable = ['produksi_id', 'produk_id', 'qty'];
 
-public function produksi() {
-    return $this->belongsTo(Produksi::class, 'produksi_id');
-}
+    // Relasi ke Header Produksi
+    public function produksi() {
+        return $this->belongsTo(Produksi::class, 'produksi_id');
+    }
+
+    // TAMBAHKAN RELASI INI: Relasi ke Master Barang / Produk
+    public function produk() {
+        return $this->belongsTo(MasterBarang::class, 'produk_id');
+    }
 }

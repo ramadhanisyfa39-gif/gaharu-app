@@ -1,57 +1,173 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Daftar Surat Jalan Pengiriman') }}
-        </h2>
-    </x-slot>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            
-            @if(session('success'))
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                    {{ session('success') }}
-                </div>
-            @endif
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f9fa; }
+        .table-custom-header th { background-color: #6a4126 !important; color: #ffffff !important; font-weight: 600; border-bottom: none; font-size: 0.85rem; padding: 12px; }
+        .table-custom-body td { font-size: 0.85rem; padding: 12px; vertical-align: middle; }
+        .btn-custom-orange { background-color: #db7946; color: white; border: none; }
+        .btn-custom-orange:hover { background-color: #c06535; color: white; }
+        .summary-card { border-radius: 12px; border: 1px solid #eaeaea; background: #ffffff; padding: 16px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        /* Badge Styling persis gambar */
+        .badge-draft { background-color: #ffc107; color: #000; border-radius: 6px; padding: 5px 12px; font-weight: 600; font-size: 0.75rem; }
+        .badge-approved { background-color: #d97745; color: #fff; border-radius: 6px; padding: 5px 12px; font-weight: 600; font-size: 0.75rem; }
+        
+        /* Action Buttons Styling */
+        .action-btn { border-radius: 4px; padding: 4px 10px; font-size: 0.85rem; border: none; font-weight: 500;}
+        .btn-eye { background-color: #17a2b8; color: white; }
+        .btn-edit { background-color: #ffc107; color: black; }
+        .btn-approve { background-color: #198754; color: white; } /* Diubah dari btn-check agar tidak bentrok dengan Bootstrap */
+        
+        .btn-eye:hover { background-color: #138496; color: white; }
+        .btn-edit:hover { background-color: #e0a800; color: black; }
+        .btn-approve:hover { background-color: #157347; color: white; }
+    </style>
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                
-                {{-- 1. PERUBAHAN DI SINI: Membuat Header Flexbox dan Menambahkan Tombol --}}
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-700">Riwayat Pengiriman Logistik</h3>
-                    <a href="{{ route('pengiriman.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-sm shadow transition duration-150">
-                        + Buat Surat Jalan Baru
-                    </a>
+    <div class="container-fluid py-4 mb-5">
+        
+        {{-- HEADER SECTION --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-1 fw-bold text-dark">Pengiriman Surat Jalan</h4>
+                <p class="text-muted mb-0 small">Manajemen pengiriman stok barang dan surat jalan</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('dashboard') }}" class="btn btn-secondary text-white rounded-3 shadow-sm px-3 action-btn d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+                <a href="{{ route('pengiriman.create') }}" class="btn btn-custom-orange rounded-3 shadow-sm px-3 action-btn d-flex align-items-center gap-2">
+                    <i class="bi bi-plus-circle"></i> Tambah
+                </a>
+            </div>
+        </div>
+
+        {{-- SUMMARY CARDS --}}
+        @php
+            $totalData = $pengirimans->count();
+            $totalDraft = $pengirimans->where('status_pengiriman', 'Draft')->count();
+            $totalApproved = $pengirimans->where('status_pengiriman', 'Selesai')->count();
+        @endphp
+        <div class="row mb-4 g-3">
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-dark mb-1 d-block fw-medium small">Total Pengiriman</span>
+                    <h4 class="fw-bold text-dark mb-0">{{ $totalData }}</h4>
                 </div>
-                
-                <table class="min-w-full divide-y divide-gray-200 border">
-                    <thead class="bg-gray-50">
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-dark mb-1 d-block fw-medium small">Draft</span>
+                    <h4 class="fw-bold text-warning mb-0">{{ $totalDraft }}</h4>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <span class="text-dark mb-1 d-block fw-medium small">Approved</span>
+                    <h4 class="fw-bold text-success mb-0">{{ $totalApproved }}</h4>
+                </div>
+            </div>
+        </div>
+
+        {{-- ALERTS (Notifikasi) --}}
+        @if(session('success'))
+            <div class="alert alert-success d-flex align-items-center rounded-3 shadow-sm border-0 mb-4 small" role="alert" style="background-color: #d1e7dd; color: #0f5132;">
+                <i class="bi bi-check-circle-fill me-2 flex-shrink-0"></i>
+                <div>{{ session('success') }}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger d-flex align-items-center rounded-3 shadow-sm border-0 mb-4 small" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0"></i>
+                <div>{{ session('error') }}</div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        {{-- MAIN TABLE CARD --}}
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-custom-body">
+                    <thead class="table-custom-header text-center">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No Pengiriman</th>
-                            {{-- 2. PERUBAHAN DI SINI: Mengubah judul kolom menjadi Kode Pesanan --}}
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kode Pesanan</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal Kirim</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kurir / Armada</th>
+                            <th width="5%" class="py-3">No</th>
+                            <th width="18%" class="text-start">No Pengiriman</th>
+                            <th width="15%" class="text-start">Kode Pesanan</th>
+                            <th width="15%">Tanggal Kirim</th>
+                            <th class="text-start">Kurir / Armada</th>
+                            <th width="10%">Status</th>
+                            <th width="20%">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white">
+                        @php $no = 1; @endphp
                         @forelse($pengirimans as $kirim)
-                        <tr>
-                            <td class="px-6 py-4 text-sm font-bold text-indigo-600">{{ $kirim->no_pengiriman }}</td>
-                            {{-- 3. PERUBAHAN DI SINI: Memanggil kode_pesanan melalui relasi baru --}}
-                            <td class="px-6 py-4 text-sm text-gray-900">{{ $kirim->pesanan->kode_pesanan ?? '-' }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">{{ $kirim->tanggal_pengiriman }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-900">{{ $kirim->kurir }}</td>
-                        </tr>
+                            <tr>
+                                <td class="text-center text-secondary">{{ $no++ }}</td>
+                                <td class="text-start fw-bold text-dark">{{ $kirim->no_pengiriman }}</td>
+                                <td class="text-start text-dark fw-medium">{{ $kirim->pesanan->kode_pesanan ?? '-' }}</td>
+                                <td class="text-center text-secondary">
+                                    {{ \Carbon\Carbon::parse($kirim->tanggal_pengiriman)->format('Y-m-d') }}
+                                </td>
+                                <td class="text-start text-dark fw-medium">{{ $kirim->kurir }}</td>
+                                <td class="text-center">
+                                    @if($kirim->status_pengiriman === 'Draft')
+                                        <span class="badge-draft">Draft</span>
+                                    @else
+                                        <span class="badge-approved">Approved</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        
+                                        {{-- Tombol Detail (Mata Cyan) --}}
+                                        <a href="{{ route('pengiriman.show', $kirim->id) }}" class="btn action-btn btn-eye shadow-sm" title="Lihat Detail">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        @if($kirim->status_pengiriman === 'Draft')
+                                            
+                                            {{-- Tombol Edit (Kuning) --}}
+                                            <a href="{{ route('pengiriman.edit', $kirim->id) }}" class="btn action-btn btn-edit shadow-sm text-dark d-flex align-items-center" title="Edit">
+                                                Edit
+                                            </a>
+
+                                            {{-- Tombol Approve (Centang Hijau) --}}
+                                            <form action="{{ route('pengiriman.approve', $kirim->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Approve surat jalan ini? Stok barang akan dipotong secara permanen.')">
+                                                @csrf
+                                                <button type="submit" class="btn action-btn btn-approve shadow-sm" title="Approve">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
+                                            </form>
+
+                                            {{-- Tombol Hapus (Merah) --}}
+                                            <form action="{{ route('pengiriman.destroy', $kirim->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus draft ini?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn action-btn bg-danger text-white shadow-sm" title="Hapus">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+                                        
+                                    </div>
+                                </td>
+                            </tr>
                         @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-4 text-sm text-center text-gray-400">Belum ada pengiriman barang dilakukan.</td>
-                        </tr>
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                        Belum ada riwayat pengiriman logistik.
+                                    </div>
+                                </td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-
         </div>
     </div>
 </x-app-layout>

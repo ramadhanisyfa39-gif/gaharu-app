@@ -7,20 +7,28 @@
 
         <div>
             <a href="{{ route('penjualan_pos.laporan') }}"
-               class="btn btn-success px-4 me-2">
+               class="btn btn-success px-4 me-2 shadow-sm">
                📊 Lihat Laporan
             </a>
 
             <a href="{{ route('penjualan_pos.create') }}"
-               class="btn btn-primary px-4">
-               + Tambah
+               class="btn btn-primary px-4 shadow-sm">
+               + Tambah Transaksi
             </a>
         </div>
     </div>
 
     @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     @endif
 
@@ -32,81 +40,75 @@
 
                     <thead class="table-dark">
                         <tr>
-                            <th class="ps-3">Kode</th>
+                            <th class="ps-3">Kode Transaksi</th>
                             <th>Tanggal</th>
-                            <th>Gudang</th>
+                            <th>Gudang / Outlet</th>
                             <th class="text-end">Total Omzet</th>
-                            <th class="text-end">Total HPP</th>
-                            <th class="text-end">Laba Kotor</th>
-                            <th class="text-center" style="min-width: 180px;">Aksi</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
 
                     <tbody>
-
-                        @foreach($data as $item)
-                        @php
-                            /**
-                             * Menghitung total HPP per transaksi dari relasi detail.
-                             * Pastikan 'details' sesuai dengan nama fungsi relasi di Model PenjualanPos
-                             */
-                            $totalHpp = $item->details ? $item->details->sum(fn($d) => $d->hpp_satuan * $d->qty) : 0;
-                            $labaKotor = $item->total - $totalHpp;
-                        @endphp
-
+                        @forelse($data as $item)
                         <tr>
-                            <td class="ps-3 fw-semibold text-secondary">{{ $item->kode_transaksi }}</td>
-
-                            <td>
-                                {{ \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y H:i') }}
-                            </td>
-
-                            <td>{{ $item->gudang->nama }}</td>
-
-                            <td class="text-end fw-medium">
+                            <td class="ps-3 fw-bold text-primary">{{ $item->kode_transaksi }}</td>
+                            <td>{{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y, H:i') }}</td>
+                            <td>{{ $item->gudang->nama ?? '-' }}</td>
+                            
+                            <td class="text-end fw-bold text-dark">
                                 Rp {{ number_format($item->total, 0, ',', '.') }}
                             </td>
 
-                            <td class="text-end text-muted">
-                                Rp {{ number_format($totalHpp, 0, ',', '.') }}
-                            </td>
-
-                            <td class="text-end fw-bold text-success">
-                                Rp {{ number_format($labaKotor, 0, ',', '.') }}
+                            <td class="text-center">
+                                @if(($item->status ?? 'Draft') === 'Draft')
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Draft</span>
+                                @else
+                                    <span class="badge bg-success px-3 py-2 rounded-pill">Approved</span>
+                                @endif
                             </td>
 
                             <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1">
+                                    {{-- Tombol Detail selalu muncul --}}
+                                    <a href="{{ route('penjualan_pos.show', $item->id) }}"
+                                       class="btn btn-info btn-sm text-white shadow-sm" title="Lihat Detail">
+                                        Detail
+                                    </a>
 
-                                <a href="{{ route('penjualan_pos.show', $item->id) }}"
-                                   class="btn btn-info btn-sm text-white">
-                                    Detail
-                                </a>
+                                    @if(($item->status ?? 'Draft') === 'Draft')
+                                        {{-- Tombol Approve --}}
+                                        <form action="{{ route('penjualan_pos.approve', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin menyetujui transaksi ini? Stok Bahan Baku akan dipotong permanen berdasarkan FIFO.')">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success btn-sm shadow-sm" title="Approve Transaksi">
+                                                Approve
+                                            </button>
+                                        </form>
 
-                                <a href="{{ route('penjualan_pos.edit', $item->id) }}"
-                                   class="btn btn-warning btn-sm text-white">
-                                    Edit
-                                </a>
+                                        {{-- Tombol Edit --}}
+                                        <a href="{{ route('penjualan_pos.edit', $item->id) }}"
+                                           class="btn btn-warning btn-sm text-dark shadow-sm" title="Edit Transaksi">
+                                            Edit
+                                        </a>
 
-                                <form action="{{ route('penjualan_pos.destroy', $item->id) }}"
-                                   method="POST"
-                                   class="d-inline">
-
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button type="submit"
-                                            class="btn btn-danger btn-sm"
-                                            onclick="return confirm('Hapus data?')">
-                                        Hapus
-                                    </button>
-
-                                </form>
-
+                                        {{-- Tombol Hapus --}}
+                                        <form action="{{ route('penjualan_pos.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus draft transaksi ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger btn-sm shadow-sm" title="Hapus Transaksi">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
 
                         </tr>
-
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Belum ada data penjualan POS.</td>
+                        </tr>
+                        @endforelse
 
                     </tbody>
 

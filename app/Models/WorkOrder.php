@@ -22,9 +22,6 @@ class WorkOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function pesanan()
-    {
-        return $this->belongsTo(Pesanan::class, 'pesanan_id');
-    }
+    //public function pesanan(){ return $this->belongsTo(Pesanan::class, 'pesanan_id');  }
 
 }

@@ -19,12 +19,16 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $table = 'users';
-    protected $fillable = ['nama', 'username', 'password', 'role_id'];
-
+    protected $fillable = ['nama', 'username', 'password', 'role_id', 'gudang_id']; // <--- Tambah gudang_id
     public function role()
     {
         return $this->belongsTo(Role::class);
     }
+
+    public function gudang()
+{
+    return $this->belongsTo(MasterGudang::class, 'gudang_id');
+}
 
     /**
      * The attributes that should be hidden for serialization.

@@ -15,7 +15,8 @@
                 <h2 class="fw-bold mb-0">Detail Pesanan</h2>
                 <small class="text-muted">Informasi lengkap transaksi pesanan</small>
             </div>
-            <a href="{{ route('pesanan.index') }}" class="btn btn-secondary">Kembali</a>
+            <a href="{{ route('pesanan.index') }}" class="btn btn-secondary btn-sm shadow-sm">
+            <i class="bi bi-arrow-left"></i> Kembali</a>
         </div>
 
         <div class="card border-0 shadow-sm mb-4">

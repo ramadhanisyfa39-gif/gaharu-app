@@ -9,11 +9,36 @@
             <a href="{{ route('penjualan_pos.index') }}" class="btn btn-outline-secondary me-2 px-4">
                 Kembali
             </a>
-            <a href="{{ route('penjualan_pos.edit', $penjualan->id) }}" class="btn btn-warning px-4 text-dark fw-medium">
-                Edit Transaksi
-            </a>
+
+            {{-- TOMBOL EDIT DAN APPROVE HANYA MUNCUL JIKA STATUS MASIH DRAFT --}}
+            @if(($penjualan->status ?? 'Draft') === 'Draft')
+                <a href="{{ route('penjualan_pos.edit', $penjualan->id) }}" class="btn btn-warning px-4 text-dark fw-medium me-2">
+                    Edit Transaksi
+                </a>
+
+                <form action="{{ route('penjualan_pos.approve', $penjualan->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin menyetujui transaksi ini? Stok Bahan Baku akan dipotong permanen berdasarkan FIFO.')">
+                    @csrf
+                    <button type="submit" class="btn btn-success px-4 fw-medium">
+                        <i class="bi bi-check-circle me-1"></i> Approve
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
     @php
         $totalHpp = $penjualan->details ? $penjualan->details->sum(fn($d) => $d->hpp_satuan * $d->qty) : 0;
@@ -42,6 +67,16 @@
                         <tr>
                             <td class="text-muted">Input Oleh</td>
                             <td>: {{ $penjualan->creator->name ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status</td>
+                            <td>: 
+                                @if(($penjualan->status ?? 'Draft') === 'Draft')
+                                    <span class="badge bg-warning text-dark">Draft</span>
+                                @else
+                                    <span class="badge bg-success">Approved</span>
+                                @endif
+                            </td>
                         </tr>
                     </table>
                 </div>

@@ -176,7 +176,8 @@
                             return response.json();
                         })
                         .then(data => {
-                            inputHarga.value = data.harga;
+                            // PERBAIKAN: Menggunakan data.harga_pos sesuai kolom database
+                            inputHarga.value = (data && data.harga_pos) ? data.harga_pos : 0;
                             hitungSubtotal(row);
                         })
                         .catch(error => {

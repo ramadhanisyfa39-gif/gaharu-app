@@ -8,48 +8,32 @@ use App\Models\WorkOrderDetail;
 use App\Models\MasterBarang;
 use App\Models\ResepBahanBaku;
 use App\Models\StokGudang;
+use App\Models\Produksi;
+use App\Models\ProduksiDetail;
 use App\Models\ProduksiPesanan;
 use Illuminate\Support\Facades\DB;
 
 class ProduksiController extends Controller
 {
-    protected $fifoService;
-
-    public function __construct()
-    {
-        // Aktifkan jika FifoService kamu siap
-        // $this->fifoService = app(\App\Services\FifoService::class);
-    }
-
-    /**
-     * Halaman Riwayat / Daftar Hasil Produksi
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | 1. HALAMAN RIWAYAT & DRAFT PRODUKSI
+    |--------------------------------------------------------------------------
+    */
     public function index()
     {
-        $riwayatProduksi = DB::table('produksi_detail')
-            ->join('produksi', 'produksi_detail.produksi_id', '=', 'produksi.id')
-            ->leftJoin('master_barang', 'produksi_detail.produk_id', '=', 'master_barang.id')
-            ->select(
-                'produksi_detail.*',
-                'produksi.kode_produksi',
-                'produksi.tanggal_mulai as tanggal',
-                'master_barang.nama as nama_produk',
-                DB::raw('(SELECT wo.kode_wo
-                          FROM work_order wo
-                          JOIN work_order_detail wod
-                            ON wod.work_order_id = wo.id
-                          WHERE wod.pesanan_id = produksi.pesanan_id
-                          LIMIT 1) as kode_wo')
-            )
-            ->orderBy('produksi_detail.id', 'desc')
+        $riwayatProduksi = Produksi::with(['details.produk', 'pesanan.customer'])
+            ->orderBy('id', 'desc')
             ->get();
 
         return view('produksi.index', compact('riwayatProduksi'));
     }
 
-    /**
-     * Halaman Form Input Produksi
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | 2. HALAMAN FORM INPUT DRAFT PRODUKSI (Mendukung Parsial & Sisa Target)
+    |--------------------------------------------------------------------------
+    */
     public function create(Request $request)
     {
         $workOrders = WorkOrder::where('status_wo', 'Diproses')->get();
@@ -59,25 +43,82 @@ class ProduksiController extends Controller
         $items = collect();
 
         if ($selectedWoId) {
-            $items = WorkOrderDetail::where('work_order_id', $selectedWoId)
-                ->select('produk_id', DB::raw('sum(qty_rencana) as total_target'))
+            $woDetails = WorkOrderDetail::where('work_order_id', $selectedWoId)
                 ->with('produk')
-                ->groupBy('produk_id')
                 ->get();
+
+            $groupedItems = [];
+
+            // Petakan grup produk & hitung total rencana targetnya
+            foreach ($woDetails as $wod) {
+                $pid = $wod->produk_id;
+                
+                if (!isset($groupedItems[$pid])) {
+                    $groupedItems[$pid] = [
+                        'produk_id'        => $pid,
+                        'produk'           => $wod->produk,
+                        'total_target'     => 0,
+                        'sudah_diproduksi' => 0,
+                    ];
+                }
+                
+                $groupedItems[$pid]['total_target'] += $wod->qty_rencana;
+            }
+
+            // Hitung akumulasi produksi riil yang sudah tersimpan untuk WO ini
+            foreach ($groupedItems as $pid => $data) {
+                $currentPesananIds = $woDetails->where('produk_id', $pid)
+                    ->pluck('pesanan_id')
+                    ->filter()
+                    ->toArray();
+
+                $terproduksi = 0;
+
+                if (!empty($currentPesananIds)) {
+                    $terproduksi = DB::table('alokasi_produksi_pesanan')
+                        ->whereIn('pesanan_id', $currentPesananIds)
+                        ->where('produk_id', $pid)
+                        ->sum('qty_alokasi');
+                } else {
+                    $pesananIdsAll = $woDetails->pluck('pesanan_id')->filter()->toArray();
+                    $pesananIdUtama = !empty($pesananIdsAll) ? $pesananIdsAll[0] : null;
+
+                    if ($pesananIdUtama) {
+                        $terproduksi = DB::table('alokasi_produksi_pesanan')
+                            ->join('produksi', 'alokasi_produksi_pesanan.produksi_id', '=', 'produksi.id')
+                            ->where('produksi.pesanan_id', $pesananIdUtama)
+                            ->where('alokasi_produksi_pesanan.produk_id', $pid)
+                            ->whereNull('alokasi_produksi_pesanan.pesanan_id')
+                            ->sum('alokasi_produksi_pesanan.qty_alokasi');
+                    }
+                }
+
+                $groupedItems[$pid]['sudah_diproduksi'] = $terproduksi;
+            }
+
+            // Format data sisa target untuk dikirim ke blade view
+            $items = collect($groupedItems)->map(function ($item) {
+                $sisa = $item['total_target'] - $item['sudah_diproduksi'];
+                return (object) [
+                    'produk_id'        => $item['produk_id'],
+                    'produk'           => $item['produk'],
+                    'total_target'     => $item['total_target'],
+                    'sudah_diproduksi' => $item['sudah_diproduksi'],
+                    'sisa_target'      => $sisa > 0 ? $sisa : 0,
+                ];
+            })->filter(function($item) {
+                return $item->sisa_target > 0; 
+            })->values();
         }
 
-        return view('produksi.create', compact(
-            'workOrders',
-            'gudangs',
-            'selectedWoId',
-            'items'
-        ));
+        return view('produksi.create', compact('workOrders', 'gudangs', 'selectedWoId', 'items'));
     }
 
-    /**
-     * Proses Simpan Data Produksi
-     * FIFO + BBB + BTKL + BOP + Alokasi Pesanan
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | 3. SIMPAN DRAFT PRODUKSI (Tanpa kolom work_order_id di DB)
+    |--------------------------------------------------------------------------
+    */
     public function store(Request $request)
     {
         $request->validate([
@@ -87,100 +128,285 @@ class ProduksiController extends Controller
             'qty_hasil'        => 'required|array',
         ]);
 
+        // =========================================================================
+        // BLOK VALIDASI CEK SISA TARGET (Mencegah input melebihi sisa WO)
+        // =========================================================================
+        $woDetails = DB::table('work_order_detail')->where('work_order_id', $request->work_order_id)->get();
+        
+        foreach ($request->produk_id as $key => $produkId) {
+            $qtyInput = floatval($request->qty_hasil[$key]);
+            if ($qtyInput <= 0) continue;
+
+            $totalTarget = $woDetails->where('produk_id', $produkId)->sum('qty_rencana');
+
+            $currentPesananIds = $woDetails->where('produk_id', $produkId)
+                ->pluck('pesanan_id')->filter()->toArray();
+
+            $terproduksi = 0;
+            if (!empty($currentPesananIds)) {
+                $terproduksi = DB::table('alokasi_produksi_pesanan')
+                    ->whereIn('pesanan_id', $currentPesananIds)
+                    ->where('produk_id', $produkId)
+                    ->sum('qty_alokasi');
+            } else {
+                $pesananIdsAll = $woDetails->pluck('pesanan_id')->filter()->toArray();
+                $pesananIdUtama = !empty($pesananIdsAll) ? $pesananIdsAll[0] : null;
+
+                if ($pesananIdUtama) {
+                    $terproduksi = DB::table('alokasi_produksi_pesanan')
+                        ->join('produksi', 'alokasi_produksi_pesanan.produksi_id', '=', 'produksi.id')
+                        ->where('produksi.pesanan_id', $pesananIdUtama)
+                        ->where('alokasi_produksi_pesanan.produk_id', $produkId)
+                        ->whereNull('alokasi_produksi_pesanan.pesanan_id')
+                        ->sum('alokasi_produksi_pesanan.qty_alokasi');
+                }
+            }
+
+            $sisaTarget = $totalTarget - $terproduksi;
+
+            if ($qtyInput > $sisaTarget) {
+                $namaProduk = DB::table('master_barang')->where('id', $produkId)->value('nama');
+                return redirect()->back()->with('error', "Gagal Simpan! Jumlah produk '{$namaProduk}' ({$qtyInput} unit) melebihi sisa target. Maksimal yang bisa diinput adalah {$sisaTarget} unit.");
+            }
+        }
+        // =========================================================================
+
         DB::beginTransaction();
 
         try {
-            $gudangBahanId = 3;
-            $gudangHasilId = 3;
-
-            $fifoService = app(\App\Services\FifoService::class);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Ambil semua pesanan yang tergabung dalam Work Order
-            |--------------------------------------------------------------------------
-            */
+            // Ambil referensi pesanan dari Work Order
             $pesananIds = DB::table('work_order_detail')
                 ->where('work_order_id', $request->work_order_id)
                 ->pluck('pesanan_id')
+                ->filter()
                 ->unique()
                 ->values()
                 ->toArray();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Ambil pesanan pertama agar kode WO masih dapat ditampilkan
-            | pada riwayat produksi.
-            |--------------------------------------------------------------------------
-            */
             $pesananIdUtama = !empty($pesananIds) ? $pesananIds[0] : null;
 
-            /*
-            |--------------------------------------------------------------------------
-            | Generate kode produksi
-            |--------------------------------------------------------------------------
-            */
-            $kodeProduksi = 'PRD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+            if (!$pesananIdUtama) {
+                return redirect()->back()->with('error', 'Tidak dapat membuat Draft: Work Order ini tidak memiliki referensi Pesanan.');
+            }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Simpan header produksi
-            |--------------------------------------------------------------------------
-            */
+            // Simpan header sebagai DRAFT (HPP = 0, Stok belum dipotong)
             $produksiId = DB::table('produksi')->insertGetId([
-                'kode_produksi'   => $kodeProduksi,
+                'kode_produksi'   => 'PRD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3))),
                 'pesanan_id'      => $pesananIdUtama,
                 'tanggal_mulai'   => $request->tanggal_produksi,
-                'tanggal_selesai' => $request->tanggal_produksi,
-                'status_produksi' => 'Selesai',
-                'gudang_bahan_id' => $gudangBahanId,
-                'gudang_hasil_id' => $gudangHasilId,
+                'tanggal_selesai' => null, 
+                'status_produksi' => 'Draft', 
+                'gudang_bahan_id' => 3,
+                'gudang_hasil_id' => 3,
                 'created_by'      => auth()->id() ?? 1,
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Simpan detail hasil produksi dan hitung HPP
-            |--------------------------------------------------------------------------
-            */
             foreach ($request->produk_id as $key => $produkId) {
                 $qtyHasil = floatval($request->qty_hasil[$key]);
+                if ($qtyHasil <= 0) continue;
 
-                if ($qtyHasil <= 0) {
-                    continue;
+                DB::table('produksi_detail')->insert([
+                    'produksi_id' => $produksiId,
+                    'produk_id'   => $produkId,
+                    'qty'         => $qtyHasil,
+                    'hpp_total'   => 0, 
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('produksi.index')->with('success', 'Draft Produksi berhasil disimpan. Data masih bisa diedit sebelum di-Approve.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal Simpan Draft! Pesan: ' . $e->getMessage());
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 4. HALAMAN EDIT DRAFT
+    |--------------------------------------------------------------------------
+    */
+    public function edit($id)
+    {
+        $produksi = Produksi::with('details.produk')->findOrFail($id);
+        return view('produksi.edit', compact('produksi'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 5. UPDATE DRAFT PRODUKSI (Edit qty hasil fisik sebelum approve)
+    |--------------------------------------------------------------------------
+    */
+    public function update(Request $request, $id)
+    {
+        $produksi = Produksi::findOrFail($id);
+
+        if ($produksi->status_produksi !== 'Draft') {
+            return redirect()->back()->with('error', 'Data sudah di-Approve dan tidak dapat diedit.');
+        }
+
+        // =========================================================================
+        // BLOK VALIDASI CEK SISA TARGET SAAT UPDATE
+        // =========================================================================
+        $wodUtama = DB::table('work_order_detail')
+            ->where('pesanan_id', $produksi->pesanan_id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($wodUtama) {
+            $workOrderId = $wodUtama->work_order_id;
+            $woDetails = DB::table('work_order_detail')->where('work_order_id', $workOrderId)->get();
+
+            foreach ($request->produk_id as $key => $produkId) {
+                $qtyInput = floatval($request->qty_hasil[$key]);
+                if ($qtyInput <= 0) continue;
+
+                $totalTarget = $woDetails->where('produk_id', $produkId)->sum('qty_rencana');
+
+                $currentPesananIds = $woDetails->where('produk_id', $produkId)
+                    ->pluck('pesanan_id')->filter()->toArray();
+
+                $terproduksi = 0;
+                if (!empty($currentPesananIds)) {
+                    $terproduksi = DB::table('alokasi_produksi_pesanan')
+                        ->whereIn('pesanan_id', $currentPesananIds)
+                        ->where('produk_id', $produkId)
+                        ->sum('qty_alokasi');
+                } else {
+                    $pesananIdsAll = $woDetails->pluck('pesanan_id')->filter()->toArray();
+                    $pesananIdUtamaCek = !empty($pesananIdsAll) ? $pesananIdsAll[0] : null;
+
+                    if ($pesananIdUtamaCek) {
+                        $terproduksi = DB::table('alokasi_produksi_pesanan')
+                            ->join('produksi', 'alokasi_produksi_pesanan.produksi_id', '=', 'produksi.id')
+                            ->where('produksi.pesanan_id', $pesananIdUtamaCek)
+                            ->where('alokasi_produksi_pesanan.produk_id', $produkId)
+                            ->whereNull('alokasi_produksi_pesanan.pesanan_id')
+                            ->sum('alokasi_produksi_pesanan.qty_alokasi');
+                    }
                 }
 
-                $produk = MasterBarang::find($produkId);
+                $sisaTarget = $totalTarget - $terproduksi;
+
+                if ($qtyInput > $sisaTarget) {
+                    $namaProduk = DB::table('master_barang')->where('id', $produkId)->value('nama');
+                    return redirect()->back()->with('error', "Gagal Edit! Jumlah produk '{$namaProduk}' ({$qtyInput} unit) melebihi sisa target. Maksimal yang bisa diinput adalah {$sisaTarget} unit.");
+                }
+            }
+        }
+        // =========================================================================
+
+        DB::beginTransaction();
+        try {
+            DB::table('produksi_detail')->where('produksi_id', $id)->delete();
+
+            foreach ($request->produk_id as $key => $produkId) {
+                $qtyHasil = floatval($request->qty_hasil[$key]);
+                if ($qtyHasil <= 0) continue;
+
+                DB::table('produksi_detail')->insert([
+                    'produksi_id' => $id,
+                    'produk_id'   => $produkId,
+                    'qty'         => $qtyHasil,
+                    'hpp_total'   => 0,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            }
+
+            $produksi->update(['tanggal_mulai' => $request->tanggal_produksi]);
+
+            DB::commit();
+            return redirect()->route('produksi.index')->with('success', 'Draft Produksi berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update draft: ' . $e->getMessage());
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 6. HAPUS DRAFT PRODUKSI
+    |--------------------------------------------------------------------------
+    */
+    public function destroy($id)
+    {
+        $produksi = Produksi::findOrFail($id);
+
+        if ($produksi->status_produksi !== 'Draft') {
+            return redirect()->back()->with('error', 'Tidak dapat menghapus produksi yang sudah di-Approve (Terkunci).');
+        }
+
+        DB::table('produksi_detail')->where('produksi_id', $id)->delete();
+        $produksi->delete();
+
+        return redirect()->route('produksi.index')->with('success', 'Draft Produksi berhasil dihapus secara permanen.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 7. APPROVE PRODUKSI (Tahap Final - Hitung FIFO HPP, Potong Stok, Jembatan WO)
+    |--------------------------------------------------------------------------
+    */
+    public function approve(Request $request, $id)
+    {
+        // Ambil data draft produksi beserta item detail fisiknya
+        $produksi = Produksi::with('details')->findOrFail($id);
+
+        if ($produksi->status_produksi !== 'Draft') {
+            return redirect()->back()->with('error', 'Data ini sudah disetujui sebelumnya dan terkunci.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $gudangBahanId = $produksi->gudang_bahan_id;
+            $gudangHasilId = $produksi->gudang_hasil_id;
+            $fifoService   = app(\App\Services\FifoService::class);
+
+            // --- LOGIKA JEMBATAN PELACAK WORK ORDER ID ---
+            $wodUtama = DB::table('work_order_detail')
+                ->where('pesanan_id', $produksi->pesanan_id)
+                ->orderBy('id', 'desc')
+                ->first();
+                
+            if (!$wodUtama) {
+                throw new \Exception('Tidak dapat menemukan Work Order yang terkait dengan pesanan ini.');
+            }
+            $workOrderId = $wodUtama->work_order_id;
+            // ----------------------------------------------
+
+            // Ambil semua pesanan yang tergabung dalam Work Order tersebut
+            $pesananIds = DB::table('work_order_detail')
+                ->where('work_order_id', $workOrderId)
+                ->pluck('pesanan_id')
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // Eksekusi perhitungan per item produk hasil produksi
+            foreach ($produksi->details as $detail) {
+                $produkId = $detail->produk_id;
+                $qtyHasil = floatval($detail->qty);
+                $produk   = MasterBarang::find($produkId);
 
                 if (!$produk) {
-                    DB::rollBack();
-
-                    return redirect()
-                        ->back()
-                        ->with('error', "ID Produk {$produkId} tidak valid.");
+                    throw new \Exception("ID Produk {$produkId} tidak valid.");
                 }
 
                 if (is_null($produk->resep_id)) {
-                    DB::rollBack();
-
-                    return redirect()
-                        ->back()
-                        ->with('error', "Produk '{$produk->nama}' belum memiliki resep.");
+                    throw new \Exception("Produk '{$produk->nama}' belum memiliki resep.");
                 }
 
                 $totalBbbProduk = 0;
 
-                /*
-                |--------------------------------------------------------------------------
-                | A. Hitung dan kurangi bahan baku dengan FIFO
-                |--------------------------------------------------------------------------
-                */
-                $resepItems = ResepBahanBaku::where(
-                    'resep_id',
-                    $produk->resep_id
-                )->get();
+                // A. FIFO BAHAN BAKU
+                $resepItems = ResepBahanBaku::where('resep_id', $produk->resep_id)->get();
 
                 foreach ($resepItems as $item) {
                     $qtyButuh = $item->qty_bahan * $qtyHasil;
@@ -192,15 +418,10 @@ class ProduksiController extends Controller
                     );
 
                     foreach ($fifoResult as $layer) {
-                        $totalBbbProduk +=
-                            floatval($layer['qty_keluar']) *
-                            floatval($layer['harga_per_qty']);
+                        $totalBbbProduk += floatval($layer['qty_keluar']) * floatval($layer['harga_per_qty']);
                     }
 
-                    $stokBahanGlobal = StokGudang::where(
-                        'gudang_id',
-                        $gudangBahanId
-                    )
+                    $stokBahanGlobal = StokGudang::where('gudang_id', $gudangBahanId)
                         ->where('barang_id', $item->bahan_id)
                         ->first();
 
@@ -215,43 +436,31 @@ class ProduksiController extends Controller
                     }
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | B. Hitung BTKL dan BOP
-                |--------------------------------------------------------------------------
-                */
+                // B. HITUNG BTKL & BOP
                 $totalBtklBop = 0;
-
-                $biayaTambahan = DB::table('resep_btkl_bop')
-                    ->where('produk_id', $produkId)
-                    ->first();
+                $biayaTambahan = DB::table('resep_btkl_bop')->where('produk_id', $produkId)->first();
 
                 if ($biayaTambahan && $biayaTambahan->output_qty > 0) {
                     $btklPerBatch = floatval($biayaTambahan->btkl_per_batch);
                     $bopPerBatch  = floatval($biayaTambahan->bop_per_batch);
                     $outputBatch  = floatval($biayaTambahan->output_qty);
-
                     $biayaPerItem = ($btklPerBatch + $bopPerBatch) / $outputBatch;
 
                     $totalBtklBop = $biayaPerItem * $qtyHasil;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | C. Hitung total HPP
-                |--------------------------------------------------------------------------
-                */
+                // C. HITUNG TOTAL HPP & UPDATE KE DETAIL PRODUKSI
                 $hppKeseluruhan = $totalBbbProduk + $totalBtklBop;
 
-                /*
-                |--------------------------------------------------------------------------
-                | D. Tambahkan stok barang jadi
-                |--------------------------------------------------------------------------
-                */
-                $stokBarangJadi = StokGudang::where(
-                    'gudang_id',
-                    $gudangHasilId
-                )
+                DB::table('produksi_detail')
+                    ->where('id', $detail->id)
+                    ->update([
+                        'hpp_total'  => $hppKeseluruhan,
+                        'updated_at' => now()
+                    ]);
+
+                // D. TAMBAH STOK BARANG JADI KE GUDANG HASIL
+                $stokBarangJadi = StokGudang::where('gudang_id', $gudangHasilId)
                     ->where('barang_id', $produkId)
                     ->first();
 
@@ -265,84 +474,115 @@ class ProduksiController extends Controller
                     ]);
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Simpan detail produksi
-                |--------------------------------------------------------------------------
-                */
-                DB::table('produksi_detail')->insert([
-                    'produksi_id' => $produksiId,
-                    'produk_id'   => $produkId,
-                    'qty'         => $qtyHasil,
-                    'hpp_total'   => $hppKeseluruhan,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ]);
+                // E. DISTRIBUSI ALOKASI PESANAN DALAM WO (PRO-RATA/SEQUENTIAL)
+                $hppPerUnit = $qtyHasil > 0 ? ($hppKeseluruhan / $qtyHasil) : 0;
+                $sisaBarangSiapBagi = $qtyHasil; 
 
-                /*
-                |--------------------------------------------------------------------------
-                | E. Buat alokasi hasil produksi ke setiap pesanan dalam WO
-                |--------------------------------------------------------------------------
-                */
-                $hppPerUnit = $hppKeseluruhan / $qtyHasil;
-
-                $detailPesananWO = WorkOrderDetail::where('work_order_id', $request->work_order_id)
+                $detailPesananWO = WorkOrderDetail::where('work_order_id', $workOrderId)
                     ->where('produk_id', $produkId)
+                    ->orderBy('id', 'asc')
                     ->get();
 
                 foreach ($detailPesananWO as $detailWO) {
-                    ProduksiPesanan::create([
-                        'produksi_id'       => $produksiId,
-                        'pesanan_id'        => $detailWO->pesanan_id,
-                        'produk_id'         => $produkId,
-                        'qty_alokasi'       => $detailWO->qty_rencana,
-                        'qty_terkirim'      => 0,
-                        'hpp_per_unit'      => $hppPerUnit,
-                        'total_hpp_alokasi' => $detailWO->qty_rencana * $hppPerUnit,
-                    ]);
+                    $qtyRencanaWO = floatval($detailWO->qty_rencana);
+                    $qtyAlokasi = min($qtyRencanaWO, $sisaBarangSiapBagi);
+
+                    if ($qtyAlokasi > 0) {
+                        ProduksiPesanan::create([
+                            'produksi_id'       => $produksi->id,
+                            'pesanan_id'        => $detailWO->pesanan_id,
+                            'produk_id'         => $produkId,
+                            'qty_alokasi'       => $qtyAlokasi,
+                            'qty_terkirim'      => 0,
+                            'hpp_per_unit'      => $hppPerUnit,
+                            'total_hpp_alokasi' => $qtyAlokasi * $hppPerUnit,
+                        ]);
+
+                        $sisaBarangSiapBagi -= $qtyAlokasi;
+                    }
                 }
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Update status Work Order
-            |--------------------------------------------------------------------------
-            */
+            // F. VALIDASI STATUS AKUMULASI KETERPENUHAN (WO & PESANAN)
+            $semuaWODetail = DB::table('work_order_detail')->where('work_order_id', $workOrderId)->get();
+            $woSelesaiSempurna = true;
+
+            foreach ($semuaWODetail as $wod) {
+                $totalAlokasiTercatat = DB::table('alokasi_produksi_pesanan')
+                    ->where('produk_id', $wod->produk_id)
+                    ->where('pesanan_id', $wod->pesanan_id)
+                    ->sum('qty_alokasi');
+
+                if ($totalAlokasiTercatat < $wod->qty_rencana) {
+                    $woSelesaiSempurna = false;
+                }
+            }
+
             DB::table('work_order')
-                ->where('id', $request->work_order_id)
+                ->where('id', $workOrderId)
                 ->update([
-                    'status_wo'  => 'Selesai',
+                    'status_wo'  => $woSelesaiSempurna ? 'Selesai' : 'Diproses',
                     'updated_at' => now(),
                 ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Update seluruh pesanan yang ada dalam Work Order menjadi Siap kirim
-            |--------------------------------------------------------------------------
-            */
             if (!empty($pesananIds)) {
-                DB::table('pesanan')
-                    ->whereIn('id', $pesananIds)
-                    ->update([
-                        'status_pesanan' => 'Siap kirim',
-                        'updated_at'     => now(),
-                    ]);
+                foreach ($pesananIds as $pesananId) {
+                    $detailPesanan = DB::table('pesanan_detail')->where('pesanan_id', $pesananId)->get();
+                    $pesananSelesaiSempurna = true;
+
+                    foreach ($detailPesanan as $dp) {
+                        $totalAlokasiPesanan = DB::table('alokasi_produksi_pesanan')
+                            ->where('pesanan_id', $pesananId)
+                            ->where('produk_id', $dp->produk_id)
+                            ->sum('qty_alokasi');
+
+                        if ($totalAlokasiPesanan < $dp->qty) {
+                            $pesananSelesaiSempurna = false;
+                            break; 
+                        }
+                    }
+
+                    DB::table('pesanan')
+                        ->where('id', $pesananId)
+                        ->update([
+                            'status_pesanan' => $pesananSelesaiSempurna ? 'Siap kirim' : 'Diproses',
+                            'updated_at'     => now(),
+                        ]);
+                }
             }
 
-            DB::commit();
+            // G. UPDATE DATA UTAMA PRODUKSI DARI DRAFT MENJADI SELESAI
+            DB::table('produksi')
+                ->where('id', $produksi->id)
+                ->update([
+                    'status_produksi' => 'Selesai',
+                    'tanggal_selesai' => now(),
+                    'updated_at'      => now(),
+                ]);
 
-            return redirect()
-                ->route('produksi.index')
-                ->with(
-                    'success',
-                    'Produksi berhasil disimpan, stok dan HPP diperbarui, alokasi pesanan dibuat, serta seluruh pesanan dalam WO menjadi Siap kirim.'
-                );
+            DB::commit();
+            return redirect()->route('produksi.index')->with('success', 'Produksi berhasil disetujui! Seluruh stok gudang, FIFO, HPP, dan status pesanan telah diperbarui.');
+
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return redirect()
-                ->back()
-                ->with('error', 'Gagal Simpan! Pesan: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal Approve! Pesan: ' . $e->getMessage());
         }
+    }
+
+/*
+    |--------------------------------------------------------------------------
+    | HALAMAN DETAIL PRODUKSI
+    |--------------------------------------------------------------------------
+    */
+    public function show($id)
+    {
+        // Pastikan relasi ke detail, produk, pesanan, dan customer dimuat
+        $produksi = Produksi::with(['details.produk', 'pesanan.customer'])->findOrFail($id);
+        
+        // Ambil nama gudang hasil secara manual agar tidak perlu repot mengubah Model
+        $gudangHasil = DB::table('master_gudang')->where('id', $produksi->gudang_hasil_id)->first();
+        $namaGudang = $gudangHasil ? $gudangHasil->nama : 'Gudang Tidak Diketahui';
+        
+        return view('produksi.show', compact('produksi', 'namaGudang'));
     }
 }

@@ -1,3 +1,39 @@
+@php
+    // Ambil nama role user yang sedang login
+    $role = auth()->user()->role->nama;
+
+    // NOTE: sesuaikan string 'Super Admin' di bawah ini dengan nama role
+    // super admin yang sebenarnya ada di tabel roles kamu.
+    $isSuperAdmin = in_array($role, ['Super Admin', 'Administrator']);
+
+    $canRole = fn (array $allowed) => $isSuperAdmin || in_array($role, $allowed);
+
+    // Cek status aktif untuk masing-masing rumpun menu utama (agar accordion otomatis terbuka jika diakses)
+    $masterActive = request()->routeIs([
+        'kategori.*', 'barang.*', 'suppliers.*', 'customer.*',
+        'gudangs.*', 'karyawan.*', 'resep.*', 'harga.*', 'coa.*',
+    ]);
+
+    $operationsActive = request()->routeIs([
+        'pembelian.*', 'pengeluaran-bahan-baku.*', 'stok-gudang.*', 'stock-opname.*',
+        'penjualan_pos.*', 'penjualanpos-detail.*', 'pesanan.*', 'pesanan-detail.*',
+        'wo.*', 'produksi.*', 'pengiriman.*', 'penggajian.*',
+    ]);
+
+    $financeActive = request()->routeIs([
+        'jurnal.*', 'jurnal-penjualanb2b.*', 'jurnal-penjualanpos.*',
+        'adjustment.*', 'closing.*',
+        'laporan.laba-rugi.*', 'laporan.neraca.*', 'laporan.arus-kas.*',
+        'laporan.neraca-saldo.*', 'laporan.buku-besar.*',
+    ]);
+
+    $reportsActive = request()->routeIs([
+        'laporan.pembelian', 'laporan.stok-gudang', 'laporan.pengeluaran-bahan-baku',
+        'laporan.stock-opname', 'penjualan_pos.laporan', 'laporan.penjualan',
+        'laporan.hpp', 'laporan.rekapitulasi',
+    ]);
+@endphp
+
 <div class="sidebar d-flex flex-column justify-content-between">
     <div>
         <div class="sidebar-logo">
@@ -8,7 +44,9 @@
 
         <div class="sidebar-menu">
 
-            {{-- DASHBOARD --}}
+            {{-- ========================================================================= --}}
+            {{-- DASHBOARD (semua role) --}}
+            {{-- ========================================================================= --}}
             <div class="menu-group">
                 <a href="{{ route('dashboard') }}"
                    class="menu-parent text-decoration-none d-flex align-items-center justify-content-start {{ request()->routeIs('dashboard') ? 'active-menu-root' : '' }}"
@@ -20,204 +58,260 @@
                 </a>
             </div>
 
+
+            {{-- ========================================================================= --}}
             {{-- MASTER DATA --}}
-            @php
-                $masterActive = request()->routeIs([
-                    'kategori.*','barang.*','suppliers.*',
-                    'customer.*','gudangs.*','karyawan.*',
-                    'resep.*','harga.*','coa.*'
-                ]);
-            @endphp
+            {{-- ========================================================================= --}}
+            @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga', 'Kepala Gudang', 'HRD']))
             <div class="menu-group {{ $masterActive ? 'open' : '' }}">
                 <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
                     <div class="d-flex align-items-center">
-                        <i class="bi bi-database me-3 fs-5"></i>
+                        <i class="bi bi-folder2-open me-3 fs-5"></i>
                         <span>MASTER DATA</span>
                     </div>
-                    <i class="bi {{ $masterActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
+                    <i class="bi {{ $masterActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon"></i>
                 </div>
-                <div class="submenu">
-                    <a href="{{ route('gudangs.index') }}"   class="{{ request()->routeIs('gudangs.*')   ? 'active' : '' }}">Warehouse</a>
-                    <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Supplier</a>
-                    <a href="{{ route('kategori.index') }}"  class="{{ request()->routeIs('kategori.*')  ? 'active' : '' }}">Category</a>
-                    <a href="{{ route('barang.index') }}"    class="{{ request()->routeIs('barang.*')    ? 'active' : '' }}">Items</a>
-                    <a href="{{ route('resep.index') }}"     class="{{ request()->routeIs('resep.*')     ? 'active' : '' }}">Recipe</a>
-                    <a href="{{ route('harga.index') }}"     class="{{ request()->routeIs('harga.*')     ? 'active' : '' }}">POS Price</a>
-                    <a href="{{ route('customer.index') }}"  class="{{ request()->routeIs('customer.*')  ? 'active' : '' }}">Customer</a>
-                    <a href="{{ route('karyawan.index') }}"  class="{{ request()->routeIs('karyawan.*')  ? 'active' : '' }}">Employee</a>
-                    <a href="{{ route('coa.index') }}"       class="{{ request()->routeIs('coa.*')       ? 'active' : '' }}">Chart of Accounts</a>
+
+                <div class="submenu-content">
+                    @if($canRole(['Kepala Gudang']))
+                        <a href="{{ route('gudangs.index') }}" class="{{ request()->routeIs('gudangs.*') ? 'active' : '' }}">
+                            <i class="bi bi-geo-alt me-2" style="font-size:12px;"></i>Warehouse
+                        </a>
+                    @endif
+
+                    @if($canRole(['Kepala Outlet Gaharu']))
+                        <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
+                            <i class="bi bi-truck me-2" style="font-size:12px;"></i>Supplier
+                        </a>
+                    @endif
+
+                    @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga', 'Kepala Gudang']))
+                        <a href="{{ route('kategori.index') }}" class="{{ request()->routeIs('kategori.*') ? 'active' : '' }}">
+                            <i class="bi bi-tags me-2" style="font-size:12px;"></i>Category
+                        </a>
+                        <a href="{{ route('barang.index') }}" class="{{ request()->routeIs('barang.*') ? 'active' : '' }}">
+                            <i class="bi bi-box-seam me-2" style="font-size:12px;"></i>Items
+                        </a>
+                    @endif
+
+                    @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga']))
+                        <a href="{{ route('resep.index') }}" class="{{ request()->routeIs('resep.*') ? 'active' : '' }}">
+                            <i class="bi bi-journal-text me-2" style="font-size:12px;"></i>Recipe
+                        </a>
+                        <a href="{{ route('harga.index') }}" class="{{ request()->routeIs('harga.*') ? 'active' : '' }}">
+                            <i class="bi bi-currency-dollar me-2" style="font-size:12px;"></i>POS Price
+                        </a>
+                    @endif
+
+                    @if($canRole(['Kepala Outlet Gaharu']))
+                        <a href="{{ route('customer.index') }}" class="{{ request()->routeIs('customer.*') ? 'active' : '' }}">
+                            <i class="bi bi-people me-2" style="font-size:12px;"></i>Customer
+                        </a>
+                    @endif
+
+                    @if($canRole(['HRD']))
+                        <a href="{{ route('karyawan.index') }}" class="{{ request()->routeIs('karyawan.*') ? 'active' : '' }}">
+                            <i class="bi bi-person-badge me-2" style="font-size:12px;"></i>Employee
+                        </a>
+                    @endif
+
+                    @if($canRole(['Kepala Outlet Gaharu']))
+                        <a href="{{ route('coa.index') }}" class="{{ request()->routeIs('coa.*') ? 'active' : '' }}">
+                            <i class="bi bi-diagram-3 me-2" style="font-size:12px;"></i>Chart of Accounts
+                        </a>
+                    @endif
                 </div>
             </div>
+            @endif
 
-            {{-- OPERATIONS (gabungan Transaksi + Inventory) --}}
-            @php
-                $opsActive = request()->routeIs([
-                    'penjualan_pos.*','pesanan.*','pengiriman.*',
-                    'wo.*','work-order.*','produksi.*',
-                    'stock-opname.*','pembelian.*',
-                    'stok-gudang.*','pengeluaran-bahan-baku.*',
-                    'penggajian.*'
-                ]);
-            @endphp
-            <div class="menu-group {{ $opsActive ? 'open' : '' }}">
+
+            {{-- ========================================================================= --}}
+            {{-- OPERATIONS --}}
+            {{-- ========================================================================= --}}
+            @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga', 'Kepala Gudang', 'Bagian Produksi', 'HRD']))
+            <div class="menu-group {{ $operationsActive ? 'open' : '' }}">
                 <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
                     <div class="d-flex align-items-center">
-                        <i class="bi bi-layers me-3 fs-5"></i>
+                        <i class="bi bi-gear me-3 fs-5"></i>
                         <span>OPERATIONS</span>
                     </div>
-                    <i class="bi {{ $opsActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
+                    <i class="bi {{ $operationsActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon"></i>
                 </div>
-                <div class="submenu">
 
-                    {{-- INVENTORY header --}}
-                    <div class="submenu-divider">INVENTORY</div>
-                    <a href="{{ route('pembelian.index') }}"
-                       class="{{ request()->routeIs('pembelian.*') ? 'active' : '' }}">Purchase</a>
-                    <a href="{{ route('pengeluaran-bahan-baku.index') }}"
-                       class="{{ request()->routeIs('pengeluaran-bahan-baku.*') ? 'active' : '' }}">Material Output</a>
-                    <a href="{{ route('stok-gudang.index') }}"
-                       class="{{ request()->routeIs('stok-gudang.*') ? 'active' : '' }}">Warehouse Stock</a>
-                    <a href="{{ route('stock-opname.index') }}"
-                       class="{{ request()->routeIs('stock-opname.*') ? 'active' : '' }}">Stock Opname</a>
+                <div class="submenu-content">
+                    @if($canRole(['Kepala Gudang']))
+                        <div class="submenu-divider">INVENTORY</div>
+                        <a href="{{ route('pembelian.index') }}" class="{{ request()->routeIs('pembelian.*') ? 'active' : '' }}">
+                            <i class="bi bi-bag-plus me-2" style="font-size:12px;"></i>Purchase
+                        </a>
+                        <a href="{{ route('pengeluaran-bahan-baku.index') }}" class="{{ request()->routeIs('pengeluaran-bahan-baku.*') ? 'active' : '' }}">
+                            <i class="bi bi-arrow-right-circle me-2" style="font-size:12px;"></i>Material Output
+                        </a>
+                        <a href="{{ route('stok-gudang.index') }}" class="{{ request()->routeIs('stok-gudang.*') ? 'active' : '' }}">
+                            <i class="bi bi-boxes me-2" style="font-size:12px;"></i>Warehouse Stock
+                        </a>
+                        <a href="{{ route('stock-opname.index') }}" class="{{ request()->routeIs('stock-opname.*') ? 'active' : '' }}">
+                            <i class="bi bi-clipboard-check me-2" style="font-size:12px;"></i>Stock Opname
+                        </a>
+                    @endif
 
-                    {{-- SALES header --}}
-                    <div class="submenu-divider">SALES</div>
-                    <a href="{{ route('penjualan_pos.index') }}"
-                       class="{{ request()->routeIs('penjualan_pos.*') ? 'active' : '' }}">POS Sales</a>
-                    <a href="{{ route('pesanan.index') }}"
-                       class="{{ request()->routeIs('pesanan.*') ? 'active' : '' }}">B2B Orders</a>
+                    @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga']))
+                        <div class="submenu-divider">SALES</div>
+                        <a href="{{ route('penjualan_pos.index') }}" class="{{ request()->routeIs('penjualan_pos.*') ? 'active' : '' }}">
+                            <i class="bi bi-cart me-2" style="font-size:12px;"></i>POS Sales
+                        </a>
+                    @endif
 
-                    {{-- PRODUCTION header --}}
-                    <div class="submenu-divider">PRODUCTION</div>
-                    <a href="{{ route('wo.index') }}"
-                       class="{{ request()->routeIs(['wo.*','work-order.*']) ? 'active' : '' }}">Production Request</a>
-                    <a href="{{ route('produksi.index') }}"
-                       class="{{ request()->routeIs('produksi.*') ? 'active' : '' }}">Production</a>
-                    <a href="{{ route('pengiriman.index') }}"
-                       class="{{ request()->routeIs('pengiriman.*') ? 'active' : '' }}">Delivery</a>
+                    @if($canRole(['Kepala Outlet Gaharu']))
+                        <a href="{{ route('pesanan.index') }}" class="{{ request()->routeIs('pesanan.*') ? 'active' : '' }}">
+                            <i class="bi bi-briefcase me-2" style="font-size:12px;"></i>B2B Orders
+                        </a>
+                    @endif
 
-                    {{-- OTHERS header --}}
-                    <div class="submenu-divider">OTHERS</div>
-                    <a href="{{ route('penggajian.index') }}"
-                       class="{{ request()->routeIs('penggajian.*') ? 'active' : '' }}">Payroll</a>
+                    @if($canRole(['Bagian Produksi']))
+                        <div class="submenu-divider">PRODUCTION</div>
+                        <a href="{{ route('wo.index') }}" class="{{ request()->routeIs('wo.*') ? 'active' : '' }}">
+                            <i class="bi bi-file-earmark-text me-2" style="font-size:12px;"></i>Production Request
+                        </a>
+                        <a href="{{ route('produksi.index') }}" class="{{ request()->routeIs('produksi.*') ? 'active' : '' }}">
+                            <i class="bi bi-hammer me-2" style="font-size:12px;"></i>Production
+                        </a>
+                    @endif
 
+                    @if($canRole(['Kepala Gudang']) || $canRole(['HRD']))
+                        <div class="submenu-divider">OTHERS</div>
+                    @endif
+
+                    @if($canRole(['Bagian Produksi']))
+                        <a href="{{ route('pengiriman.index') }}" class="{{ request()->routeIs('pengiriman.*') ? 'active' : '' }}">
+                            <i class="bi bi-truck me-2" style="font-size:12px;"></i>Delivery
+                        </a>
+                    @endif
+
+                    @if($canRole(['HRD']))
+                        <a href="{{ route('penggajian.index') }}" class="{{ request()->routeIs('penggajian.*') ? 'active' : '' }}">
+                            <i class="bi bi-cash-stack me-2" style="font-size:12px;"></i>Payroll
+                        </a>
+                    @endif
                 </div>
             </div>
+            @endif
 
-            {{-- FINANCE (Semua komponen akuntansi & jurnal ada di sini) --}}
-            @php
-                $financeActive = request()->routeIs([
-                    'jurnal.*','laporan.jurnal-penjualanb2b.*','laporan.jurnal-penjualanpos.*',
-                    'adjustment.*','closing.*','laporan.laba-rugi.*','laporan.neraca.*',
-                    'laporan.arus-kas.*','laporan.neraca-saldo.*'
-                ]);
-            @endphp
+
+            {{-- ========================================================================= --}}
+            {{-- FINANCE (grup sendiri, hanya Kepala Outlet Gaharu) --}}
+            {{-- ========================================================================= --}}
+            @if($canRole(['Kepala Outlet Gaharu']))
             <div class="menu-group {{ $financeActive ? 'open' : '' }}">
                 <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-wallet2 me-3 fs-5"></i>
                         <span>FINANCE</span>
                     </div>
-                    <i class="bi {{ $financeActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
+                    <i class="bi {{ $financeActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon"></i>
                 </div>
-                <div class="submenu">
-                    
-                    {{-- SUBMENU JURNAL --}}
+
+                <div class="submenu-content">
                     <div class="submenu-divider">JOURNALS</div>
-                    <a href="{{ route('jurnal.index') }}"
-                       class="{{ request()->routeIs('jurnal.*') ? 'active' : '' }}">General Journal</a>
-                    <a href="{{ route('laporan.jurnal-penjualanb2b.index') }}"
-                       class="{{ request()->routeIs('laporan.jurnal-penjualanb2b.*') ? 'active' : '' }}">B2B Sales Journal</a>
-                    <a href="{{ route('laporan.jurnal-penjualanpos.index') }}"
-                       class="{{ request()->routeIs('laporan.jurnal-penjualanpos.*') ? 'active' : '' }}">POS Sales Journal</a>
-                    <a href="{{ route('adjustment.index') }}"
-                       class="{{ request()->routeIs('adjustment.*') ? 'active' : '' }}">Adjustment Journal</a>
-                    <a href="{{ route('closing.index') }}"
-                       class="{{ request()->routeIs('closing.*') ? 'active' : '' }}">Closing Journal</a>
+                    <a href="{{ route('jurnal.index') }}" class="{{ request()->routeIs('jurnal.index') ? 'active' : '' }}">
+                        <i class="bi bi-journal-check me-2" style="font-size:12px;"></i>General Journal
+                    </a>
+                    <a href="{{ route('jurnal-penjualanb2b.index') }}" class="{{ request()->routeIs('jurnal-penjualanb2b.*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-plus me-2" style="font-size:12px;"></i>B2B Sales Journal
+                    </a>
+                    <a href="{{ route('jurnal-penjualanpos.index') }}" class="{{ request()->routeIs('jurnal-penjualanpos.*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-minus me-2" style="font-size:12px;"></i>POS Sales Journal
+                    </a>
+                    <a href="{{ route('adjustment.index') }}" class="{{ request()->routeIs('adjustment.*') ? 'active' : '' }}">
+                        <i class="bi bi-sliders me-2" style="font-size:12px;"></i>Adjustment Journal
+                    </a>
+                    <a href="{{ route('closing.index') }}" class="{{ request()->routeIs('closing.*') ? 'active' : '' }}">
+                        <i class="bi bi-lock me-2" style="font-size:12px;"></i>Closing Journal
+                    </a>
 
-                    {{-- SUBMENU REPORT --}}
                     <div class="submenu-divider">REPORTS</div>
-                    <a href="{{ route('laporan.laba-rugi.index') }}"
-                       class="{{ request()->routeIs('laporan.laba-rugi.*') ? 'active' : '' }}">Profit & Loss</a>
-                    <a href="{{ route('laporan.neraca.index') }}"
-                       class="{{ request()->routeIs('laporan.neraca.*') ? 'active' : '' }}">Balance Sheet</a>
-                    <a href="{{ route('laporan.arus-kas.index') }}"
-                       class="{{ request()->routeIs('laporan.arus-kas.*') ? 'active' : '' }}">Cash Flow</a>
+                    <a href="{{ route('laporan.laba-rugi.index') }}" class="{{ request()->routeIs('laporan.laba-rugi.*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up me-2" style="font-size:12px;"></i>Profit &amp; Loss
+                    </a>
+                    <a href="{{ route('laporan.neraca.index') }}" class="{{ request()->routeIs('laporan.neraca.*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-data me-2" style="font-size:12px;"></i>Balance Sheet
+                    </a>
+                    <a href="{{ route('laporan.arus-kas.index') }}" class="{{ request()->routeIs('laporan.arus-kas.*') ? 'active' : '' }}">
+                        <i class="bi bi-cash-coin me-2" style="font-size:12px;"></i>Cash Flow
+                    </a>
 
-                    {{-- SUBMENU OTHERS --}}
                     <div class="submenu-divider">OTHERS</div>
-                    <a href="{{ route('laporan.neraca-saldo.index') }}"
-                       class="{{ request()->routeIs('laporan.neraca-saldo.*') ? 'active' : '' }}">Trial Balance</a>
+                    <a href="{{ route('laporan.neraca-saldo.index') }}" class="{{ request()->routeIs('laporan.neraca-saldo.*') ? 'active' : '' }}">
+                        <i class="bi bi-list-check me-2" style="font-size:12px;"></i>Trial Balance
+                    </a>
                 </div>
             </div>
+            @endif
 
-            {{-- REPORTS (Hanya memuat laporan operasional logistik/sales) --}}
-            @php
-                $reportsActive = request()->routeIs([
-                    'reports.*','penjualan_pos.laporan','laporan.pembelian',
-                    'laporan.stok-gudang','laporan.pengeluaran-bahan-baku',
-                    'laporan.stock-opname','laporan.penjualan','laporan.hpp',
-                    'laporan.rekapitulasi'
-                ]);
-            @endphp
+
+            {{-- ========================================================================= --}}
+            {{-- REPORTS --}}
+            {{-- ========================================================================= --}}
+            @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga', 'Bagian Produksi', 'Kepala Gudang']))
             <div class="menu-group {{ $reportsActive ? 'open' : '' }}">
                 <div class="menu-parent d-flex align-items-center justify-content-between toggle-accordion">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-bar-chart-line me-3 fs-5"></i>
                         <span>REPORTS</span>
                     </div>
-                    <i class="bi {{ $reportsActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon fs-7"></i>
+                    <i class="bi {{ $reportsActive ? 'bi-chevron-down' : 'bi-chevron-right' }} chevron-icon"></i>
                 </div>
-                <div class="submenu">
 
-                    {{-- INVENTORY reports --}}
-                    <div class="submenu-divider">INVENTORY</div>
-                    <a href="{{ route('laporan.pembelian') }}"
-                       class="{{ request()->routeIs('laporan.pembelian') ? 'active' : '' }}">
-                        <i class="bi bi-cart3 me-2" style="font-size:12px;"></i>Purchase
-                    </a>
-                    <a href="{{ route('laporan.stok-gudang') }}"
-                       class="{{ request()->routeIs('laporan.stok-gudang') ? 'active' : '' }}">
-                        <i class="bi bi-boxes me-2" style="font-size:12px;"></i>Stock Position
-                    </a>
-                    <a href="{{ route('laporan.pengeluaran-bahan-baku') }}"
-                       class="{{ request()->routeIs('laporan.pengeluaran-bahan-baku') ? 'active' : '' }}">
-                        <i class="bi bi-box-arrow-up me-2" style="font-size:12px;"></i>Raw Material Output
-                    </a>
-                    <a href="{{ route('laporan.stock-opname') }}"
-                       class="{{ request()->routeIs('laporan.stock-opname') ? 'active' : '' }}">
-                        <i class="bi bi-clipboard-check me-2" style="font-size:12px;"></i>Stock Opname
-                    </a>
+                <div class="submenu-content">
+                    @if($canRole(['Kepala Gudang']))
+                        <div class="submenu-divider">INVENTORY</div>
+                        <a href="{{ route('laporan.pembelian') }}" class="{{ request()->routeIs('laporan.pembelian') ? 'active' : '' }}">
+                            <i class="bi bi-cart-check me-2" style="font-size:12px;"></i>Purchase
+                        </a>
+                        <a href="{{ route('laporan.stok-gudang') }}" class="{{ request()->routeIs('laporan.stok-gudang') ? 'active' : '' }}">
+                            <i class="bi bi-boxes me-2" style="font-size:12px;"></i>Stock Position
+                        </a>
+                        <a href="{{ route('laporan.pengeluaran-bahan-baku') }}" class="{{ request()->routeIs('laporan.pengeluaran-bahan-baku') ? 'active' : '' }}">
+                            <i class="bi bi-box-arrow-up me-2" style="font-size:12px;"></i>Raw Material Output
+                        </a>
+                        <a href="{{ route('laporan.stock-opname') }}" class="{{ request()->routeIs('laporan.stock-opname') ? 'active' : '' }}">
+                            <i class="bi bi-clipboard-check me-2" style="font-size:12px;"></i>Stock Opname
+                        </a>
+                    @endif
 
-                    {{-- SALES reports --}}
-                    <div class="submenu-divider">SALES</div>
-                    <a href="{{ route('penjualan_pos.laporan') }}"
-                       class="{{ request()->routeIs('penjualan_pos.laporan') ? 'active' : '' }}">
-                        <i class="bi bi-receipt me-2" style="font-size:12px;"></i>POS Sales Report
-                    </a>
-                    <a href="{{ route('laporan.penjualan') }}"
-                       class="{{ request()->routeIs('laporan.penjualan') ? 'active' : '' }}">
-                        <i class="bi bi-graph-up-arrow me-2" style="font-size:12px;"></i>B2B Sales Report
-                    </a>
-                    <a href="{{ route('laporan.hpp') }}"
-                       class="{{ request()->routeIs('laporan.hpp') ? 'active' : '' }}">
-                        <i class="bi bi-calculator me-2" style="font-size:12px;"></i>HPP Report
-                    </a>
+                    @if($canRole(['Kepala Outlet Gaharu', 'Kepala Outlet Kejingga']))
+                        <div class="submenu-divider">SALES</div>
 
-                    {{-- PRODUCTION reports --}}
-                    <div class="submenu-divider">PRODUCTION</div>
-                    <a href="{{ route('laporan.rekapitulasi') }}"
-                       class="{{ request()->routeIs('laporan.rekapitulasi') ? 'active' : '' }}">
-                        <i class="bi bi-gear me-2" style="font-size:12px;"></i>Production Report
-                    </a>
+                        @if($canRole(['Kepala Outlet Gaharu']))
+                            <a href="{{ route('penjualan_pos.laporan') }}" class="{{ request()->routeIs('penjualan_pos.laporan') ? 'active' : '' }}">
+                                <i class="bi bi-receipt me-2" style="font-size:12px;"></i>POS Sales Report
+                            </a>
+                        @endif
 
+                        <a href="{{ route('laporan.penjualan') }}" class="{{ request()->routeIs('laporan.penjualan') ? 'active' : '' }}">
+                            <i class="bi bi-building me-2" style="font-size:12px;"></i>B2B Sales Report
+                        </a>
+
+                        @if($canRole(['Kepala Outlet Gaharu']))
+                            <a href="{{ route('laporan.hpp') }}" class="{{ request()->routeIs('laporan.hpp') ? 'active' : '' }}">
+                                <i class="bi bi-cpu me-2" style="font-size:12px;"></i>HPP Report
+                            </a>
+                        @endif
+                    @endif
+
+                    @if($canRole(['Bagian Produksi']))
+                        <div class="submenu-divider">PRODUCTION</div>
+                        <a href="{{ route('laporan.rekapitulasi') }}" class="{{ request()->routeIs('laporan.rekapitulasi') ? 'active' : '' }}">
+                            <i class="bi bi-gear-wide-connected me-2" style="font-size:12px;"></i>Production Report
+                        </a>
+                    @endif
                 </div>
             </div>
+            @endif
 
         </div>
     </div>
 
-    {{-- LOGOUT --}}
     <div style="padding:24px 0; border-top:1px solid #4a4a4a;">
         <form method="POST" action="{{ route('logout') }}">
             @csrf

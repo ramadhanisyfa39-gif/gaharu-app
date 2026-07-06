@@ -12,7 +12,6 @@
 
 <div class="container mt-5">
 
-    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
@@ -36,7 +35,6 @@
 
     </div>
 
-    <!-- CARD -->
     <div class="card border-0 shadow-sm rounded-4">
 
         <div class="card-body p-4">
@@ -47,7 +45,6 @@
                 @csrf
                 @method('PUT')
 
-                <!-- KODE -->
                 <div class="mb-3">
 
                     <label class="form-label">
@@ -61,7 +58,6 @@
 
                 </div>
 
-                <!-- CUSTOMER -->
                 <div class="mb-3">
 
                     <label class="form-label">
@@ -86,7 +82,6 @@
 
                 </div>
 
-                <!-- TANGGAL -->
                 <div class="mb-3">
 
                     <label class="form-label">
@@ -100,10 +95,7 @@
 
                 </div>
 
-                <!-- ESTIMASI -->
-                <div class="mb-3">
-
-                    <label class="form-label">
+                <div class="mb-4"> <label class="form-label">
                         Estimasi Kirim
                     </label>
 
@@ -114,48 +106,10 @@
 
                 </div>
 
-                <!-- STATUS -->
-                <div class="mb-4">
-
-                    <label class="form-label">
-                        Status Pesanan
-                    </label>
-
-                    <select name="status_pesanan"
-                            class="form-select">
-
-                        <option value="pending"
-                            {{ $pesanan->status_pesanan == 'pending' ? 'selected' : '' }}>
-                            Pending
-                        </option>
-
-                        <option value="diproses"
-                            {{ $pesanan->status_pesanan == 'diproses' ? 'selected' : '' }}>
-                            Diproses
-                        </option>
-
-                        <option value="dikirim"
-                            {{ $pesanan->status_pesanan == 'dikirim' ? 'selected' : '' }}>
-                            Dikirim
-                        </option>
-
-                        <option value="selesai"
-                            {{ $pesanan->status_pesanan == 'selesai' ? 'selected' : '' }}>
-                            Selesai
-                        </option>
-
-                        <option value="batal"
-                            {{ $pesanan->status_pesanan == 'batal' ? 'selected' : '' }}>
-                            Batal
-                        </option>
-
-                    </select>
-
-                </div>
+                {{-- REVISI: Bagian input dropdown "Status Pesanan" telah dihapus sepenuhnya di sini --}}
 
                 <hr class="mb-4">
 
-                <!-- DETAIL -->
                 <h5 class="fw-semibold mb-3">
                     Detail Pesanan
                 </h5>
@@ -181,7 +135,6 @@
 
                             <tr>
 
-                                <!-- PRODUK -->
                                 <td>
 
                                     <select name="produk_id[]"
@@ -203,7 +156,6 @@
 
                                 </td>
 
-                                <!-- QTY -->
                                 <td>
 
                                     <input type="number"
@@ -213,7 +165,6 @@
 
                                 </td>
 
-                                <!-- HARGA -->
                                 <td>
 
                                     <input type="number"
@@ -223,7 +174,6 @@
 
                                 </td>
 
-                                <!-- SUBTOTAL -->
                                 <td>
 
                                     <input type="number"
@@ -244,7 +194,6 @@
 
                 </div>
 
-                <!-- TOTAL -->
                 <div class="mb-4 mt-4">
 
                     <label class="form-label fw-semibold">
@@ -260,7 +209,6 @@
 
                 </div>
 
-                <!-- BUTTON -->
                 <button type="submit"
                         class="btn btn-primary rounded-3">
 
@@ -306,10 +254,10 @@ function hitungTotal()
     document.getElementById('total_pesanan').value = total;
 }
 
-// QTY
+// Perubahan QTY atau HARGA secara manual menggunakan input event
 document.addEventListener('input', function(e) {
 
-    if (e.target.classList.contains('qty')) {
+    if (e.target.classList.contains('qty') || e.target.classList.contains('harga')) {
 
         let row = e.target.closest('tr');
 
@@ -317,16 +265,15 @@ document.addEventListener('input', function(e) {
     }
 });
 
-// PRODUK
+// Perubahan PRODUK (Otomatis mengganti harga sesuai data-harga)
 document.addEventListener('change', function(e) {
 
     if (e.target.classList.contains('produk')) {
 
         let row = e.target.closest('tr');
-
-        let harga =
-            e.target.options[e.target.selectedIndex]
-            .dataset.harga;
+        
+        let selectedOption = e.target.options[e.target.selectedIndex];
+        let harga = selectedOption ? parseFloat(selectedOption.getAttribute('data-harga')) || 0 : 0;
 
         row.querySelector('.harga').value = harga;
 
@@ -334,11 +281,11 @@ document.addEventListener('change', function(e) {
     }
 });
 
-// LOAD
-document.querySelectorAll('tbody tr')
-.forEach(function(row) {
-
-    hitungSubtotal(row);
+// LOAD AWAL (Hitung total saat halaman pertama kali dibuka)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('tbody tr').forEach(function(row) {
+        hitungSubtotal(row);
+    });
 });
 
 </script>

@@ -109,7 +109,7 @@
         }
 
         /* ── SUBMENU (rincian menu) ── */
-        .submenu {
+        .submenu-content {
             display: none;
             flex-direction: column;
             list-style: none;
@@ -119,23 +119,7 @@
             /* sedikit lebih gelap dari sidebar */
         }
 
-        .submenu-divider {
-            padding: 8px 24px 4px 24px;
-            font-size: 10px;
-            font-weight: 700;
-            color: #a08060;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin-top: 4px;
-            pointer-events: none;
-            user-select: none;
-        }
-        
-        .submenu-divider:first-child {
-            margin-top: 0;
-        }
-
-        .menu-group.open .submenu {
+        .menu-group.open .submenu-content {
             display: flex;
         }
 
@@ -147,10 +131,17 @@
             color: #a0a0a0;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-top: 4px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .submenu-divider:first-child {
+            margin-top: 0;
         }
 
         /* link submenu — menjorok lebih ke kanan dari parent */
-        .submenu a {
+        .submenu-content a {
             display: block;
             padding: 9px 20px 9px 44px;
             /* indent 44px vs parent 20px */
@@ -161,12 +152,12 @@
             transition: color .2s, background .2s;
         }
 
-        .submenu a:hover {
+        .submenu-content a:hover {
             color: #d88656;
             background: rgba(255, 255, 255, .06);
         }
 
-        .submenu a.active {
+        .submenu-content a.active {
             color: #d88656;
             font-weight: 600;
             background: rgba(216, 134, 86, .12);

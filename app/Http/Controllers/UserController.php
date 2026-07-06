@@ -32,22 +32,23 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-    $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
-            'password' => 'required|min:8',
-            'role_id' => 'required|exists:roles,id',
+        $request->validate([
+            'nama'      => 'required|string|max:255',
+            'username'  => 'required|string|max:255|unique:users,username', // Ganti username jadi username
+            'password'  => 'required|min:8',
+            'role_id'   => 'required|exists:roles,id',
+            'gudang_id' => 'nullable|exists:master_gudang,id' // Tambahkan ini
         ]);
 
         User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role_id' => $request->role_id,
+            'nama'      => $request->nama,
+            'username'  => $request->username,
+            'password'  => Hash::make($request->password),
+            'role_id'   => $request->role_id,
+            'gudang_id' => $request->gudang_id, // Tambahkan ini
         ]);
 
-        return redirect()->route('users.index')
-            ->with('success', 'User berhasil ditambahkan.');
+        return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
     }
 
     /**
@@ -74,15 +75,17 @@ class UserController extends Controller
     {
     $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'username' => 'required|username|max:255|unique:users,username,' . $user->id,
             'password' => 'nullable|min:8',
             'role_id' => 'required|exists:roles,id',
+            'gudang_id' => 'nullable|exists:master_gudang,id'
         ]);
 
         $data = [
             'name' => $request->name,
-            'email' => $request->email,
+            'username' => $request->username,
             'role_id' => $request->role_id,
+            'gudang_id' => $request->gudang_id,
         ];
 
         if ($request->filled('password')) {

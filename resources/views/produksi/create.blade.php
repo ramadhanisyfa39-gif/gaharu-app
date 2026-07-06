@@ -1,350 +1,185 @@
 <x-app-layout>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <div class="container mt-4 mb-5">
-        <div class="card shadow-sm border-0">
+    <style>
+        .text-warning-dark {
+            color: #b45309 !important;
+        }
+    </style>
 
-            <div class="card-header bg-primary text-white py-3">
-                <h4 class="mb-0">
-                    <i class="bi bi-box-seam me-2"></i>
-                    Input Hasil Produksi
+    <div class="container py-4 mt-4 mb-5" style="font-family: 'Plus Jakarta Sans', sans-serif;">
+        
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <a href="{{ route('produksi.index') }}" class="btn btn-sm btn-outline-secondary rounded-3 px-3">
+                <i class="bi bi-arrow-left me-1"></i> Kembali ke Riwayat
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            
+            <div class="card-header text-white py-3 border-0" style="background-color: #4f46e5;">
+                <h4 class="mb-0 fw-bold">
+                    <i class="bi bi-box-seam me-2"></i> Input Hasil Produksi Fisik
                 </h4>
-                <small class="opacity-75">
-                    Catat hasil produksi berdasarkan Work Order yang telah disetujui.
+                <small class="text-white-50">
+                    Catat penambahan stok produk jadi berdasarkan Work Order aktif yang sedang berjalan.
                 </small>
             </div>
 
-            <div class="card-body p-4">
+            <div class="card-body p-4 bg-white">
 
                 {{-- ALERT SUCCESS --}}
                 @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-                        <strong>Berhasil!</strong> {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="alert alert-success alert-dismissible fade show shadow-sm rounded-3 p-3 mb-4" role="alert" style="background-color: #ecfdf5;">
+                        <i class="bi bi-check-circle-fill me-2 text-success"></i> 
+                        <strong class="text-success">Berhasil!</strong> 
+                        <span class="small text-secondary d-block mt-1">{{ session('success') }}</span>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="alert"></button>
                     </div>
                 @endif
 
                 {{-- ALERT ERROR --}}
                 @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-                        <strong>Gagal!</strong> {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3 p-3 mb-4" role="alert" style="background-color: #fef2f2;">
+                        <i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i> 
+                        <strong class="text-danger">Gagal!</strong> 
+                        <span class="small text-secondary d-block mt-1">{{ session('error') }}</span>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="alert"></button>
                     </div>
                 @endif
 
                 {{-- VALIDATION ERROR --}}
                 @if($errors->any())
-                    <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert">
-                        <strong>Data belum valid:</strong>
-                        <ul class="mb-0 mt-2">
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3 p-3 mb-4" role="alert" style="background-color: #fef2f2;">
+                        <i class="bi bi-x-circle-fill me-2 text-danger"></i>
+                        <strong class="text-danger">Periksa Kembali Isian Anda:</strong>
+                        <ul class="mb-0 small text-secondary mt-1 ps-3">
                             @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="alert"></button>
                     </div>
                 @endif
 
-                {{-- LANGKAH 1 --}}
-                <div class="card border-primary mb-4">
-                    <div class="card-header bg-light">
-                        <strong>
-                            <span class="badge bg-primary rounded-pill me-2">1</span>
-                            Pilih Work Order
-                        </strong>
-                    </div>
+                <form action="{{ route('produksi.store') }}" method="POST">
+                    @csrf
 
-                    <div class="card-body">
-                        <form action="{{ route('produksi.create') }}" method="GET">
-                            <div class="row align-items-end">
+                    <div class="p-3 bg-light rounded-3 mb-4 border border-secondary-subtle">
+                        <h6 class="fw-bold text-dark mb-3">
+                            <span class="badge rounded-circle me-1 text-white" style="background-color: #4f46e5; padding: 5px 9px;">1</span> 
+                            Pilih Sumber Dokumen Kerja
+                        </h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-secondary">Tanggal Penginputan</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-calendar-event"></i></span>
+                                    <input type="date" name="tanggal_produksi" class="form-control border-start-0 ps-0 text-dark fw-medium shadow-none" value="{{ date('Y-m-y') }}" required>
+                                </div>
+                            </div>
 
-                                <div class="col-md-9 mb-3 mb-md-0">
-                                    <label class="form-label fw-semibold">
-                                        Nomor Work Order Siap Produksi
-                                    </label>
-
-                                    <select name="work_order_id"
-                                        class="form-select"
-                                        required>
-                                        <option value="">-- Pilih Nomor Work Order --</option>
-
+                            <div class="col-md-8">
+                                <label class="form-label small fw-bold text-secondary">Pilih Nomor Work Order (WO Active)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-file-earmark-text"></i></span>
+                                    <select name="work_order_id" class="form-select border-start-0 ps-0 text-dark fw-bold shadow-none" onchange="window.location.href='?work_order_id=' + this.value" required>
+                                        <option value="">-- Klik untuk memilih nomor WO pabrik --</option>
                                         @foreach($workOrders as $wo)
-                                            <option value="{{ $wo->id }}"
-                                                {{ isset($selectedWoId) && $selectedWoId == $wo->id ? 'selected' : '' }}>
-
-                                                {{ $wo->kode_wo ?? ($wo->no_wo ?? 'WO-BATCH-' . $wo->id) }}
-
-                                                @if($wo->pesanan)
-                                                    - {{ $wo->pesanan->customer->nama_customer ?? 'Pelanggan Umum' }}
-                                                @endif
+                                            <option value="{{ $wo->id }}" {{ $selectedWoId == $wo->id ? 'selected' : '' }}>
+                                                {{ $wo->kode_wo }} — (Pelanggan Terkait: Multi-Customer WO)
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
-
-                                <div class="col-md-3">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="bi bi-search me-1"></i>
-                                        Tampilkan Detail
-                                    </button>
-                                </div>
-
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                {{-- JIKA WO DIPILIH --}}
-                @if(isset($selectedWoId) && $selectedWoId != null)
-
-                    @php
-                        $selectedWo = $workOrders->where('id', $selectedWoId)->first();
-                        $totalTarget = $items->sum('total_target');
-                    @endphp
-
-                    {{-- RINGKASAN WO --}}
-                    <div class="card border-info mb-4">
-                        <div class="card-header bg-info text-dark">
-                            <strong>
-                                <i class="bi bi-clipboard-check me-2"></i>
-                                Ringkasan Work Order
-                            </strong>
-                        </div>
-
-                        <div class="card-body">
-                            <div class="row">
-
-                                <div class="col-md-3 mb-3 mb-md-0">
-                                    <small class="text-muted d-block">Nomor Work Order</small>
-                                    <strong class="text-primary">
-                                        {{ $selectedWo->kode_wo ?? ($selectedWo->no_wo ?? 'WO-BATCH-' . $selectedWoId) }}
-                                    </strong>
-                                </div>
-
-                                <div class="col-md-3 mb-3 mb-md-0">
-                                    <small class="text-muted d-block">Pelanggan</small>
-                                    <strong>
-                                        {{ $selectedWo->pesanan->customer->nama_customer ?? 'Pelanggan Umum' }}
-                                    </strong>
-                                </div>
-
-                                <div class="col-md-3 mb-3 mb-md-0">
-                                    <small class="text-muted d-block">Total Target Produksi</small>
-                                    <strong class="text-success">
-                                        {{ (int) $totalTarget }} Unit
-                                    </strong>
-                                </div>
-
-                                <div class="col-md-3">
-                                    <small class="text-muted d-block">Status Work Order</small>
-                                    <span class="badge bg-success">
-                                        Siap Diproduksi
-                                    </span>
-                                </div>
-
                             </div>
                         </div>
                     </div>
 
-                    {{-- FORM SIMPAN PRODUKSI --}}
-                    <form action="{{ route('produksi.store') }}" method="POST">
-                        @csrf
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-dark mb-3">
+                            <span class="badge rounded-circle me-1 text-white" style="background-color: #4f46e5; padding: 5px 9px;">2</span> 
+                            Rekap Hasil Produksi Fisik
+                        </h6>
 
-                        <input type="hidden" name="work_order_id" value="{{ $selectedWoId }}">
-
-                        {{-- LANGKAH 2 --}}
-                        <div class="card border-success mb-4">
-                            <div class="card-header bg-light">
-                                <strong>
-                                    <span class="badge bg-success rounded-pill me-2">2</span>
-                                    Data Produksi
-                                </strong>
-                            </div>
-
-                            <div class="card-body">
-                                <div class="row">
-
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">
-                                            Tanggal Produksi
-                                        </label>
-
-                                        <input type="date"
-                                            name="tanggal_produksi"
-                                            class="form-control"
-                                            value="{{ date('Y-m-d') }}"
-                                            required>
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">
-                                            Gudang Tempat Produksi
-                                        </label>
-
-                                        <select name="gudang_id" class="form-select" required>
-                                            @foreach($gudangs as $gudang)
-                                                <option value="{{ $gudang->id }}"
-                                                    {{ $gudang->id == 3 ? 'selected' : '' }}>
-                                                    {{ $gudang->nama ?? ($gudang->nama_gudang ?? 'Gudang ' . $gudang->id) }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- LANGKAH 3 --}}
-                        <div class="card border-secondary mb-4">
-                            <div class="card-header bg-light">
-                                <strong>
-                                    <span class="badge bg-dark rounded-pill me-2">3</span>
-                                    Input Hasil Produksi
-                                </strong>
-                            </div>
-
-                            <div class="card-body p-0">
-
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-0 align-middle">
-                                        <thead class="table-dark">
+                        @if($selectedWoId)
+                            <div class="table-responsive rounded-3 border">
+                                <table class="table table-hover mb-0 align-middle">
+                                    <thead class="table-light text-muted small text-uppercase fw-bold">
+                                        <tr>
+                                            <th class="ps-3">Nama Produk Target</th>
+                                            <th class="text-center" width="20%">Sisa Target WO</th>
+                                            <th class="text-center" width="25%">Hasil Nyata Hari Ini</th>
+                                            <th class="text-center pe-3" width="20%">Status Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if($items->isEmpty())
                                             <tr>
-                                                <th>Produk Jadi</th>
-                                                <th class="text-center" width="20%">Target WO</th>
-                                                <th class="text-center" width="25%">Hasil Nyata</th>
-                                                <th class="text-center" width="20%">Selisih</th>
+                                                <td colspan="4" class="text-center text-success py-5 bg-light-subtle">
+                                                    <div class="py-2">
+                                                        <i class="bi bi-check2-circle display-5 text-success d-block mb-2"></i>
+                                                        <h6 class="fw-bold text-dark mb-1">Semua Item Sudah Terpenuhi</h6>
+                                                        <p class="small text-muted mb-0">Seluruh target produk pada Work Order ini sudah selesai dicicil 100%.</p>
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        </thead>
-
-                                        <tbody>
-                                            @if($items->isEmpty())
+                                        @else
+                                            @foreach($items as $index => $item)
                                                 <tr>
-                                                    <td colspan="4" class="text-center text-danger py-4">
-                                                        Tidak ada produk pada Work Order ini.
+                                                    <td class="ps-3">
+                                                        <input type="hidden" name="produk_id[]" value="{{ $item->produk_id }}">
+                                                        <strong class="text-dark d-block" style="font-size: 0.95rem;">
+                                                            {{ $item->produk?->nama ?? 'Produk Tidak Terdefinisi' }}
+                                                        </strong>
+                                                        <small class="text-muted" style="font-size: 0.78rem;">
+                                                            Target Awal: <span class="fw-semibold">{{ (int) $item->total_target }} Pcs</span> | Sudah Jadi: <span class="fw-semibold text-indigo">{{ (int) $item->sudah_diproduksi }} Pcs</span>
+                                                        </small>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-warning-subtle text-warning-dark border border-warning-subtle fs-6 px-3">
+                                                            Sisa: {{ (int) $item->sisa_target }} Pcs
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group mx-auto shadow-sm rounded-3" style="max-width: 170px;">
+                                                            <input type="number" step="any" name="qty_hasil[]" value="{{ (int) $item->sisa_target }}" class="form-control text-center fw-bold qty-hasil border-primary-subtle shadow-none" min="0" data-target="{{ (int) $item->sisa_target }}" data-index="{{ $index }}" required>
+                                                            <span class="input-group-text bg-white text-muted small">Pcs</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center pe-3">
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle selisih-produksi" id="selisih-{{ $index }}">
+                                                            Sesuai Sisa Target
+                                                        </span>
                                                     </td>
                                                 </tr>
-                                            @else
-                                                @foreach($items as $index => $item)
-                                                    <tr>
-                                                        <td>
-                                                            <input type="hidden"
-                                                                name="produk_id[]"
-                                                                value="{{ $item->produk_id }}">
+                                            @endforeach
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                                            <strong>
-                                                                {{ $item->produk?->nama ?? 'Produk Tidak Terdefinisi' }}
-                                                            </strong>
-                                                        </td>
-
-                                                        <td class="text-center">
-                                                            <span class="badge bg-info text-dark fs-6">
-                                                                {{ (int) $item->total_target }} Unit
-                                                            </span>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="input-group mx-auto" style="max-width: 180px;">
-                                                                <input type="number"
-                                                                    step="any"
-                                                                    name="qty_hasil[]"
-                                                                    value="{{ (int) $item->total_target }}"
-                                                                    class="form-control text-center fw-bold qty-hasil"
-                                                                    min="1"
-                                                                    data-target="{{ (int) $item->total_target }}"
-                                                                    data-index="{{ $index }}"
-                                                                    required>
-
-                                                                <span class="input-group-text">Unit</span>
-                                                            </div>
-                                                        </td>
-
-                                                        <td class="text-center">
-                                                            <span class="badge bg-success selisih-produksi"
-                                                                id="selisih-{{ $index }}">
-                                                                Sesuai Target
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            @endif
-                                        </tbody>
-                                    </table>
+                            @if($items->isNotEmpty())
+                                <div class="mt-4 text-end">
+                                    <button type="submit" class="btn text-white fw-semibold rounded-3 px-4 py-2.5 shadow-sm" style="background-color: #4f46e5;">
+                                        <i class="bi bi-cloud-check-fill me-1.5"></i> Simpan Hasil Produksi & Potong FIFO
+                                    </button>
                                 </div>
+                            @endif
 
+                        @else
+                            <div class="text-center text-muted py-5 border border-dashed rounded-3 bg-light-subtle">
+                                <div class="py-3">
+                                    <i class="bi bi-layers-half text-secondary opacity-50 display-5 d-block mb-3"></i>
+                                    <h6 class="fw-bold text-dark mb-1">Menunggu Pemilihan Work Order</h6>
+                                    <p class="small text-muted mb-0">Silakan tentukan nomor dokumen Work Order pada Langkah 1 untuk memuat daftar item produk.</p>
+                                </div>
                             </div>
-                        </div>
-
-                        {{-- CATATAN PRODUKSI --}}
-                        <div class="card border-warning mb-4">
-                            <div class="card-header bg-light">
-                                <strong>
-                                    <i class="bi bi-pencil-square me-2"></i>
-                                    Catatan Produksi
-                                </strong>
-                                <small class="text-muted">(Opsional)</small>
-                            </div>
-
-                            <div class="card-body">
-                                <textarea name="catatan_produksi"
-                                    class="form-control"
-                                    rows="3"
-                                    placeholder="Contoh: Terdapat produk gagal produksi atau bahan baku yang rusak."></textarea>
-                            </div>
-                        </div>
-
-                        {{-- INFO HPP --}}
-                        <div class="alert alert-info border-0 shadow-sm mb-4">
-                            <h6 class="fw-bold mb-2">
-                                <i class="bi bi-calculator me-2"></i>
-                                Informasi Perhitungan HPP
-                            </h6>
-
-                            <div class="mb-1">
-                                ✓ Pemakaian bahan baku dihitung otomatis menggunakan metode FIFO.
-                            </div>
-
-                            <div class="mb-1">
-                                ✓ Biaya tenaga kerja langsung dan BOP dialokasikan otomatis oleh sistem.
-                            </div>
-
-                            <div>
-                                ✓ Setelah disimpan, stok produk jadi akan diperbarui secara otomatis.
-                            </div>
-                        </div>
-
-                        {{-- BUTTON --}}
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{{ route('produksi.index') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left me-1"></i>
-                                Kembali
-                            </a>
-
-                            <button type="submit"
-                                class="btn btn-success px-4"
-                                {{ $items->isEmpty() ? 'disabled' : '' }}>
-                                <i class="bi bi-save me-1"></i>
-                                Simpan Hasil Produksi
-                            </button>
-                        </div>
-
-                    </form>
-
-                @else
-
-                    {{-- JIKA BELUM PILIH WO --}}
-                    <div class="text-center border rounded p-5 bg-light">
-                        <i class="bi bi-clipboard-data fs-1 text-secondary"></i>
-
-                        <h5 class="mt-3 text-secondary">
-                            Belum Ada Work Order Dipilih
-                        </h5>
-
-                        <p class="text-muted mb-0">
-                            Pilih Nomor Work Order terlebih dahulu untuk menampilkan produk yang akan diproduksi.
-                        </p>
+                        @endif
                     </div>
-
-                @endif
+                </form>
 
             </div>
         </div>
@@ -354,30 +189,46 @@
         document.addEventListener('DOMContentLoaded', function () {
             const inputs = document.querySelectorAll('.qty-hasil');
 
+            // Fungsi inti kalkulator selisih berdasarkan sisa target baru
+            function hitungSelisih(input) {
+                const targetSisa = parseFloat(input.dataset.target);
+                const hasilInput = parseFloat(input.value) || 0;
+                const index = input.dataset.index;
+
+                const badge = document.getElementById('selisih-' + index);
+                if (!badge) return;
+
+                const selisih = hasilInput - targetSisa;
+
+                // Bersihkan semua class bawaan Bootstrap badge agar tidak tumpang tindih
+                badge.classList.remove(
+                    'bg-success-subtle', 'text-success', 'border-success-subtle',
+                    'bg-warning-subtle', 'text-warning-dark', 'border-warning-subtle',
+                    'bg-danger-subtle', 'text-danger', 'border-danger-subtle'
+                );
+
+                if (selisih === 0) {
+                    badge.classList.add('bg-success-subtle', 'text-success', 'border-success-subtle');
+                    badge.innerText = 'Sesuai Sisa Target';
+                } else if (selisih < 0) {
+                    badge.classList.add('bg-warning-subtle', 'text-warning-dark', 'border-warning-subtle');
+                    badge.innerText = 'Kurang ' + Math.abs(selisih) + ' Pcs';
+                } else {
+                    badge.classList.add('bg-danger-subtle', 'text-danger', 'border-danger-subtle');
+                    badge.innerText = 'Lebih ' + selisih + ' Pcs';
+                }
+            }
+
+            // Daftarkan fungsi ke setiap input barang jadi
             inputs.forEach(function (input) {
+                // Panggil sekali di awal agar badge langsung kalkulasi (karena default terisi sisa_target)
+                hitungSelisih(input);
+
+                // Pantau setiap ketikan angka operator gudang
                 input.addEventListener('input', function () {
-                    const target = parseFloat(this.dataset.target);
-                    const hasil = parseFloat(this.value) || 0;
-                    const index = this.dataset.index;
-
-                    const badge = document.getElementById('selisih-' + index);
-                    const selisih = hasil - target;
-
-                    badge.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'text-dark');
-
-                    if (selisih === 0) {
-                        badge.classList.add('bg-success');
-                        badge.innerText = 'Sesuai Target';
-                    } else if (selisih < 0) {
-                        badge.classList.add('bg-warning', 'text-dark');
-                        badge.innerText = 'Kurang ' + Math.abs(selisih) + ' Unit';
-                    } else {
-                        badge.classList.add('bg-danger');
-                        badge.innerText = 'Lebih ' + selisih + ' Unit';
-                    }
+                    hitungSelisih(this);
                 });
             });
         });
     </script>
-
 </x-app-layout>

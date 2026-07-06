@@ -2,22 +2,18 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Seeder;
+use App\Models\Role;
 
 class RoleSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        DB::table('roles')->insert([
-            ['nama' => 'Super Admin'],
-            ['nama' => 'Kepala Outlet'],
-            ['nama' => 'Kepala Gudang'],
-            ['nama' => 'Kepala Produksi'],
-        ]);
+        // Menggunakan 'nama' sesuai validasi di RoleController Anda
+        Role::updateOrCreate(['nama' => 'HRD']);
+        Role::updateOrCreate(['nama' => 'Kepala Outlet Gaharu']);
+        Role::updateOrCreate(['nama' => 'Kepala Outlet Kejingga']);
+        Role::updateOrCreate(['nama' => 'Bagian Produksi']);
+        Role::updateOrCreate(['nama' => 'Kepala Gudang']);
     }
 }

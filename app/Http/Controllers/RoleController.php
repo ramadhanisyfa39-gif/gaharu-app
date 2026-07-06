@@ -29,18 +29,15 @@ class RoleController extends Controller
      */
     public function store(Request $request)
     {
-    $request->validate([
-            'nama_role' => 'required|string|max:255|unique:roles,nama_role',
-            'deskripsi' => 'nullable|string',
+        $request->validate([
+            'nama' => 'required|string|max:255|unique:roles,nama', // Ganti nama jadi nama
         ]);
 
         Role::create([
-            'nama_role' => $request->nama_role,
-            'deskripsi' => $request->deskripsi,
+            'nama' => $request->nama, // Ganti nama jadi nama
         ]);
 
-        return redirect()->route('roles.index')
-            ->with('success', 'Role berhasil ditambahkan.');
+        return redirect()->route('roles.index')->with('success', 'Role berhasil ditambahkan.');
     }
 
     /**
@@ -65,12 +62,12 @@ class RoleController extends Controller
     public function update(Request $request, string $id)
     {
     $request->validate([
-            'nama_role' => 'required|string|max:255|unique:roles,nama_role,' . $role->id,
+            'nama' => 'required|string|max:255|unique:roles,nama,' . $role->id,
             'deskripsi' => 'nullable|string',
         ]);
 
         $role->update([
-            'nama_role' => $request->nama_role,
+            'nama' => $request->nama,
             'deskripsi' => $request->deskripsi,
         ]);
 

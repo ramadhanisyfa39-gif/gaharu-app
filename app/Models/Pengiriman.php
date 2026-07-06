@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Pengiriman extends Model
 {
-    protected $table = 'pengiriman'; // Tanpa "s"
+    protected $table = 'pengiriman'; 
     
     protected $fillable = [
         'no_pengiriman', 
         'pesanan_id', 
         'tanggal_pengiriman', 
-        'kurir'
+        'kurir',
+        'status_pengiriman' // <-- Ditambahkan
     ];
 
     public function details()

@@ -13,6 +13,7 @@ class PenjualanPos extends Model
         'tanggal',
         'gudang_id',
         'total',
+        'status', // <--- Tambahkan baris ini
         'created_by'
     ];
 

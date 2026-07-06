@@ -27,6 +27,9 @@ class PenjualanPosController extends Controller
         return view('penjualan_pos.create', compact('produk', 'gudang'));
     }
 
+    /**
+     * 1. SIMPAN INPUTAN BARU (STATUS: Draft)
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -46,23 +49,168 @@ class PenjualanPosController extends Controller
             $kodePos = 'POS-' . time();
             $tanggalTrans = date('Y-m-d H:i:s', strtotime($request->tanggal));
 
-            // ====================================================================
-            // FASE 1: REKAP TOTAL KEBUTUHAN BAHAN BAKU UNTUK SEMUA ITEM POS
-            // ====================================================================
-            $totalKebutuhanBahan = []; 
+            $penjualan = PenjualanPos::create([
+                'kode_transaksi' => $kodePos,
+                'status'         => 'Draft', // Status awal selalu Draft
+                'tanggal'        => $tanggalTrans,
+                'gudang_id'      => $request->gudang_id,
+                'total'          => 0,
+                'created_by'     => auth()->id() ?? 1
+            ]);
+    
+            $total_penjualan = 0;
+    
+            foreach ($request->produk_id as $key => $produkId) {
+                if (!isset($request->qty[$key]) || !isset($request->harga[$key])) continue;
+
+                $qtyTerjual = floatval($request->qty[$key]);
+                $hargaJual  = floatval($request->harga[$key]);
+                $subtotal   = $qtyTerjual * $hargaJual;
+    
+                // HPP diset 0 saat simpan awal (Draft)
+                PenjualanPosDetail::create([ 
+                    'penjualan_id' => $penjualan->id, 
+                    'produk_id'    => $produkId,
+                    'qty'          => $qtyTerjual,
+                    'harga'        => $hargaJual,
+                    'hpp_satuan'   => 0, 
+                    'subtotal'     => $subtotal
+                ]);
+    
+                $total_penjualan += $subtotal;
+            }
+    
+            $penjualan->update(['total' => $total_penjualan]);
+            DB::commit();
+    
+            return redirect()->route('penjualan_pos.index')->with('success', 'Rekap berhasil disimpan (Status: Draft). HPP dan Stok belum dipotong sebelum di-Approve.');
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error Simpan POS: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat simpan: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function show($id) 
+    {
+        $penjualan = PenjualanPos::with('details.produk')->findOrFail($id);
+        return view('penjualan_pos.show', compact('penjualan'));
+    }
+
+    /**
+     * 2. TRANSAKSI HANYA BISA DIEDIT JIKA STATUSNYA Draft
+     */
+    public function edit($id) 
+    {
+        $penjualan = PenjualanPos::findOrFail($id);
+        
+        if ($penjualan->status !== 'Draft') {
+            return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi yang telah di-Approve atau di-Void tidak dapat diubah lagi.');
+        }
+        
+        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
+        $gudang = MasterGudang::all();
+        return view('penjualan_pos.edit', compact('penjualan', 'produk', 'gudang'));
+    }
+
+    /**
+     * 3. PROSES UPDATE DATA Draft
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal'     => 'required',
+            'gudang_id'   => 'required|exists:master_gudang,id',
+            'produk_id'   => 'required|array',
+            'produk_id.*' => 'required|exists:master_barang,id',
+            'qty'         => 'required|array',
+            'qty.*'       => 'required|numeric|min:0.01',
+            'harga'       => 'required|array',
+            'harga.*'     => 'required|numeric',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $penjualan = PenjualanPos::findOrFail($id);
+            
+            if ($penjualan->status !== 'Draft') {
+                return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi yang telah di-Approve tidak dapat diubah lagi.');
+            }
+
+            $penjualan->update([
+                'tanggal'   => date('Y-m-d H:i:s', strtotime($request->tanggal)),
+                'gudang_id' => $request->gudang_id,
+            ]);
+
+            // Hapus detail lama, tulis detail baru dengan HPP tetap 0
+            PenjualanPosDetail::where('penjualan_id', $id)->delete();
+            $total_penjualan = 0;
 
             foreach ($request->produk_id as $key => $produkId) {
-                if (!isset($request->qty[$key])) continue;
-                $qtyTerjual = floatval($request->qty[$key]);
+                if (!isset($request->qty[$key]) || !isset($request->harga[$key])) continue;
 
-                $resepUtama = DB::table('resep_btkl_bop')->where('produk_id', $produkId)->first();
+                $qtyTerjual = floatval($request->qty[$key]);
+                $hargaJual  = floatval($request->harga[$key]);
+                $subtotal   = $qtyTerjual * $hargaJual;
+
+                PenjualanPosDetail::create([ 
+                    'penjualan_id' => $penjualan->id, 
+                    'produk_id'    => $produkId,
+                    'qty'          => $qtyTerjual,
+                    'harga'        => $hargaJual,
+                    'hpp_satuan'   => 0,
+                    'subtotal'     => $subtotal
+                ]);
+
+                $total_penjualan += $subtotal;
+            }
+
+            $penjualan->update(['total' => $total_penjualan]);
+            DB::commit();
+
+            return redirect()->route('penjualan_pos.index')->with('success', 'Perubahan rekap penjualan berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal update data: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * 4. PROSES APPROVAL: HPP DIHITUNG & STOK BARU TERPOTONG
+     */
+    public function approve($id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $penjualan = PenjualanPos::with('details')->findOrFail($id);
+
+            if ($penjualan->status !== 'Draft') {
+                return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi ini sudah pernah diproses sebelumnya.');
+            }
+
+            $kodePos = $penjualan->kode_transaksi;
+            $tanggalTrans = $penjualan->tanggal;
+            $gudangId = $penjualan->gudang_id;
+
+            // -- A. Hitung total kebutuhan bahan baku
+            $totalKebutuhanBahan = []; 
+            foreach ($penjualan->details as $detail) {
+                $qtyTerjual = floatval($detail->qty);
+                $produkId = $detail->produk_id;
+
+                $barangJadi = DB::table('master_barang')->where('id', $produkId)->first();
+                $resepUtama = ($barangJadi && $barangJadi->resep_id) ? DB::table('resep_btkl_bop')->where('id', $barangJadi->resep_id)->first() : null;
                 
                 if ($resepUtama) {
                     $resepBahan = DB::table('resep_bahanbaku')->where('resep_id', $resepUtama->id)->get();
                     $outputQty = floatval($resepUtama->output_qty) > 0 ? floatval($resepUtama->output_qty) : 1;
 
                     foreach ($resepBahan as $bahan) {
-                        $kebutuhanPerPcs = floatval($bahan->qty_bahan) / $outputQty;
+                        $kebutuhanPerPcs = floatval($bahan->qty_bahan);
                         $butuh = $kebutuhanPerPcs * $qtyTerjual;
 
                         if (isset($totalKebutuhanBahan[$bahan->bahan_id])) {
@@ -79,11 +227,11 @@ class PenjualanPosController extends Controller
                 }
             }
 
-            // Cek Ketersediaan Stok sebelum memotong
+            // -- B. Validasi Stok
             $pesanErrorStok = [];
             foreach ($totalKebutuhanBahan as $bahanId => $dataBahan) {
                 $stokTersedia = DB::table('stok_gudang_batch')
-                    ->where('gudang_id', $request->gudang_id)
+                    ->where('gudang_id', $gudangId)
                     ->where('barang_id', $bahanId)
                     ->where('qty_sisa', '>', 0)
                     ->sum('qty_sisa');
@@ -96,16 +244,14 @@ class PenjualanPosController extends Controller
             if (!empty($pesanErrorStok)) {
                 DB::rollBack();
                 $errorList = implode('<br>', $pesanErrorStok);
-                return back()->with('error', "<b>Gagal!</b> Stok bahan baku tidak mencukupi:<br>" . $errorList)->withInput();
+                return back()->with('error', "<b>Gagal Approve!</b> Stok bahan baku tidak mencukupi:<br>" . $errorList);
             }
 
-            // ====================================================================
-            // FASE 2: BUAT DOKUMEN PENGELUARAN BAHAN BAKU & POTONG FIFO
-            // ====================================================================
+            // -- C. Potong Stok & Hitung FIFO
             $pengeluaranId = DB::table('pengeluaran_bahan_baku')->insertGetId([
                 'kode_pengeluaran' => 'OUT-' . $kodePos,
                 'tanggal'          => $tanggalTrans,
-                'gudang_id'        => $request->gudang_id,
+                'gudang_id'        => $gudangId,
                 'status'           => 'approved', 
                 'keterangan'       => 'AUTO_POS:' . $kodePos, 
                 'created_by'       => auth()->id() ?? 1,
@@ -133,23 +279,22 @@ class PenjualanPosController extends Controller
                     'updated_at'     => now()
                 ]);
 
-                // Potong Stok Global Gudang
+                // Global Stok Pengurang
                 $stokGudang = StokGudang::firstOrCreate(
-                    ['gudang_id' => $request->gudang_id, 'barang_id' => $bahanId],
+                    ['gudang_id' => $gudangId, 'barang_id' => $bahanId],
                     ['jumlah' => 0]
                 );
                 $stokGudang->decrement('jumlah', $totalDipotong);
 
-                // Ambil batch FIFO terlama
+                // Potong Batch (FIFO)
                 $stokBatches = DB::table('stok_gudang_batch')
-                    ->where('gudang_id', $request->gudang_id)
+                    ->where('gudang_id', $gudangId)
                     ->where('barang_id', $bahanId)
                     ->where('qty_sisa', '>', 0)
                     ->orderBy('id', 'asc')
                     ->get();
 
                 $sisaKebutuhan = $totalDipotong;
-                
                 foreach ($stokBatches as $batch) {
                     if ($sisaKebutuhan <= 0) break;
 
@@ -157,13 +302,11 @@ class PenjualanPosController extends Controller
                     $nilaiHppDiambil = $diambil * $batch->harga_per_qty;
                     $totalHppBahanGrup += $nilaiHppDiambil; 
 
-                    // UPDATE UTAMA: Kurangi sisa & Tambah qty_keluar pada tabel stok_gudang_batch
                     DB::table('stok_gudang_batch')->where('id', $batch->id)->update([
                         'qty_sisa'   => DB::raw("qty_sisa - {$diambil}"),
                         'qty_keluar' => DB::raw("qty_keluar + {$diambil}")
                     ]);
                     
-                    // Catat ke Log Pengeluaran FIFO
                     DB::table('pengeluaran_bahan_baku_fifo')->insert([
                         'pengeluaran_id' => $pengeluaranId,
                         'detail_id'      => $pengeluaranDetailId,
@@ -191,32 +334,17 @@ class PenjualanPosController extends Controller
                 $mapHppBahanAvg[$bahanId] = $avgHppSatuan;
             }
 
-            // ====================================================================
-            // FASE 3: SIMPAN DATA PENJUALAN POS
-            // ====================================================================
-            $penjualan = PenjualanPos::create([
-                'kode_transaksi' => $kodePos,
-                'status'         => 'SUKSES', 
-                'tanggal'        => $tanggalTrans,
-                'gudang_id'      => $request->gudang_id,
-                'total'          => 0,
-                'created_by'     => auth()->id() ?? 1
-            ]);
-    
-            $total_penjualan = 0;
-    
-            foreach ($request->produk_id as $key => $produkId) {
-                if (!isset($request->qty[$key]) || !isset($request->harga[$key])) continue;
-
-                $qtyTerjual = floatval($request->qty[$key]);
-                $hargaJual  = floatval($request->harga[$key]);
-                $subtotal   = $qtyTerjual * $hargaJual;
+            // -- D. Update HPP ke Detail Transaksi
+            foreach ($penjualan->details as $detail) {
+                $qtyTerjual = floatval($detail->qty);
+                $produkId = $detail->produk_id;
     
                 $hppSatuanProduk = 0;
                 $bopBtklPerPcs   = 0;
                 $totalHppBahan   = 0;
 
-                $resepUtama = DB::table('resep_btkl_bop')->where('produk_id', $produkId)->first();
+                $barangJadi = DB::table('master_barang')->where('id', $produkId)->first();
+                $resepUtama = ($barangJadi && $barangJadi->resep_id) ? DB::table('resep_btkl_bop')->where('id', $barangJadi->resep_id)->first() : null;
 
                 if ($resepUtama) {
                     $outputQty = floatval($resepUtama->output_qty) > 0 ? floatval($resepUtama->output_qty) : 1;
@@ -224,7 +352,7 @@ class PenjualanPosController extends Controller
 
                     $resepBahan = DB::table('resep_bahanbaku')->where('resep_id', $resepUtama->id)->get();
                     foreach ($resepBahan as $bahan) {
-                        $kebutuhanPerPcs = floatval($bahan->qty_bahan) / $outputQty;
+                        $kebutuhanPerPcs = floatval($bahan->qty_bahan);
                         $hppBahanIni = $mapHppBahanAvg[$bahan->bahan_id] ?? 0;
                         $totalHppBahan += ($kebutuhanPerPcs * $hppBahanIni);
                     }
@@ -232,105 +360,83 @@ class PenjualanPosController extends Controller
 
                 $hppSatuanProduk = $totalHppBahan + $bopBtklPerPcs;
     
-                PenjualanPosDetail::create([ 
-                    'penjualan_id' => $penjualan->id, 
-                    'produk_id'    => $produkId,
-                    'qty'          => $qtyTerjual,
-                    'harga'        => $hargaJual,
-                    'hpp_satuan'   => $hppSatuanProduk, 
-                    'subtotal'     => $subtotal
+                $detail->update([
+                    'hpp_satuan' => $hppSatuanProduk
                 ]);
-    
-                $total_penjualan += $subtotal;
             }
     
-            $penjualan->update(['total' => $total_penjualan]);
+            $penjualan->update(['status' => 'SUKSES']);
+            
             DB::commit();
-    
-            return redirect()->route('penjualan_pos.index')->with('success', 'Transaksi berhasil, Stok Gudang & Batch FIFO diperbarui!');
-    
+            return redirect()->route('penjualan_pos.index')->with('success', 'Transaksi berhasil di-Approve! Stok terpotong dan HPP telah tersimpan.');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error Simpan POS: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
+            Log::error('Error Approve POS: ' . $e->getMessage());
+            return back()->with('error', 'Gagal approve transaksi: ' . $e->getMessage());
         }
     }
 
+    /**
+     * 5. HAPUS ATAU VOID
+     */
     public function destroy($id)
     {
         DB::beginTransaction();
+    
         try {
-            $penjualan = PenjualanPos::findOrFail($id);
+            $penjualan = PenjualanPos::with('details')->findOrFail($id);
             
-            if ($penjualan->status == 'VOID') {
-                return back()->with('error', 'Transaksi ini sudah di-Void.');
-            }
+            if ($penjualan->status == 'SUKSES') {
+                // A. JIKA SUDAH APPROVE -> Kembalikan Stok & Set Menjadi VOID
+                $gudangId = $penjualan->gudang_id;
+                foreach ($penjualan->details as $detail) {
+                    $barangJadi = DB::table('master_barang')->where('id', $detail->produk_id)->first();
+                    $resepUtama = ($barangJadi && $barangJadi->resep_id) ? DB::table('resep_btkl_bop')->where('id', $barangJadi->resep_id)->first() : null;
+                    $outputQty = ($resepUtama && floatval($resepUtama->output_qty) > 0) ? floatval($resepUtama->output_qty) : 1;
 
-            $keteranganLink = 'AUTO_POS:' . $penjualan->kode_transaksi;
-            $pengeluaran = DB::table('pengeluaran_bahan_baku')
-                ->where('keterangan', $keteranganLink)
-                ->first();
+                    if ($resepUtama) {
+                        $resepBahan = DB::table('resep_bahanbaku')->where('resep_id', $resepUtama->id)->get();
+                        foreach ($resepBahan as $bahan) {
+                            $kebutuhanPerPcs = floatval($bahan->qty_bahan);
+                            $qtyKembali = $kebutuhanPerPcs * floatval($detail->qty);
 
-            if ($pengeluaran) {
-                $fifoLogs = DB::table('pengeluaran_bahan_baku_fifo')
-                    ->where('pengeluaran_id', $pengeluaran->id)
-                    ->get();
-
-                foreach ($fifoLogs as $log) {
-                    if ($log->qty_keluar > 0) {
-                        // UPDATE UTAMA VOID: Kembalikan qty_sisa dan kurangi qty_keluar di tabel stok_gudang_batch
-                        DB::table('stok_gudang_batch')->where('id', $log->batch_id)->update([
-                            'qty_sisa'   => DB::raw("qty_sisa + {$log->qty_keluar}"),
-                            'qty_keluar' => DB::raw("qty_keluar - {$log->qty_keluar}"),
-                            'is_habis'   => 0
-                        ]);
-
-                        // Kembalikan ke stok global gudang
-                        $detail = DB::table('pengeluaran_bahan_baku_detail')->where('id', $log->detail_id)->first();
-                        if ($detail) {
-                            $stokGudang = StokGudang::where('gudang_id', $pengeluaran->gudang_id)
-                                                    ->where('barang_id', $detail->barang_id)
-                                                    ->first();
+                            $stokGudang = StokGudang::where('gudang_id', $gudangId)->where('barang_id', $bahan->bahan_id)->first();
                             if ($stokGudang) {
-                                $stokGudang->increment('jumlah', $log->qty_keluar);
+                                $stokGudang->increment('jumlah', $qtyKembali);
+                            }
+
+                            // Revert ke batch yang terpotong terakhir
+                            $batchTerakhir = DB::table('stok_gudang_batch')->where('gudang_id', $gudangId)->where('barang_id', $bahan->bahan_id)->orderBy('id', 'desc')->first();
+                            if ($batchTerakhir) {
+                                DB::table('stok_gudang_batch')->where('id', $batchTerakhir->id)->update([
+                                    'qty_sisa'   => DB::raw("qty_sisa + {$qtyKembali}"),
+                                    'qty_keluar' => DB::raw("qty_keluar - {$qtyKembali}"),
+                                    'is_habis'   => 0
+                                ]);
                             }
                         }
                     }
                 }
-
-                DB::table('pengeluaran_bahan_baku')->where('id', $pengeluaran->id)->update([
-                    'status'     => 'batal', 
-                    'keterangan' => $pengeluaran->keterangan . ' (VOIDED)'
-                ]);
+        
+                DB::table('pengeluaran_bahan_baku')->where('keterangan', 'AUTO_POS:' . $penjualan->kode_transaksi)->update(['status' => 'void', 'updated_at' => now()]);
+                $penjualan->update(['status' => 'VOID']);
+                $msg = 'Transaksi dibatalkan. Status berubah menjadi VOID dan stok dikembalikan!';
+                
+            } else {
+                // B. JIKA MASIH Draft -> Hapus Permanen bersih
+                $penjualan->details()->delete(); 
+                $penjualan->delete();           
+                $msg = 'Transaksi berstatus Draft berhasil dihapus secara permanen!';
             }
-
-            $penjualan->update(['status' => 'VOID']);
-
+    
             DB::commit();
-            return back()->with('success', 'Transaksi berhasil di-VOID! Seluruh kolom Stok Batch sinkron kembali.');
+            return redirect()->route('penjualan_pos.index')->with('success', $msg);
     
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error Void POS: ' . $e->getMessage());
-            return back()->with('error', 'Gagal melakukan VOID: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses penghapusan: ' . $e->getMessage());
         }
-    }
-
-    public function show($id) 
-    {
-        $penjualan = PenjualanPos::with('details.produk')->findOrFail($id);
-        return view('penjualan_pos.show', compact('penjualan'));
-    }
-
-    public function edit($id) 
-    {
-        $penjualan = PenjualanPos::findOrFail($id);
-        if ($penjualan->status == 'VOID') {
-            return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi yang telah di-Void tidak dapat diubah.');
-        }
-        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
-        $gudang = MasterGudang::all();
-        return view('penjualan_pos.edit', compact('penjualan', 'produk', 'gudang'));
     }
 
     public function getHargaAktif(Request $request, $produk_id)
@@ -348,6 +454,6 @@ class PenjualanPosController extends Controller
             $hargaAktif = HargaPeriode::where('barang_id', $produk_id)->orderBy('tgl_mulai', 'desc')->first();
         }
 
-        return response()->json(['harga' => $hargaAktif ? $hargaAktif->harga_pos : 0]);
+        return response()->json($hargaAktif);
     }
 }

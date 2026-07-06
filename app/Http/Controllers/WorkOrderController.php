@@ -16,7 +16,10 @@ class WorkOrderController extends Controller
 {
     public function index()
     {
-        $wo = WorkOrder::with(['details', 'pesanan.customer'])->latest()->get();
+        $wo = WorkOrder::with([
+            'details.pesanan.customer',
+            'details.produk'
+        ])->latest()->get(); 
     
         // Tampilkan pesanan yang status bayarnya DP atau Lunas untuk dibuatkan WO
         $pesanan = Pesanan::with(['details.produk', 'customer'])
@@ -45,7 +48,6 @@ class WorkOrderController extends Controller
         DB::beginTransaction();
         try {
             $wo = WorkOrder::create([
-                'pesanan_id' => $request->pesanan_id,
                 'kode_wo'    => $request->kode_wo,
                 'tanggal_wo' => $request->tanggal_wo,
                 'status_wo'  => 'Draft',
