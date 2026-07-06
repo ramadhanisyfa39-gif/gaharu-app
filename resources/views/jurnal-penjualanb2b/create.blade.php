@@ -16,20 +16,22 @@
                 </div>
                 @endif
 
-                <form action="{{ route('laporan.jurnal-penjualanb2b.store', $pembayaran->id) }}" method="POST" id="form-jurnal">
+                <form action="{{ route('jurnal-penjualanb2b.store', $type === 'pembayaran' ? $pembayaran->id : $pengiriman->id) }}" method="POST" id="form-jurnal">
                     @csrf
+                    <input type="hidden" name="source_type" value="{{ $type }}">
+
                     <div class="row mb-4">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Tanggal Pembukuan</label>
-                            <input type="date" name="tanggal" class="form-control" value="{{ isset($pembayaran) ? $pembayaran->tanggal_bayar : date('Y-m-d') }}" required>
+                            <input type="date" name="tanggal" class="form-control" value="{{ $type === 'pembayaran' ? \Carbon\Carbon::parse($pembayaran->tanggal_bayar)->format('Y-m-d') : \Carbon\Carbon::parse($pengiriman->tanggal_pengiriman)->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">No. Referensi</label>
-                            <input type="text" name="no_ref" class="form-control" value="{{ strtolower($statusPesanan) === 'selesai' ? 'JV-REV-' . $pesanan->kode_pesanan : 'JV-DP-' . $pesanan->kode_pesanan . '-' . $pembayaran->id }}" required>
+                            <input type="text" name="no_ref" class="form-control" value="{{ $type === 'pengiriman' ? 'JV-REV-' . $pesanan->kode_pesanan : 'JV-DP-' . $pesanan->kode_pesanan . '-' . $pembayaran->id }}" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Deskripsi Jurnal</label>
-                            <textarea name="deskripsi" class="form-control" rows="1" required>{{ strtolower($statusPesanan) === 'selesai' ? 'Pengakuan Pendapatan & HPP atas Penjualan B2B No. Invoice: ' . $pesanan->kode_pesanan : 'Pencatatan Uang Muka (DP) atas Penjualan B2B No. Invoice: ' . $pesanan->kode_pesanan }}</textarea>
+                            <textarea name="deskripsi" class="form-control" rows="1" required>{{ $type === 'pengiriman' ? 'Pengakuan Pendapatan & HPP atas Penjualan B2B No. Invoice: ' . $pesanan->kode_pesanan : 'Pencatatan Uang Muka (DP) atas Penjualan B2B No. Invoice: ' . $pesanan->kode_pesanan }}</textarea>
                         </div>
                     </div>
 
@@ -73,7 +75,7 @@
                     </div>
                     <div class="mt-3 mb-4"><button type="button" class="btn btn-outline-primary btn-sm" onclick="addRow()">+ Tambah Baris Penyesuaian</button></div>
                     <div class="d-flex justify-content-between border-top pt-3">
-                        <a href="{{ route('laporan.jurnal-penjualanb2b.index') }}" class="btn btn-light border">Kembali</a>
+                        <a href="{{ route('jurnal-penjualanb2b.index') }}" class="btn btn-light border">Kembali</a>
                         <button type="submit" class="btn btn-success px-5 shadow">Konfirmasi & Simpan Jurnal</button>
                     </div>
                 </form>

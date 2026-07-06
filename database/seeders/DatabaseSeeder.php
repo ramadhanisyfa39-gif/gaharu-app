@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             MasterGudangSeeder::class, // Menggunakan seeder gudang Anda
             UserSeeder::class,
+            MasterGudangSeeder::class,
+            CoaMasterSeeder::class, // Seeder untuk master COA
         ]);
     }
 }

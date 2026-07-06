@@ -41,6 +41,7 @@
             color: #64748b;
         }
 
+        .input-group select,
         .input-group input {
             width: 100%;
             border: 1px solid #cbd5e1;
@@ -57,6 +58,7 @@
             cursor: pointer;
             width: 100%;
             font-weight: bold;
+            text-transform: uppercase;
         }
 
         .input-rupiah {
@@ -67,95 +69,131 @@
     </style>
 
     <div class="form-container">
-        <h2 style="margin-bottom: 20px; font-weight: bold;">Input Penggajian Karyawan</h2>
+        <h2 style="margin-bottom: 20px; font-weight: bold;">
+            {{ isset($payroll) ? 'Ubah Data Penggajian Karyawan' : 'Input Penggajian Karyawan' }}
+        </h2>
 
-        <form action="{{ route('penggajian.store') }}" method="POST">
+        <form action="{{ isset($payroll) ? route('penggajian.update', $payroll->id) : route('penggajian.store') }}" method="POST">
             @csrf
+
+            @if(isset($payroll))
+            @method('PUT')
+            @endif
+
+            <input type="hidden" name="periode" value="{{ $target_periode }}">
 
             <div class="card-payroll">
                 <div class="input-group">
                     <label>Nama Karyawan</label>
-                    <select name="karyawan_id" class="input-group input" required>
+                    <select name="karyawan_id" class="input-group input" required {{ isset($payroll) ? 'disabled' : '' }}>
+                        <option value="">-- Pilih Karyawan --</option>
                         @foreach($karyawans as $k)
-                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
+                        <option value="{{ $k->id }}" {{ (isset($payroll) && $payroll->karyawan_id == $k->id) ? 'selected' : '' }}>
+                            {{ $k->nama_karyawan }}
+                        </option>
                         @endforeach
                     </select>
+
+                    @if(isset($payroll))
+                    <input type="hidden" name="karyawan_id" value="{{ $payroll->karyawan_id }}">
+                    @endif
                 </div>
+
                 <div class="input-group">
-                    <label>Bulan</label>
-                    <input type="month" name="periode" class="input-group input" required>
+                    <label>Periode Target (Bulan & Tahun)</label>
+                    <input type="text" value="{{ $target_periode }}" disabled style="background-color: #f8fafc; color: #64748b; font-weight: 600;">
                 </div>
             </div>
-    </div>
 
-    <div class="grid-3">
-        <div class="card-payroll">
-            <div class="card-title" style="border-color: #10b981;">1. Penerimaan Tetap</div>
-            <div class="input-group">
-                <label>Gaji Pokok</label>
-                <input type="text" name="gaji_pokok" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Tunjangan Transport</label>
-                <input type="text" name="tunjangan_transport" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Tunjangan Makan</label>
-                <input type="text" name="tunjangan_makan" value="0" class="input-rupiah">
-            </div>
-        </div>
+            <div class="grid-3">
+                <div class="card-payroll">
+                    <div class="card-title" style="border-bottom: 2px solid #10b981;">1. Penerimaan Tetap</div>
+                    <div class="input-group">
+                        <label>Gaji Pokok</label>
+                        <input type="text" name="gaji_pokok" value="{{ isset($payroll) ? number_format($payroll->gaji_pokok, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Tunjangan Transport</label>
+                        <input type="text" name="tunjangan_transport" value="{{ isset($payroll) ? number_format($payroll->tunjangan_transport, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Tunjangan Makan</label>
+                        <input type="text" name="tunjangan_makan" value="{{ isset($payroll) ? number_format($payroll->tunjangan_makan, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                </div>
 
-        <div class="card-payroll">
-            <div class="card-title" style="border-color: #3b82f6;">2. Penerimaan Tidak Tetap</div>
-            <div class="input-group">
-                <label>Lembur</label>
-                <input type="text" name="lembur" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Bonus Target</label>
-                <input type="text" name="bonus_target" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Bonus Tanggal Merah</label>
-                <input type="text" name="bonus_tanggal_merah" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Bonus Birthday Service</label>
-                <input type="text" name="bonus_birthday" value="0" class="input-rupiah">
-            </div>
-            <div class="input-group">
-                <label>Bonus Lain-lain</label>
-                <input type="text" name="bonus_dll" value="0" class="input-rupiah">
-            </div>
-        </div>
+                <div class="card-payroll">
+                    <div class="card-title" style="border-bottom: 2px solid #3b82f6;">2. Penerimaan Tidak Tetap</div>
+                    <div class="input-group">
+                        <label>Lembur</label>
+                        <input type="text" name="lembur" value="{{ isset($payroll) ? number_format($payroll->lembur, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Bonus Target</label>
+                        <input type="text" name="bonus_target" value="{{ isset($payroll) ? number_format($payroll->bonus_target, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Bonus Tanggal Merah</label>
+                        <input type="text" name="bonus_tanggal_merah" value="{{ isset($payroll) ? number_format($payroll->bonus_tanggal_merah, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Bonus Birthday Service</label>
+                        <input type="text" name="bonus_birthday" value="{{ isset($payroll) ? number_format($payroll->bonus_birthday, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Bonus Lain-lain</label>
+                        <input type="text" name="bonus_dll" value="{{ isset($payroll) ? number_format($payroll->bonus_dll, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                </div>
 
-        <div class="card-payroll">
-            <div class="card-title" style="border-color: #ef4444;">3. Potongan</div>
-            <div class="input-group">
-                <label>Kerusakan Inventaris</label>
-                <input type="text" name="potongan_inventaris" value="0" class="input-rupiah">
+                <div class="card-payroll">
+                    <div class="card-title" style="border-bottom: 2px solid #ef4444;">3. Potongan</div>
+                    <div class="input-group">
+                        <label>Kerusakan Inventaris</label>
+                        <input type="text" name="potongan_inventaris" value="{{ isset($payroll) ? number_format($payroll->potongan_inventaris, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                    <div class="input-group">
+                        <label>Keterlambatan</label>
+                        <input type="text" name="potongan_terlambat" value="{{ isset($payroll) ? number_format($payroll->potongan_terlambat, 0, ',', '.') : '0' }}" class="input-rupiah">
+                    </div>
+                </div>
             </div>
-            <div class="input-group">
-                <label>Keterlambatan</label>
-                <input type="text" name="potongan_terlambat" value="0" class="input-rupiah">
-            </div>
-        </div>
-    </div>
 
-    <button type="submit" class="btn-save">SIMPAN & CETAK SLIP GAJI</button>
-    </form>
+            <button type="submit" class="btn-save">
+                {{ isset($payroll) ? 'PERBAIKI DATA GAJI' : 'SIMPAN DATA GAJI' }}
+            </button>
+        </form>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('.input-rupiah');
 
+            // Lakukan formatting awal untuk data edit yang dimuat dari database
             inputs.forEach(input => {
-                input.addEventListener('input', function(e) {
-                    // Ambil hanya angka dari input
-                    let rawValue = this.value.replace(/[^0-9]/g, '');
+                let rawValue = input.value.replace(/[^0-9]/g, '');
+                if (rawValue !== '' && rawValue !== '0') {
+                    input.value = formatRupiah(rawValue, 'Rp. ');
+                } else if (rawValue === '0') {
+                    input.value = 'Rp. 0';
+                }
+            });
 
-                    // Format ulang ke Rupiah
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    if (this.value === 'Rp. 0') {
+                        this.value = '';
+                    }
+                });
+
+                input.addEventListener('blur', function() {
+                    if (this.value === '') {
+                        this.value = 'Rp. 0';
+                    }
+                });
+
+                input.addEventListener('input', function(e) {
+                    let rawValue = this.value.replace(/[^0-9]/g, '');
                     if (rawValue !== '') {
                         this.value = formatRupiah(rawValue, 'Rp. ');
                     } else {
@@ -178,13 +216,14 @@
                 return prefix + rupiah;
             }
 
-            // --- BAGIAN PALING PENTING ---
-            // Sebelum form dikirim ke controller, kita hilangkan "Rp." dan titiknya
+            // Bersihkan format masker rupiah sebelum dikirim ke backend controller
             const form = document.querySelector('form');
             form.addEventListener('submit', function() {
                 inputs.forEach(input => {
-                    // Mengubah "Rp. 1.000.000" menjadi "1000000" agar DB tidak error
                     input.value = input.value.replace(/[^0-9]/g, '');
+                    if (input.value === '') {
+                        input.value = '0';
+                    }
                 });
             });
         });

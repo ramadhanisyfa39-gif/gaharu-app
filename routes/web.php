@@ -120,12 +120,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/coa/get-name/{id}', [JurnalController::class, 'getCoaName'])->name('coa.getName');
         Route::resource('jurnal', JurnalController::class);
 
+        Route::post('/jurnal/approve-batch', [JurnalController::class, 'approveBatch'])->name('jurnal.approve_batch');
+
+
         // Closing & Adjustment
         Route::get('closing', [JurnalController::class, 'closingPage'])->name('closing.index');
         Route::post('closing', [JurnalController::class, 'closePeriod'])->name('closing.create');
         Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
         Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
         Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
+        Route::put('adjustment/{id}/approve', [JurnalController::class, 'adjustmentApprove'])->name('adjustment.approve');
 
         // Jurnal Pembelian
         Route::get('/jurnal-pembelian', [JurnalController::class, 'pembelianIndex'])->name('jurnal-pembelian.index');
@@ -138,6 +142,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-penggajian/create/{id}', [JurnalController::class, 'penggajianCreate'])->name('jurnal-penggajian.create');
         Route::post('/jurnal-penggajian/store/{id}', [JurnalController::class, 'penggajianStore'])->name('jurnal-penggajian.store');
         Route::get('/jurnal-penggajian/show/{id}', [JurnalController::class, 'penggajianShow'])->name('jurnal-penggajian.show');
+
+        Route::get('/penggajian/periode', [PenggajianController::class, 'periodeDetail'])->name('penggajian.show-periode');
+
+        Route::post('/penggajian/ajukan-approval', [PenggajianController::class, 'ajukanApproval'])->name('penggajian.ajukanApproval');
+        Route::post('/penggajian/approve', [PenggajianController::class, 'approve'])->name('penggajian.approve');
+        Route::post('/penggajian/kirim-jurnal', [PenggajianController::class, 'kirimJurnalUmum'])->name('penggajian.kirimJurnalUmum');
 
         // Jurnal Produksi
         Route::get('/jurnal-produksi', [JurnalController::class, 'produksiIndex'])->name('jurnal-produksi.index');
@@ -156,7 +166,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-penjualanb2b/create/{id}', [JurnalController::class, 'penjualanb2bCreate'])->name('jurnal-penjualanb2b.create');
         Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'penjualanB2BStore'])->name('jurnal-penjualanb2b.store');
         Route::get('/jurnal-penjualanb2b/show/{id}', [JurnalController::class, 'penjualanB2BShow'])->name('jurnal-penjualanb2b.show');
-        Route::get('/buku-pembantu-utang', [JurnalController::class, 'bukuPembantuUtang'])->name('bukupembantu-utang.index');
+        Route::get('/buku-pembantu-uangmuka', [JurnalController::class, 'bukuPembantuUangMuka'])->name('bukupembantu-uangmuka.index');
 
         // Laporan Keuangan
         Route::prefix('laporan')->name('laporan.')->group(function () {
@@ -271,6 +281,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/penggajian/{penggajian}', [PenggajianController::class, 'destroy'])->name('penggajian.destroy');
     });
 
-});
+    Route::resource('penggajian', PenggajianController::class);
+    });
+
 
 require __DIR__.'/auth.php';

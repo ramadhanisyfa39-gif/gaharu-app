@@ -49,8 +49,8 @@
             {{-- ========================================================================= --}}
             <div class="menu-group">
                 <a href="{{ route('dashboard') }}"
-                   class="menu-parent text-decoration-none d-flex align-items-center justify-content-start {{ request()->routeIs('dashboard') ? 'active-menu-root' : '' }}"
-                   style="color: {{ request()->routeIs('dashboard') ? '#d88656' : '#ffffff' }};">
+                    class="menu-parent text-decoration-none d-flex align-items-center justify-content-start {{ request()->routeIs('dashboard') ? 'active-menu-root' : '' }}"
+                    style="color: {{ request()->routeIs('dashboard') ? '#d88656' : '#ffffff' }};">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-house-door me-3 fs-5"></i>
                         <span>DASHBOARD</span>
@@ -324,14 +324,14 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.toggle-accordion').forEach(button => {
             button.addEventListener('click', () => {
-                const group   = button.parentElement;
+                const group = button.parentElement;
                 const chevron = button.querySelector('.chevron-icon');
                 group.classList.toggle('open');
                 chevron.classList.toggle('bi-chevron-right', !group.classList.contains('open'));
-                chevron.classList.toggle('bi-chevron-down',   group.classList.contains('open'));
+                chevron.classList.toggle('bi-chevron-down', group.classList.contains('open'));
             });
         });
     });
