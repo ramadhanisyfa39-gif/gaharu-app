@@ -121,33 +121,54 @@ class StockService
      */
     protected function increaseStock(array $data): void
     {
-        $stok = StokGudang::where(
-                'barang_id',
-                $data['barang_id']
-            )
-            ->where(
-                'gudang_id',
-                $data['gudang_tujuan_id']
-            )
-            ->lockForUpdate()
-            ->first();
+        try {
+            $stok = StokGudang::where(
+                    'barang_id',
+                    $data['barang_id']
+                )
+                ->where(
+                    'gudang_id',
+                    $data['gudang_tujuan_id']
+                )
+                ->lockForUpdate()
+                ->first();
 
-        if ($stok) {
+            if ($stok) {
+                $stok->increment(
+                    'jumlah',
+                    $data['qty']
+                );
+            } else {
+                StokGudang::create([
+                    'barang_id' => $data['barang_id'],
+                    'gudang_id' => $data['gudang_tujuan_id'],
+                    'jumlah' => $data['qty'],
+                ]);
+            }
+        } catch (\Illuminate\Database\UniqueConstraintViolationException | \Illuminate\Database\QueryException $e) {
+            // Jika thread lain mendahului menyisipkan baris baru, cari baris tersebut dan lakukan increment
+            $stok = StokGudang::where(
+                    'barang_id',
+                    $data['barang_id']
+                )
+                ->where(
+                    'gudang_id',
+                    $data['gudang_tujuan_id']
+                )
+                ->lockForUpdate()
+                ->first();
 
-            $stok->increment(
-                'jumlah',
-                $data['qty']
-            );
-
-        } else {
-
-            StokGudang::create([
-                'barang_id' => $data['barang_id'],
-                'gudang_id' => $data['gudang_tujuan_id'],
-                'jumlah' => $data['qty'],
-            ]);
+            if ($stok) {
+                $stok->increment(
+                    'jumlah',
+                    $data['qty']
+                );
+            } else {
+                throw $e;
+            }
         }
     }
+
 
     /**
      * KURANGI STOK

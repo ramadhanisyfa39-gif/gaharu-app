@@ -10,10 +10,10 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RoleSeeder::class,
-            MasterGudangSeeder::class, // Menggunakan seeder gudang Anda
-            UserSeeder::class,
             MasterGudangSeeder::class,
-            CoaMasterSeeder::class, // Seeder untuk master COA
+            UserSeeder::class,
+            CoaMasterSeeder::class,
+            CafeMasterSeeder::class, // Seeder baru data master cafe
         ]);
     }
 }

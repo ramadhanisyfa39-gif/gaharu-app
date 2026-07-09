@@ -40,7 +40,23 @@ class PenggajianController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'karyawan_id'          => 'required|exists:karyawan,id',
+            'periode'              => 'required|string|max:50',
+            'gaji_pokok'           => 'required|string',
+            'tunjangan_transport'  => 'nullable|string',
+            'tunjangan_makan'      => 'nullable|string',
+            'lembur'               => 'nullable|string',
+            'bonus_target'         => 'nullable|string',
+            'bonus_tanggal_merah'  => 'nullable|string',
+            'bonus_birthday'       => 'nullable|string',
+            'bonus_dll'            => 'nullable|string',
+            'potongan_inventaris'  => 'nullable|string',
+            'potongan_terlambat'   => 'nullable|string',
+        ]);
+
         $cleanRupiah = function ($value) {
+            if (is_null($value)) return 0;
             return (int) preg_replace('/[^0-9]/', '', $value);
         };
 
@@ -88,6 +104,7 @@ class PenggajianController extends Controller
         return redirect()->route('penggajian.show-periode', ['periode' => $request->periode])
             ->with('success', 'Data gaji karyawan berhasil ditambahkan ke periode.');
     }
+
 
     /**
      * HALAMAN BARU: Menampilkan daftar karyawan khusus pada periode tertentu (Hasil klik tombol Detail Karyawan)
@@ -158,14 +175,16 @@ class PenggajianController extends Controller
 
         $totalGajiBersih = $payrolls->sum('total_gaji_bersih');
 
-        // 2. Pencarian akun COA secara fleksibel berdasarkan nama
-        $akunBebanGaji = \App\Models\ChartOfAccount::where('nama', 'like', '%Beban Gaji%')
-            ->orWhere('nama', 'like', '%Gaji%')
-            ->first();
+        // 2. Pencarian akun COA secara spesifik berdasarkan kode akun resmi (atau fallback nama jika tidak ada)
+        $akunBebanGaji = \App\Models\ChartOfAccount::where('kode', '6101')->first()
+            ?? \App\Models\ChartOfAccount::where('nama', 'like', '%Beban Gaji%')
+                ->orWhere('nama', 'like', '%Gaji%')
+                ->first();
 
-        $akunKas = \App\Models\ChartOfAccount::where('nama', 'like', '%Kas%')
-            ->orWhere('nama', 'like', '%Bank%')
-            ->first();
+        $akunKas = \App\Models\ChartOfAccount::where('kode', '1101')->first()
+            ?? \App\Models\ChartOfAccount::where('nama', 'like', '%Kas%')
+                ->orWhere('nama', 'like', '%Bank%')
+                ->first();
 
         if (!$akunBebanGaji || !$akunKas) {
             return redirect()->back()->with('error', 'Gagal memposting. Akun Beban Gaji atau Kas tidak ditemukan di Chart of Accounts.');

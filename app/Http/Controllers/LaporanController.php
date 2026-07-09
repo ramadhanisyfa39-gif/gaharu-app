@@ -24,64 +24,95 @@ class LaporanController extends Controller
         // Cocokkan 'journal_type' (kiri) dengan nama tabel di database (kanan)
         // =========================================================================
         $tableMapping = [
-            'jurnal_penjualan_pos' => 'jurnal_penjualan_pos', // Ganti jika nama tabelnya berbeda
-            'jurnal_penjualan_b2b' => 'jurnal_penjualan_b2b', // Cek apakah namanya 'penjualans' atau 'sales_b2b'
-            'jurnal_pembelian'     => 'jurnal_pembelian',     // Ganti jika nama tabelnya 'pembelians' atau 'purchases'
+            'jurnal_penjualan_pos' => 'jurnal_penjualan_pos', 
+            'jurnal_penjualan_b2b' => 'jurnal_penjualan_b2b', 
+            'jurnal_pembelian'     => 'jurnal_pembelian',     
         ];
+
+        // 1. AMBIL DATA SALDO AWAL BULK (Murni dari journal_type = 'opening')
+        $openingBalances = \App\Models\JournalItem::where('journal_type', 'opening')
+            ->select('account_id')
+            ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
+        // 2. AMBIL MUTASI LALU BULK (Transaksi sebelum bulan berjalan, mengecualikan 'opening')
+        $mutasiLaluBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
+            ->where(function ($q) use ($startOfMonth, $tableMapping) {
+                // Jurnal Manual (Umum & Penyesuaian)
+                $q->where(function ($queryManual) use ($startOfMonth) {
+                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
+                        ->whereHas('journal', function ($j) use ($startOfMonth) {
+                            $j->where('tanggal', '<', $startOfMonth)
+                                ->where('status', 'approved'); // DIBETULKAN dari 'posted' ke 'approved'
+                        });
+                });
+
+                // Jurnal Otomatis (Looping berdasarkan mapping tabel database)
+                foreach ($tableMapping as $type => $tableName) {
+                    $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth) {
+                        $queryOtomatis->where('journal_type', $type)
+                            ->whereExists(function ($sub) use ($tableName, $startOfMonth) {
+                                $sub->select(\DB::raw(1))
+                                    ->from($tableName)
+                                    ->whereColumn("$tableName.id", 'journal_items.journal_id')
+                                    ->where('tanggal', '<', $startOfMonth);
+                            });
+                    });
+                }
+            })
+            ->select('account_id')
+            ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
+        // 3. AMBIL MUTASI PERIODE BULK (Bulan Berjalan)
+        $mutasiBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
+            ->where(function ($q) use ($startOfMonth, $endOfMonth, $tableMapping) {
+                // Jurnal Manual
+                $q->where(function ($queryManual) use ($startOfMonth, $endOfMonth) {
+                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
+                        ->whereHas('journal', function ($j) use ($startOfMonth, $endOfMonth) {
+                            $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                                ->where('status', 'approved'); // DIBETULKAN dari 'posted' ke 'approved'
+                        });
+                });
+
+                // Jurnal Otomatis
+                foreach ($tableMapping as $type => $tableName) {
+                    $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth, $endOfMonth) {
+                        $queryOtomatis->where('journal_type', $type)
+                            ->whereExists(function ($sub) use ($tableName, $startOfMonth, $endOfMonth) {
+                                $sub->select(\DB::raw(1))
+                                    ->from($tableName)
+                                    ->whereColumn("$tableName.id", 'journal_items.journal_id')
+                                    ->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+                            });
+                    });
+                }
+            })
+            ->select('account_id')
+            ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
 
         // Ambil semua akun COA dari database CV Gaharu Agung Sejahtera
         $neracaSaldo = \App\Models\ChartOfAccount::orderBy('kode', 'asc')
             ->get()
-            ->map(function ($coa) use ($startOfMonth, $endOfMonth, $tableMapping) {
+            ->map(function ($coa) use ($openingBalances, $mutasiLaluBalances, $mutasiBalances) {
 
-                // =========================================================================
-                // 1. AMBIL DATA SALDO AWAL (Murni dari journal_type = 'opening')
-                // =========================================================================
-                $openingRaw = \App\Models\JournalItem::where('account_id', $coa->id)
-                    ->where('journal_type', 'opening')
-                    ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
-                    ->first();
-
+                $openingRaw = $openingBalances->get($coa->id);
                 $openingDebit  = $openingRaw->total_debit ?? 0;
                 $openingKredit = $openingRaw->total_kredit ?? 0;
 
-                // =========================================================================
-                // 2. AMBIL MUTASI LALU (Transaksi sebelum bulan berjalan, mengecualikan 'opening')
-                // =========================================================================
-                $mutasiLaluRaw = \App\Models\JournalItem::where('account_id', $coa->id)
-                    ->where('journal_type', '!=', 'opening')
-                    ->where(function ($q) use ($startOfMonth, $tableMapping) {
-                        // Jurnal Manual (Umum & Penyesuaian)
-                        $q->where(function ($queryManual) use ($startOfMonth) {
-                            $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
-                                ->whereHas('journal', function ($j) use ($startOfMonth) {
-                                    $j->where('tanggal', '<', $startOfMonth)
-                                        ->where('status', 'posted');
-                                });
-                        });
-
-                        // Jurnal Otomatis (Looping berdasarkan mapping tabel database)
-                        foreach ($tableMapping as $type => $tableName) {
-                            $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth) {
-                                $queryOtomatis->where('journal_type', $type)
-                                    ->whereExists(function ($sub) use ($tableName, $startOfMonth) {
-                                        $sub->select(\DB::raw(1))
-                                            ->from($tableName)
-                                            ->whereColumn("$tableName.id", 'journal_items.journal_id')
-                                            ->where('tanggal', '<', $startOfMonth); // Pastikan kolom tanggal di tabel tersebut bernama 'tanggal'
-                                    });
-                            });
-                        }
-                    })
-                    ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
-                    ->first();
-
+                $mutasiLaluRaw = $mutasiLaluBalances->get($coa->id);
                 $mutasiLaluDebit  = $mutasiLaluRaw->total_debit ?? 0;
                 $mutasiLaluKredit = $mutasiLaluRaw->total_kredit ?? 0;
 
-                // =========================================================================
-                // 3. HITUNG TOTAL SALDO AWAL RIIL
-                // =========================================================================
+                // HITUNG TOTAL SALDO AWAL RIIL
                 $totalSaldoAwalDebit  = $openingDebit + $mutasiLaluDebit;
                 $totalSaldoAwalKredit = $openingKredit + $mutasiLaluKredit;
 
@@ -97,43 +128,12 @@ class LaporanController extends Controller
                     $coa->saldo_awal_kredit = $netSaldoAwal > 0 ? $netSaldoAwal : 0;
                 }
 
-                // =========================================================================
-                // 4. HITUNG MUTASI PERIODE (Bulan Berjalan)
-                // =========================================================================
-                $mutasiRaw = \App\Models\JournalItem::where('account_id', $coa->id)
-                    ->where('journal_type', '!=', 'opening')
-                    ->where(function ($q) use ($startOfMonth, $endOfMonth, $tableMapping) {
-                        // Jurnal Manual
-                        $q->where(function ($queryManual) use ($startOfMonth, $endOfMonth) {
-                            $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
-                                ->whereHas('journal', function ($j) use ($startOfMonth, $endOfMonth) {
-                                    $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-                                        ->where('status', 'posted');
-                                });
-                        });
-
-                        // Jurnal Otomatis
-                        foreach ($tableMapping as $type => $tableName) {
-                            $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth, $endOfMonth) {
-                                $queryOtomatis->where('journal_type', $type)
-                                    ->whereExists(function ($sub) use ($tableName, $startOfMonth, $endOfMonth) {
-                                        $sub->select(\DB::raw(1))
-                                            ->from($tableName)
-                                            ->whereColumn("$tableName.id", 'journal_items.journal_id')
-                                            ->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
-                                    });
-                            });
-                        }
-                    })
-                    ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
-                    ->first();
-
+                // MUTASI PERIODE (Bulan Berjalan)
+                $mutasiRaw = $mutasiBalances->get($coa->id);
                 $coa->mutasi_debit  = $mutasiRaw->total_debit ?? 0;
                 $coa->mutasi_kredit = $mutasiRaw->total_kredit ?? 0;
 
-                // =========================================================================
-                // 5. HITUNG SALDO AKHIR
-                // =========================================================================
+                // HITUNG SALDO AKHIR
                 $totalDebitKeseluruhan  = $totalSaldoAwalDebit + $coa->mutasi_debit;
                 $totalKreditKeseluruhan = $totalSaldoAwalKredit + $coa->mutasi_kredit;
 
@@ -152,6 +152,7 @@ class LaporanController extends Controller
 
         return view('laporan.neraca-saldo.index', compact('neracaSaldo', 'bulan', 'tahun'));
     }
+
 
     public function labaRugiIndex(Request $request)
     {
@@ -255,24 +256,32 @@ class LaporanController extends Controller
                 });
         };
 
-        // --- 1. AMBIL DATA AKTIVA (ASET) ---
-        $aktiva = ChartOfAccount::where('tipe', 'Aset')->get()->map(function ($coa) use ($filterTanggalJurnal) {
-            $coa->saldo = JournalItem::where('account_id', $coa->id)
-                ->where($filterTanggalJurnal)
-                ->sum(DB::raw('debit - kredit'));
+        // 1. Tarik semua mutasi COA pada periode terpilih secara bulk
+        $itemsInPeriod = JournalItem::where($filterTanggalJurnal)
+            ->select('account_id')
+            ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
+        // --- 2. AMBIL DATA AKTIVA (ASET) ---
+        $aktiva = ChartOfAccount::where('tipe', 'Aset')->get()->map(function ($coa) use ($itemsInPeriod) {
+            $raw = $itemsInPeriod->get($coa->id);
+            $debit = $raw->total_debit ?? 0;
+            $kredit = $raw->total_kredit ?? 0;
+            $coa->saldo = $debit - $kredit;
             return $coa;
         })->where('saldo', '!=', 0);
 
-        // --- 2. AMBIL DATA PASIVA (HANYA KEWAJIBAN & DATA MODAL AWAL SECARA SPESIFIK) ---
-        // Catatan: Kita pisahkan akun Prive agar tidak masuk ke perulangan pasiva biasa.
-        // Asumsi nama akun prive mengandung kata 'Prive' atau Anda bisa filter berdasarkan kode akun tertentu.
+        // --- 3. AMBIL DATA PASIVA (HANYA KEWAJIBAN & DATA MODAL AWAL SECARA SPESIFIK) ---
         $passiva = ChartOfAccount::whereIn('tipe', ['Kewajiban', 'Modal'])
-            ->where('nama', 'not like', '%Prive%') // Pastikan akun prive tidak ikut terambil di sini
+            ->where('nama', 'not like', '%Prive%') 
             ->get()
-            ->map(function ($coa) use ($filterTanggalJurnal) {
-                $coa->saldo = JournalItem::where('account_id', $coa->id)
-                    ->where($filterTanggalJurnal)
-                    ->sum(DB::raw('kredit - debit'));
+            ->map(function ($coa) use ($itemsInPeriod) {
+                $raw = $itemsInPeriod->get($coa->id);
+                $debit = $raw->total_debit ?? 0;
+                $kredit = $raw->total_kredit ?? 0;
+                $coa->saldo = $kredit - $debit;
                 return $coa;
             })->where('saldo', '!=', 0);
 
@@ -281,13 +290,13 @@ class LaporanController extends Controller
         $totalPrive = 0;
 
         if ($akunPrive) {
-            // Prive saldo normalnya Debit, jadi dihitung Debit - Kredit
-            $totalPrive = JournalItem::where('account_id', $akunPrive->id)
-                ->where($filterTanggalJurnal)
-                ->sum(DB::raw('debit - kredit'));
+            $rawPrive = $itemsInPeriod->get($akunPrive->id);
+            $debitPrive = $rawPrive->total_debit ?? 0;
+            $kreditPrive = $rawPrive->total_kredit ?? 0;
+            $totalPrive = $debitPrive - $kreditPrive;
         }
 
-        // --- 3. HITUNG LABA BERJALAN (PENDAPATAN - BEBAN) ---
+        // --- 4. HITUNG LABA BERJALAN (PENDAPATAN - BEBAN) ---
         $totalPendapatan = JournalItem::whereHas('coa', fn($q) => $q->where('tipe', 'Pendapatan'))
             ->where($filterTanggalJurnal)
             ->sum(DB::raw('kredit - debit'));
@@ -304,6 +313,7 @@ class LaporanController extends Controller
 
         return view('laporan.neraca.index', compact('aktiva', 'passiva', 'labaBerjalan', 'totalPrive', 'modalAkhir', 'bulan', 'tahun'));
     }
+
 
     public function arusKasIndex(Request $request)
     {

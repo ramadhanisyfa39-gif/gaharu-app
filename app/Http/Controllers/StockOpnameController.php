@@ -240,7 +240,7 @@ public function detailJson(string $id)
                 return back()->with('error', 'Stock opname sudah diapprove.');
             }
 
-            // ── Kumpulkan item yang selisihnya negatif ──
+            // ── Kumpulkan item yang selisihnya negatif & proses yang positif ──
             $itemSelisihNegatif = [];
 
             foreach ($opname->details as $detail) {
@@ -262,8 +262,38 @@ public function detailJson(string $id)
                         'qty'       => abs($detail->selisih),
                         'satuan'    => $detail->barang->satuan ?? 'pcs',
                     ];
+                } elseif ($detail->selisih > 0) {
+                    // Selisih positif = stok fisik > stok sistem → perlu penambahan stok
+                    $hargaUnit = $this->getHargaFIFO($opname->gudang_id, $detail->barang_id);
+
+                    // 1. Buat batch FIFO baru untuk surplus
+                    \App\Models\StokGudangBatch::create([
+                        'gudang_id'           => $opname->gudang_id,
+                        'supplier_id'         => 0,
+                        'barang_id'           => $detail->barang_id,
+                        'pembelian_id'        => 0,
+                        'pembelian_detail_id' => 0,
+                        'batch_number'        => 'SO-SURPLUS-' . $opname->kode_opname,
+                        'qty_masuk'           => $detail->selisih,
+                        'qty_keluar'          => 0,
+                        'qty_sisa'            => $detail->selisih,
+                        'harga_per_qty'       => $hargaUnit,
+                        'is_habis'            => false,
+                    ]);
+
+                    // 2. Tambah stok gudang menggunakan StockService
+                    app(\App\Services\StockService::class)->stockIn([
+                        'barang_id'        => $detail->barang_id,
+                        'gudang_tujuan_id' => $opname->gudang_id,
+                        'qty'              => $detail->selisih,
+                        'total_harga'      => $detail->selisih * $hargaUnit,
+                        'source_type'      => 'stock_opname',
+                        'source_id'        => $opname->id,
+                        'user_id'          => Auth::id() ?? 1,
+                    ]);
                 }
             }
+
 
             // ── Buat Pengeluaran Bahan Baku otomatis jika ada selisih negatif ──
             if (!empty($itemSelisihNegatif)) {

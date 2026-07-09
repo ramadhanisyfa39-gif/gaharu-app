@@ -14,8 +14,17 @@ class CheckRole
             return redirect('/login');
         }
 
-        // Ambil nama role user yang login
-        $userRole = Auth::user()->role->nama;
+        // Ambil nama role user yang login (secara aman)
+        $userRole = Auth::user()->role?->nama;
+
+        if (!$userRole) {
+            abort(403, 'Anda tidak memiliki role yang didefinisikan.');
+        }
+
+        // Super Admin memiliki bypass akses ke semua route yang diproteksi CheckRole
+        if ($userRole === 'Super Admin') {
+            return $next($request);
+        }
 
         // Cek apakah punya izin
         if (in_array($userRole, $roles)) {
@@ -24,4 +33,5 @@ class CheckRole
 
         abort(403, 'Anda tidak memiliki hak akses ke halaman ini.');
     }
+
 }

@@ -1,0 +1,119 @@
+# Data Chart of Accounts (COA) dan Kondisi Penjurnalan
+
+## Akun COA
+|   Kode Akun | Akun Induk                                 | Nama                                                              |
+|------------:|:-------------------------------------------|:------------------------------------------------------------------|
+|        1100 | kas di bank bri dan Bank                   |                                                                   |
+|        1101 |                                            | kas di bank bri di Bank BRI                                       |
+|        1200 | Piutang Usaha                              |                                                                   |
+|        1201 |                                            | Piutang Dagang Klien B2B                                          |
+|        1202 |                                            | Uang Muka Pembelian                                               |
+|        1203 |                                            | PPN Masukan                                                       |
+|        1300 | Persediaan                                 |                                                                   |
+|        1301 |                                            | Persediaan Bahan Baku                                             |
+|        1302 |                                            | Persediaan Perlengkapan Operasional & ATK                         |
+|        1400 | Aset Tetap (Milik Sendiri)                 |                                                                   |
+|        1401 |                                            | Tanah                                                             |
+|        1402 |                                            | Gedung & Bangunan Kafe                                            |
+|        1403 |                                            | Akumulasi Penyusutan - Gedung & Bangunan                          |
+|        1404 |                                            | Mesin Espresso & Peralatan Kafe                                   |
+|        1405 |                                            | Akumulasi Penyusutan - Mesin & Peralatan Kafe                     |
+|        1406 |                                            | Kendaraan Operasional                                             |
+|        1407 |                                            | Akumulasi Penyusutan - Kendaraan Operasional                      |
+|        1408 |                                            | Perlengkapan Kantor                                               |
+|        1409 |                                            | Akumulasi Penyusutan - Inventaris Kantor & Interior               |
+|        2100 | Utang Usaha                                |                                                                   |
+|        2101 |                                            | Utang Dagang Supplier                                             |
+|        2102 |                                            | Uang Muka Penjualan B2B                                           |
+|        2200 | Utang Pajak & Gaji                         |                                                                   |
+|        2201 |                                            | PPN Keluaran                                                      |
+|        2202 |                                            | Utang Pajak Restoran PB1                                          |
+|        2203 |                                            | Utang Gaji Karyawan                                               |
+|        2204 |                                            | Utang THR                                                         |
+|        3100 | Ekuitas                                    |                                                                   |
+|        3101 |                                            | Modal Disetor                                                     |
+|        3102 |                                            | Prive                                                             |
+|        3103 |                                            | Laba Ditahan                                                      |
+|        3104 |                                            | Laba/Rugi Periode Berjalan                                        |
+|        4100 | Penjualan                                  |                                                                   |
+|        4101 |                                            | Penjualan POS                                                     |
+|        4102 |                                            | Penjualan B2B                                                     |
+|        5100 | Harga Pokok Penjualan                      |                                                                   |
+|        5101 |                                            | HPP Penjualan POS                                                 |
+|        5102 |                                            | HPP Penjualan B2B                                                 |
+|        5103 |                                            | Selisih Stock Opname                                              |
+|        6100 | Beban Gaji Karyawan                        |                                                                   |
+|        6101 |                                            | Beban Gaji Karyawan                                               |
+|        6102 |                                            | Beban THR Karyawan                                                |
+|        6200 | Beban Utilitas Pemelihaaran & Perlengkapan |                                                                   |
+|        6201 |                                            | Beban Listrik, Air, & Internet CV Gaharu + Resto                  |
+|        6202 |                                            | Beban Listrik, Air, & Internet Kejingga                           |
+|        6203 |                                            | Beban Pemeliharaan & Perbaikan Gedung                             |
+|        6204 |                                            | Beban Pemeliharaan Mesin Kopi & Peralatan Kafe                    |
+|        6205 |                                            | Beban Bahan Bakar & Pemeliharaan Kendaraan Operasional            |
+|        6206 |                                            | Beban Alat Tulis Kantor (ATK) & Administrasi                      |
+|        6207 |                                            | Beban Perlengkapan & Kebersihan Habis Pakai                       |
+|        6300 | Beban Pemasaran & Penyusutan Aset          |                                                                   |
+|        6301 |                                            | Biaya Iklan & Promosi B2B / Kafe                                  |
+|        6302 |                                            | Potongan Diskon Penjualan Outlet 1                                |
+|        6303 |                                            | Potongan Diskon Penjualan Outlet 2                                |
+|        6304 |                                            | Beban Penyusutan - Gedung & Bangunan                              |
+|        6305 |                                            | Beban Penyusutan - Mesin Kopi & Peralatan Kafe                    |
+|        6306 |                                            | Beban Penyusutan - Kendaraan Operasional                          |
+|        6307 |                                            | Beban Penyusutan - Inventaris Kantor & Interior                   |
+|        8100 | Pendapatan Non-Operasional                 |                                                                   |
+|        8101 |                                            | Pendapatan Selisih kas di bank briir / Uang Kembalian Diikhlaskan |
+|        8102 |                                            | Pendapatan Jasa Giro / Bunga Bank                                 |
+|        9100 | Beban Non-Operasional                      |                                                                   |
+|        9101 |                                            | Beban Selisih kas di bank briir / Pembulatan Kurang Kembalian     |
+|        9102 |                                            | Beban Administrasi Bank & Pajak Bunga Bank                        |
+
+## Kondisi 1
+| Jenis Jurnal         | Pembayaran           |   Kode akun | Keterangan                  | Debit   | Kredit   |
+|:---------------------|:---------------------|------------:|:----------------------------|:--------|:---------|
+| JURNAL PEMBELIAN     | DP                   |        1202 | uang muka pembelian         | xxx     |          |
+| JURNAL PEMBELIAN     | DP                   |        1101 | kas di bank bri             |         | xxx      |
+| JURNAL PEMBELIAN     | Pelunasan            |        1202 | uang muka pembelian         | xxx     |          |
+| JURNAL PEMBELIAN     | Pelunasan            |        1101 | kas di bank bri             |         | xxx      |
+| JURNAL PEMBELIAN     | saat barang diterima |        1301 | persediaan bahan baku       | xxx     |          |
+| JURNAL PEMBELIAN     | saat barang diterima |        1203 | ppn masukan                 | xxx     |          |
+| JURNAL PEMBELIAN     | saat barang diterima |        1202 | uang muka pembelian         |         | xxx      |
+| JURNAL PENJUALAN POS | Semua Langsung Lunas |        1101 | kas di bank bri di bank BRI | xxx     |          |
+| JURNAL PENJUALAN POS | Semua Langsung Lunas |        4101 | Penjualan                   |         | xxx      |
+| JURNAL PENJUALAN POS | Semua Langsung Lunas |        2201 | ppn keluaran                |         | xxx      |
+| JURNAL PENJUALAN POS | Semua Langsung Lunas |        5101 | hpp penjualan pos           | xx      |          |
+| JURNAL PENJUALAN POS | Semua Langsung Lunas |        1301 | persediaan bahan baku       |         | xxx      |
+| JURNAL PENJUALAN B2B | DP                   |        1101 | kas di bank bri             | xxx     |          |
+| JURNAL PENJUALAN B2B | DP                   |        2102 | uang muka penjualan         |         | xxx      |
+| JURNAL PENJUALAN B2B | DP                   |        2201 | ppn keluaran                |         | xxx      |
+| JURNAL PENJUALAN B2B | Pelunasan            |        1101 | kas di bank bri             | xxx     |          |
+| JURNAL PENJUALAN B2B | Pelunasan            |        2102 | uang muka penjualan         |         | xxx      |
+| JURNAL PENJUALAN B2B | Pelunasan            |        2201 | ppn keluaran                |         | xxx      |
+| JURNAL PENJUALAN B2B | Pengiriman Barang    |        2102 | uang muka penjualan         | xxx     |          |
+| JURNAL PENJUALAN B2B | Pengiriman Barang    |        4102 | penjualan b2b               |         | xxx      |
+| JURNAL PENJUALAN B2B | Pengiriman Barang    |        5102 | HPP Penjualan b2b           | xxx     |          |
+| JURNAL PENJUALAN B2B | Pengiriman Barang    |        1301 | persediaan bahan baku       |         | xxx      |
+| JURNAL PENGGAJIAN    |                      |        6101 | Beban Gaji Karyawan         | xxx     |          |
+| JURNAL PENGGAJIAN    |                      |        1101 | kas di bank bri             |         | xxx      |
+
+## Kondisi 2
+| Jenis Jurnal         | Pembayaran                    |   Kode akun | Keterangan            | Debit   | Kredit   |
+|:---------------------|:------------------------------|------------:|:----------------------|:--------|:---------|
+| JURNAL PEMBELIAN     | DP                            |        1202 | uang muka pembelian   | xxx     |          |
+| JURNAL PEMBELIAN     | DP                            |        1101 | kas di bank bri       |         | xxx      |
+| JURNAL PEMBELIAN     | Pelunasan dan barang diterima |        1301 | persediaan bahan baku | xxx     |          |
+| JURNAL PEMBELIAN     | Pelunasan dan barang diterima |        1202 | uang muka pembelian   |         | xxx      |
+| JURNAL PEMBELIAN     | Pelunasan dan barang diterima |        1101 | kas di bank bri       |         | xxx      |
+| JURNAL PENJUALAN B2B | Pelunasan                     |        1101 | kas di bank bri       | xxx     |          |
+| JURNAL PENJUALAN B2B | Pelunasan                     |        2102 | uang muka penjualan   |         | xxx      |
+| JURNAL PENJUALAN B2B | Pelunasan                     |        2201 | ppn keluaran          |         | xxx      |
+| JURNAL PENJUALAN B2B | Pengiriman Barang             |        2101 | uang muka penjualan   | xxx     |          |
+| JURNAL PENJUALAN B2B | Pengiriman Barang             |        4102 | penjualan b2b         |         | xxx      |
+| JURNAL PENJUALAN B2B | Pengiriman Barang             |        5102 | HPP Penjualan b2b     | xxx     |          |
+| JURNAL PENJUALAN B2B | Pengiriman Barang             |        1301 | persediaan bahan baku |         | xxx      |
+
+## Kondisi 3
+| Jenis Jurnal     | Pembayaran   |   Kode akun | Keterangan            | Debit   | Kredit   |
+|:-----------------|:-------------|------------:|:----------------------|:--------|:---------|
+| JURNAL PEMBELIAN | COD (Lunas)  |        1301 | persediaan bahan baku | xxx     |          |
+| JURNAL PEMBELIAN | COD (Lunas)  |        1101 | kas di bank bri       |         | xxx      |

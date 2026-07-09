@@ -9,7 +9,13 @@ class Karyawan extends Model
 {
     protected $table = 'karyawan';
     public $timestamps = false;
-    protected $guarded = [];
+    protected $fillable = [
+        'nama_karyawan',
+        'jabatan',
+        'jenis_tenaga_kerja',
+        'departemen',
+    ];
+
 
     public function penggajian(): HasMany
     {

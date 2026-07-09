@@ -54,52 +54,76 @@ class StokGudangController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | HITUNG STATUS & NILAI FIFO PER BARIS
+        | PAGINATE MANUAL (Slice Terlebih Dahulu Sebelum Map untuk Efisiensi)
         |--------------------------------------------------------------------------
         */
-
-        $rows = $rows->map(function ($row) {
-            // Status stok
-            $row->status = $row->qty > 0 ? 'tersedia' : 'habis';
-
-            // Nilai FIFO: ambil dari batch yang masih punya sisa
-            $hargaFifo = DB::table('stok_gudang_batch')
-                ->where('gudang_id', $row->gudang_id)
-                ->where('barang_id', $row->id)
-                ->where('qty_sisa', '>', 0)
-                ->avg('harga_per_qty');
-
-            // Fallback ke rata-rata semua batch historis
-            if (!$hargaFifo) {
-                $hargaFifo = DB::table('stok_gudang_batch')
-                    ->where('gudang_id', $row->gudang_id)
-                    ->where('barang_id', $row->id)
-                    ->avg('harga_per_qty');
-            }
-
-            // Fallback terakhir ke hpp_referensi master_barang
-            if (!$hargaFifo) {
-                $hargaFifo = DB::table('master_barang')
-                    ->where('id', $row->id)
-                    ->value('hpp_referensi') ?? 0;
-            }
-
-            $row->harga_fifo  = $hargaFifo ?? 0;
-            $row->nilai_stok  = $row->qty * $row->harga_fifo;
-
-            return $row;
-        });
-
-        /*
-        |--------------------------------------------------------------------------
-        | PAGINATE MANUAL
-        |--------------------------------------------------------------------------
-        */
-
         $perPage     = 20;
         $currentPage = (int) ($request->page ?? 1);
         $total       = $rows->count();
         $items       = $rows->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | BULK PRE-FETCH HARGA FIFO & FALLBACK
+        |--------------------------------------------------------------------------
+        */
+        $itemIds = $items->pluck('id')->toArray();
+        $gudangIds = $items->pluck('gudang_id')->unique()->toArray();
+
+        // 1. Ambil harga rata-rata dari batch aktif
+        $batchPrices = DB::table('stok_gudang_batch')
+            ->whereIn('barang_id', $itemIds)
+            ->whereIn('gudang_id', $gudangIds)
+            ->where('qty_sisa', '>', 0)
+            ->select('barang_id', 'gudang_id')
+            ->selectRaw('AVG(harga_per_qty) as avg_harga')
+            ->groupBy('barang_id', 'gudang_id')
+            ->get()
+            ->keyBy(fn($x) => $x->barang_id . '-' . $x->gudang_id);
+
+        // 2. Fallback: Ambil harga rata-rata dari semua batch historis
+        $historicalPrices = DB::table('stok_gudang_batch')
+            ->whereIn('barang_id', $itemIds)
+            ->whereIn('gudang_id', $gudangIds)
+            ->select('barang_id', 'gudang_id')
+            ->selectRaw('AVG(harga_per_qty) as avg_harga')
+            ->groupBy('barang_id', 'gudang_id')
+            ->get()
+            ->keyBy(fn($x) => $x->barang_id . '-' . $x->gudang_id);
+
+        // 3. Fallback akhir: HPP referensi master barang
+        $hppReferences = DB::table('master_barang')
+            ->whereIn('id', $itemIds)
+            ->pluck('hpp_referensi', 'id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | HITUNG STATUS & NILAI FIFO PER BARIS (Hanya pada items halaman aktif)
+        |--------------------------------------------------------------------------
+        */
+        $items = $items->map(function ($row) use ($batchPrices, $historicalPrices, $hppReferences) {
+            $row->status = $row->qty > 0 ? 'tersedia' : 'habis';
+
+            $key = $row->id . '-' . $row->gudang_id;
+            
+            // Cek harga FIFO batch aktif
+            $hargaFifo = $batchPrices->get($key)?->avg_harga;
+
+            // Fallback rata-rata batch historis
+            if (!$hargaFifo) {
+                $hargaFifo = $historicalPrices->get($key)?->avg_harga;
+            }
+
+            // Fallback HPP referensi
+            if (!$hargaFifo) {
+                $hargaFifo = $hppReferences->get($row->id) ?? 0;
+            }
+
+            $row->harga_fifo  = (float) $hargaFifo;
+            $row->nilai_stok  = $row->qty * $row->harga_fifo;
+
+            return $row;
+        });
 
         $stokGudang = new \Illuminate\Pagination\LengthAwarePaginator(
             $items,
@@ -108,6 +132,7 @@ class StokGudangController extends Controller
             $currentPage,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+
 
         /*
         |--------------------------------------------------------------------------

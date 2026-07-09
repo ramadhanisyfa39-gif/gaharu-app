@@ -13,11 +13,12 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // 1. Ambil ID dari Role (menggunakan kolom nama)
-        $idHrd      = Role::where('nama', 'HRD')->first()?->id;
-        $idGaharu   = Role::where('nama', 'Kepala Outlet Gaharu')->first()?->id;
-        $idKejingga = Role::where('nama', 'Kepala Outlet Kejingga')->first()?->id;
-        $idProduksi = Role::where('nama', 'Bagian Produksi')->first()?->id;
-        $idGudang   = Role::where('nama', 'Kepala Gudang')->first()?->id;
+        $idSuperAdmin = Role::where('nama', 'Super Admin')->first()?->id;
+        $idHrd        = Role::where('nama', 'HRD')->first()?->id;
+        $idGaharu     = Role::where('nama', 'Kepala Outlet Gaharu')->first()?->id;
+        $idKejingga   = Role::where('nama', 'Kepala Outlet Kejingga')->first()?->id;
+        $idProduksi   = Role::where('nama', 'Bagian Produksi')->first()?->id;
+        $idGudang     = Role::where('nama', 'Kepala Gudang')->first()?->id;
 
         // 2. Ambil ID dari MasterGudang (menyesuaikan nama persis dari MasterGudangSeeder Anda)
         $idGudangUtama    = MasterGudang::where('nama', 'Gudang Utama')->first()?->id;
@@ -29,6 +30,17 @@ class UserSeeder extends Seeder
         // 3. Buat data user dummy (sesuai fillable: nama, username, password, role_id)
         // Pastikan Anda sudah menambahkan 'gudang_id' ke $fillable di User.php jika ingin disimpan ke database
         
+        // Akun Super Admin
+        User::updateOrCreate(
+            ['username' => 'superadmin'],
+            [
+                'nama'      => 'Super Admin Utama',
+                'password'  => Hash::make('admin123'),
+                'role_id'   => $idSuperAdmin,
+                'gudang_id' => null,
+            ]
+        );
+
         // Akun HRD
         User::updateOrCreate(
             ['username' => 'hrd'],
@@ -84,4 +96,5 @@ class UserSeeder extends Seeder
             ]
         );
     }
+
 }

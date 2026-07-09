@@ -16,14 +16,37 @@ class PenjualanPosController extends Controller
 {
     public function index()
     {
-        $data = PenjualanPos::latest()->get();
+        $user = auth()->user();
+        $query = PenjualanPos::latest();
+        
+        if ($user->gudang_id) {
+            $query->where('gudang_id', $user->gudang_id);
+        }
+        
+        $data = $query->get();
         return view('penjualan_pos.index', compact('data'));
     }
 
     public function create()
     {
-        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
-        $gudang = MasterGudang::all();
+        $user = auth()->user();
+        $queryProduk = MasterBarang::where('is_barang_jadi', 1);
+        $queryGudang = MasterGudang::query();
+
+        if ($user->gudang_id) {
+            // Tampilkan semua produk yang terdaftar di tabel stok_gudang untuk gudang ini
+            $queryProduk->whereExists(function ($query) use ($user) {
+                $query->select(DB::raw(1))
+                    ->from('stok_gudang')
+                    ->whereColumn('stok_gudang.barang_id', 'master_barang.id')
+                    ->where('stok_gudang.gudang_id', $user->gudang_id);
+            });
+            $queryGudang->where('id', $user->gudang_id);
+        }
+
+        $produk = $queryProduk->get();
+        $gudang = $queryGudang->get();
+
         return view('penjualan_pos.create', compact('produk', 'gudang'));
     }
 
@@ -42,6 +65,11 @@ class PenjualanPosController extends Controller
             'harga'       => 'required|array',
             'harga.*'     => 'required|numeric',
         ]);
+
+        $user = auth()->user();
+        if ($user->gudang_id && $request->gudang_id != $user->gudang_id) {
+            return back()->with('error', 'Anda tidak diizinkan membuat transaksi untuk gudang lain.')->withInput();
+        }
     
         DB::beginTransaction();
     
@@ -109,8 +137,24 @@ class PenjualanPosController extends Controller
             return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi yang telah di-Approve atau di-Void tidak dapat diubah lagi.');
         }
         
-        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
-        $gudang = MasterGudang::all();
+        $user = auth()->user();
+        $queryProduk = MasterBarang::where('is_barang_jadi', 1);
+        $queryGudang = MasterGudang::query();
+
+        if ($user->gudang_id) {
+            // Tampilkan semua produk yang terdaftar di tabel stok_gudang untuk gudang ini
+            $queryProduk->whereExists(function ($query) use ($user) {
+                $query->select(DB::raw(1))
+                    ->from('stok_gudang')
+                    ->whereColumn('stok_gudang.barang_id', 'master_barang.id')
+                    ->where('stok_gudang.gudang_id', $user->gudang_id);
+            });
+            $queryGudang->where('id', $user->gudang_id);
+        }
+
+        $produk = $queryProduk->get();
+        $gudang = $queryGudang->get();
+
         return view('penjualan_pos.edit', compact('penjualan', 'produk', 'gudang'));
     }
 
@@ -129,6 +173,11 @@ class PenjualanPosController extends Controller
             'harga'       => 'required|array',
             'harga.*'     => 'required|numeric',
         ]);
+
+        $user = auth()->user();
+        if ($user->gudang_id && $request->gudang_id != $user->gudang_id) {
+            return back()->with('error', 'Anda tidak diizinkan mengubah transaksi ke gudang lain.')->withInput();
+        }
 
         DB::beginTransaction();
 
@@ -177,6 +226,7 @@ class PenjualanPosController extends Controller
             return back()->with('error', 'Gagal update data: ' . $e->getMessage())->withInput();
         }
     }
+
 
     /**
      * 4. PROSES APPROVAL: HPP DIHITUNG & STOK BARU TERPOTONG

@@ -156,8 +156,11 @@ class JurnalController extends Controller
             'tahun' => 'required|integer',
         ]);
 
-        $bulan = $request->bulan;
+        $bulan = sprintf('%02d', $request->bulan);
         $tahun = $request->tahun;
+
+        $startOfMonth = "$tahun-$bulan-01";
+        $endOfMonth = date('Y-m-t', strtotime($startOfMonth));
 
         try {
             DB::beginTransaction();
@@ -173,13 +176,13 @@ class JurnalController extends Controller
             }
 
             // 2. Ambil Akun Laba Ditahan (Muara Akhir Ekuitas)
-            $labaDitahan = ChartOfAccount::where('kode', '3-9999')->firstOrFail();
-            $tanggalClosing = date("Y-m-t", strtotime("$tahun-$bulan-01"));
+            $labaDitahan = ChartOfAccount::where('kode', '3103')->firstOrFail();
+            $tanggalClosing = $endOfMonth;
 
             // 3. Buat Header Jurnal Penutup di tabel 'journals' (Meminjam Header)
             $journal = Journal::create([
                 'tanggal'     => $tanggalClosing,
-                'deskripsi'   => "Jurnal Penutup Periode " . date('F', mktime(0, 0, 0, $bulan, 1)) . " $tahun",
+                'deskripsi'   => "Jurnal Penutup Periode " . date('F', mktime(0, 0, 0, (int)$bulan, 1)) . " $tahun",
                 'no_ref'      => 'CLS-' . time(),
                 'source_type' => 'closing', // Papan nama pemisah
                 'source_id'   => 0,
@@ -187,62 +190,92 @@ class JurnalController extends Controller
                 'created_by'  => Auth::id(),
             ]);
 
+            // Mapping tipe jurnal otomatis ke nama tabel database
+            $tableMapping = [
+                'jurnal_penjualan_pos' => 'jurnal_penjualan_pos', 
+                'jurnal_penjualan_b2b' => 'jurnal_penjualan_b2b', 
+                'jurnal_pembelian'     => 'jurnal_pembelian',     
+            ];
+
+            // 4. Ambil data mutasi berjalan secara bulk menggunakan query agregasi polimorfik
+            $mutasiBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
+                ->where('journal_type', '!=', 'closing') // Jangan sertakan jurnal penutupan lainnya
+                ->where(function ($q) use ($startOfMonth, $endOfMonth, $tableMapping) {
+                    // Jurnal Manual
+                    $q->where(function ($queryManual) use ($startOfMonth, $endOfMonth) {
+                        $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
+                            ->whereHas('journal', function ($j) use ($startOfMonth, $endOfMonth) {
+                                $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                                    ->where('status', 'approved');
+                            });
+                    });
+
+                    // Jurnal Otomatis (looping berdasarkan mapping tabel database)
+                    foreach ($tableMapping as $type => $tableName) {
+                        $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth, $endOfMonth) {
+                            $queryOtomatis->where('journal_type', $type)
+                                ->whereExists(function ($sub) use ($tableName, $startOfMonth, $endOfMonth) {
+                                    $sub->select(DB::raw(1))
+                                        ->from($tableName)
+                                        ->whereColumn("$tableName.id", 'journal_items.journal_id')
+                                        ->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+                                });
+                        });
+                    }
+                })
+                ->select('account_id')
+                ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+                ->groupBy('account_id')
+                ->get()
+                ->keyBy('account_id');
+
             $totalPendapatan = 0;
             $totalHppDanBeban = 0;
             $itemsToInsert = [];
 
-            // 4. Hitung Saldo Pendapatan (Kepala 4) -> Filter mengecualikan 'closing' terdahulu
-            $pendapatans = ChartOfAccount::where('kode', 'like', '4%')->get();
-            foreach ($pendapatans as $coa) {
-                $saldo = DB::table('journal_items')
-                    ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-                    ->where('journal_items.account_id', $coa->id)
-                    ->whereMonth('journals.tanggal', $bulan)
-                    ->whereYear('journals.tanggal', $tahun)
-                    ->where('journal_items.journal_type', '!=', 'closing') // Filter krusial
-                    ->select(DB::raw('SUM(kredit - debit) as neto'))
-                    ->first()->neto ?? 0;
-
-                if ($saldo != 0) {
-                    $itemsToInsert[] = [
-                        'journal_id'   => $journal->id,
-                        'account_id'   => $coa->id,
-                        'journal_type' => 'closing', // Menampung di journal_items bertipe closing
-                        'debit'        => $saldo,
-                        'kredit'       => 0,
-                        'created_at'   => now(),
-                        'updated_at'   => now()
-                    ];
-                    $totalPendapatan += $saldo;
-                }
-            }
-
-            // 5. Hitung Saldo HPP (Kepala 5) & Beban (Kepala 6)
-            $hppDanBebans = ChartOfAccount::where('kode', 'like', '5%')
+            // Mengambil semua akun COA Pendapatan (4), HPP (5), dan Beban (6)
+            $coas = ChartOfAccount::where('kode', 'like', '4%')
+                ->orWhere('kode', 'like', '5%')
                 ->orWhere('kode', 'like', '6%')
                 ->get();
 
-            foreach ($hppDanBebans as $coa) {
-                $saldo = DB::table('journal_items')
-                    ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-                    ->where('journal_items.account_id', $coa->id)
-                    ->whereMonth('journals.tanggal', $bulan)
-                    ->whereYear('journals.tanggal', $tahun)
-                    ->where('journal_items.journal_type', '!=', 'closing')
-                    ->select(DB::raw('SUM(debit - kredit) as neto'))
-                    ->first()->neto ?? 0;
+            foreach ($coas as $coa) {
+                $raw = $mutasiBalances->get($coa->id);
+                if (!$raw) continue;
 
-                if ($saldo != 0) {
-                    $itemsToInsert[] = [
-                        'journal_id'   => $journal->id,
-                        'account_id'   => $coa->id,
-                        'journal_type' => 'closing', // Menampung di journal_items bertipe closing
-                        'debit'        => 0,
-                        'kredit'       => $saldo,
-                        'created_at'   => now(),
-                        'updated_at'   => now()
-                    ];
-                    $totalHppDanBeban += $saldo;
+                $debit = (float) $raw->total_debit;
+                $kredit = (float) $raw->total_kredit;
+
+                if (str_starts_with($coa->kode, '4')) {
+                    // Pendapatan (Saldo Normal: Kredit) -> Saldo Penutupan didebit sebesar net kredit
+                    $neto = $kredit - $debit;
+                    if ($neto != 0) {
+                        $itemsToInsert[] = [
+                            'journal_id'   => $journal->id,
+                            'account_id'   => $coa->id,
+                            'journal_type' => 'closing',
+                            'debit'        => $neto > 0 ? $neto : 0,
+                            'kredit'       => $neto < 0 ? abs($neto) : 0,
+                            'created_at'   => now(),
+                            'updated_at'   => now()
+                        ];
+                        $totalPendapatan += $neto;
+                    }
+                } else {
+                    // HPP & Beban (Saldo Normal: Debit) -> Saldo Penutupan dikredit sebesar net debit
+                    $neto = $debit - $kredit;
+                    if ($neto != 0) {
+                        $itemsToInsert[] = [
+                            'journal_id'   => $journal->id,
+                            'account_id'   => $coa->id,
+                            'journal_type' => 'closing',
+                            'debit'        => $neto < 0 ? abs($neto) : 0,
+                            'kredit'       => $neto > 0 ? $neto : 0,
+                            'created_at'   => now(),
+                            'updated_at'   => now()
+                        ];
+                        $totalHppDanBeban += $neto;
+                    }
                 }
             }
 
@@ -518,10 +551,10 @@ class JurnalController extends Controller
         $pembelian = \App\Models\Pembelian::with(['supplier'])->findOrFail($id);
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
-        $idKasBank        = 1;
-        $idPersediaanBB   = 6;
-        $idUangMukaPemb   = 7;
-        $idPPNMasukan     = 8;
+        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
+        $idPersediaanBB   = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 6;
+        $idUangMukaPemb   = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
+        $idPPNMasukan     = DB::table('chart_of_accounts')->where('kode', '1203')->value('id') ?? 8;
 
         $tarifPpn = 0.10;
         $defaultDetails = [];
@@ -751,33 +784,34 @@ class JurnalController extends Controller
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
         // 3. Hitung akumulasi nilai total HPP riil dari tabel detail POS
-        $totalHppRiil = DB::table('penjualanpos_detail')
-            ->where('penjualan_id', $id)
-            ->selectRaw('SUM(qty * hpp_satuan) as total_hpp')
-            ->value('total_hpp') ?? 0;
+        // Jika hpp_satuan bernilai 0 (Draft), gunakan hpp_referensi dari master_barang sebagai fallback
+        $posDetails = DB::table('penjualanpos_detail')
+            ->join('master_barang', 'penjualanpos_detail.produk_id', '=', 'master_barang.id')
+            ->where('penjualanpos_detail.penjualan_id', $id)
+            ->select('penjualanpos_detail.qty', 'penjualanpos_detail.hpp_satuan', 'master_barang.hpp_referensi', 'penjualanpos_detail.subtotal')
+            ->get();
 
-        // ===================================================================
-        // ID COA MODUL PENJUALAN POS (DENGAN TAMBAHAN PPN KELUARAN)
-        // PENTING: ID di bawah ini BELUM diverifikasi ulang terhadap tabel
-        // chart_of_accounts (lihat catatan sebelumnya soal kemungkinan ID 1
-        // dipakai dobel untuk $idKasOutlet dan $idPersediaanJadi, serta ID 6
-        // yang juga dipakai modul pembelian untuk akun berbeda). Opsi A yang
-        // diterapkan di file ini HANYA memperbaiki percampuran data di
-        // Index/Show, BUKAN memperbaiki ID akun COA ini. Mohon dicek manual
-        // ke tabel chart_of_accounts sebelum deploy ke production.
-        // ===================================================================
-        $idKasOutlet      = 1;  // ID Akun Kas/Bank BRI (Debit)
-        $idHppPos         = 5;  // ID Akun Harga Pokok Penjualan POS (Debit)
-        $idPenjualanPos   = 4;  // ID Akun Penjualan POS (Kredit)
-        $idPpnKeluaran    = 6;  // TENTUKAN: Isi dengan ID Akun Utang PPN / PPN Keluaran milikmu
-        $idPersediaanJadi = 1;  // ID Akun Persediaan Barang Jadi (Kredit)
-        // ===================================================================
+        $totalHppRiil = 0;
+        $nilaiPenjualan = 0;
+        foreach ($posDetails as $pd) {
+            $hpp = floatval($pd->hpp_satuan);
+            if ($hpp <= 0) {
+                $hpp = floatval($pd->hpp_referensi);
+            }
+            $totalHppRiil += floatval($pd->qty) * $hpp;
+            $nilaiPenjualan += floatval($pd->subtotal);
+        }
 
-        // Logika Pajak: Penjualan belum termasuk PPN, maka hitung nilai PPN di sini
-        $nilaiPenjualan = floatval($penjualan->total);
-        $tarifPpn       = 0.10; // Sesuaikan dengan tarif PPN yang berlaku (misal 11% atau 12%)
+        $tarifPpn       = 0.10; // Sesuaikan dengan tarif PPN yang berlaku (misal 10%)
         $nilaiPpn       = $nilaiPenjualan * $tarifPpn;
         $totalKasMasuk  = $nilaiPenjualan + $nilaiPpn;
+
+        // Ambil ID COA secara dinamis berdasarkan kode resmi
+        $idKasOutlet      = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
+        $idHppPos         = DB::table('chart_of_accounts')->where('kode', '5101')->value('id') ?? 5;
+        $idPenjualanPos   = DB::table('chart_of_accounts')->where('kode', '4101')->value('id') ?? 4;
+        $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2201')->value('id') ?? 6;
+        $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 3;
 
         // 4. Susun Draf Jurnal Otomatis (5 Baris Berpasangan - Pastikan Seimbang)
         $defaultDetails = [
@@ -994,12 +1028,12 @@ class JurnalController extends Controller
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
         // PENCATATAN ID COA SECARA DINAMIS BERDASARKAN KODE AKUN RESMI
-        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1-1101')->value('id') ?? 1;
-        $idUangMuka       = DB::table('chart_of_accounts')->where('kode', '2-2102')->value('id') ?? 2;
-        $idPendapatan     = DB::table('chart_of_accounts')->where('kode', '3-3302')->value('id') ?? 4;
-        $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2-2201')->value('id') ?? 6;
-        $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1-1303')->value('id') ?? 3;
-        $idHPP            = DB::table('chart_of_accounts')->where('kode', '5-5102')->value('id') ?? 5;
+        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
+        $idUangMuka       = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 2;
+        $idPendapatan     = DB::table('chart_of_accounts')->where('kode', '4102')->value('id') ?? 4;
+        $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2201')->value('id') ?? 6;
+        $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 3;
+        $idHPP            = DB::table('chart_of_accounts')->where('kode', '5102')->value('id') ?? 5;
 
         $defaultDetails = [];
         $pembayaran = null;
@@ -1167,8 +1201,8 @@ class JurnalController extends Controller
 
     public function bukuPembantuUangMuka()
     {
-        // Berdasarkan fungsi pembelianCreate, ID Uang Muka Pembelian adalah 7
-        $idUangMukaPemb = 7;
+        // Berdasarkan fungsi pembelianCreate, ID Uang Muka Pembelian dicari dinamis menggunakan kode 1202
+        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
 
         $bukuPembantuUangMuka = DB::table('pembelian')
             ->join('suppliers', 'pembelian.supplier_id', '=', 'suppliers.id')

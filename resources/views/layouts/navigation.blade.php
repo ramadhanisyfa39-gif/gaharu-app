@@ -170,10 +170,13 @@
 
                     @if($canRole(['Bagian Produksi']))
                         <div class="submenu-divider">PRODUCTION</div>
+                        <a href="{{ route('produksi.dashboard') }}" class="{{ request()->routeIs('produksi.dashboard') ? 'active' : '' }}">
+                            <i class="bi bi-speedometer2 me-2" style="font-size:12px;"></i>Dashboard Produksi
+                        </a>
                         <a href="{{ route('wo.index') }}" class="{{ request()->routeIs('wo.*') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-text me-2" style="font-size:12px;"></i>Production Request
                         </a>
-                        <a href="{{ route('produksi.index') }}" class="{{ request()->routeIs('produksi.*') ? 'active' : '' }}">
+                        <a href="{{ route('produksi.index') }}" class="{{ request()->routeIs('produksi.*') && !request()->routeIs('produksi.dashboard') ? 'active' : '' }}">
                             <i class="bi bi-hammer me-2" style="font-size:12px;"></i>Production
                         </a>
                     @endif
