@@ -201,7 +201,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])->name('kirim_produksi');
         });
 
-        Route::get('/produksi/dashboard', [ProduksiController::class, 'dashboard'])->name('produksi.dashboard');
+        Route::get('/laporan-produksi/dashboard', [LaporanProduksiController::class, 'dashboard'])->name('laporan.produksi.dashboard');
         Route::get('/produksi', [ProduksiController::class, 'index'])->name('produksi.index');
         Route::get('/produksi/create', [ProduksiController::class, 'create'])->name('produksi.create');
         Route::post('/produksi', [ProduksiController::class, 'store'])->name('produksi.store');

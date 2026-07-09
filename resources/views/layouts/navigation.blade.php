@@ -31,6 +31,7 @@
         'laporan.pembelian', 'laporan.stok-gudang', 'laporan.pengeluaran-bahan-baku',
         'laporan.stock-opname', 'penjualan_pos.laporan', 'laporan.penjualan',
         'laporan.hpp', 'laporan.rekapitulasi',
+        'laporan.produksi.dashboard',
     ]);
 @endphp
 
@@ -170,9 +171,6 @@
 
                     @if($canRole(['Bagian Produksi']))
                         <div class="submenu-divider">PRODUCTION</div>
-                        <a href="{{ route('produksi.dashboard') }}" class="{{ request()->routeIs('produksi.dashboard') ? 'active' : '' }}">
-                            <i class="bi bi-speedometer2 me-2" style="font-size:12px;"></i>Dashboard Produksi
-                        </a>
                         <a href="{{ route('wo.index') }}" class="{{ request()->routeIs('wo.*') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-text me-2" style="font-size:12px;"></i>Production Request
                         </a>
@@ -304,6 +302,9 @@
 
                     @if($canRole(['Bagian Produksi']))
                         <div class="submenu-divider">PRODUCTION</div>
+                        <a href="{{ route('laporan.produksi.dashboard') }}" class="{{ request()->routeIs('laporan.produksi.dashboard') ? 'active' : '' }}">
+                            <i class="bi bi-speedometer2 me-2" style="font-size:12px;"></i>Dashboard Produksi
+                        </a>
                         <a href="{{ route('laporan.rekapitulasi') }}" class="{{ request()->routeIs('laporan.rekapitulasi') ? 'active' : '' }}">
                             <i class="bi bi-gear-wide-connected me-2" style="font-size:12px;"></i>Production Report
                         </a>
