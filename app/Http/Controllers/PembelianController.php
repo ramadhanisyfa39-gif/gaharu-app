@@ -34,17 +34,29 @@ class PembelianController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request)
     {
-        $pembelian = Pembelian::with(['supplier', 'gudang', 'user'])
-            ->orderBy('tanggal', 'desc')
-            ->paginate(10);
+        $search = $request->query('search');
+        $query = Pembelian::with(['supplier', 'gudang', 'user']);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('no_pembelian', 'like', '%' . $search . '%')
+                  ->orWhereHas('supplier', function($sq) use ($search) {
+                      $sq->where('nama', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $pembelian = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
 
         $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
             $label = match($item->metode_pembayaran) {
                 'cod'    => 'COD',
                 'termin' => 'Termin',
-                'dp'     => 'DP ' . $item->persen_dp . '%',
+                'dp'     => $item->nominal_dp && $item->nominal_dp > 0 
+                            ? 'DP Rp ' . number_format((float) $item->nominal_dp, 0, ',', '.')
+                            : 'DP ' . $item->persen_dp . '%',
                 default  => '-',
             };
             return [$item->id => [
@@ -53,6 +65,7 @@ class PembelianController extends Controller
                 'metode'              => $item->metode_pembayaran,
                 'label'               => $label,
                 'persen_dp'           => $item->persen_dp,
+                'nominal_dp'          => (float) $item->nominal_dp,
                 'tanggal_jatuh_tempo' => $item->tanggal_jatuh_tempo,
                 'tanggal_pelunasan'   => $item->tanggal_pelunasan,
                 'catatan'             => $item->catatan_pembayaran,
@@ -219,10 +232,24 @@ class PembelianController extends Controller
         $validated = $request->validate([
             'metode_pembayaran'   => 'required|in:cod,termin,dp',
             'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
-            'persen_dp'           => 'required_if:metode_pembayaran,dp|nullable|integer|min:1|max:99',
+            'persen_dp'           => 'nullable|integer|min:1|max:99',
+            'nominal_dp'          => 'nullable|numeric|min:0',
             'tanggal_pelunasan'   => 'nullable|date',
             'catatan_pembayaran'  => 'nullable|string|max:500',
         ]);
+
+        if ($validated['metode_pembayaran'] === 'dp') {
+            if (empty($validated['persen_dp']) && empty($validated['nominal_dp'])) {
+                return back()->withErrors(['persen_dp' => 'Persentase DP atau Nominal DP wajib diisi.'])->withInput();
+            }
+
+            $total = (float) $pembelian->total;
+            if (!empty($validated['persen_dp']) && empty($validated['nominal_dp'])) {
+                $validated['nominal_dp'] = round($total * $validated['persen_dp'] / 100, 2);
+            } elseif (!empty($validated['nominal_dp']) && empty($validated['persen_dp'])) {
+                $validated['persen_dp'] = (int) round(($validated['nominal_dp'] / $total) * 100);
+            }
+        }
 
         // COD langsung lunas
         $isLunas = $validated['metode_pembayaran'] === 'cod';

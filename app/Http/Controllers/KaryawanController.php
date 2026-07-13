@@ -12,10 +12,30 @@ class KaryawanController extends Controller
     /**
      * Menampilkan daftar semua karyawan.
      */
-    public function index(): View
+    public function index(Request $request)
     {
-        $karyawans = Karyawan::all();
+        $search = $request->query('search');
+        $query = Karyawan::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_karyawan', 'like', '%' . $search . '%')
+                  ->orWhere('jabatan', 'like', '%' . $search . '%')
+                  ->orWhere('departemen', 'like', '%' . $search . '%');
+            });
+        }
+
+        $karyawans = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
         return view('karyawan.index', compact('karyawans'));
+    }
+
+    /**
+     * Menampilkan detil karyawan.
+     */
+    public function show($id)
+    {
+        $karyawan = Karyawan::findOrFail($id);
+        return view('karyawan.show', compact('karyawan'));
     }
 
     /**
@@ -36,6 +56,7 @@ class KaryawanController extends Controller
             'jabatan'            => 'required|string',
             'jenis_tenaga_kerja' => 'required|string', // Contoh: Tetap, Kontrak, Freelance
             'departemen'         => 'required|string', // Contoh: Produksi, Akuntansi, Penjualan
+            'tanggal_masuk'      => 'nullable|date',
         ]);
 
         Karyawan::create($validated);
@@ -61,6 +82,7 @@ class KaryawanController extends Controller
             'jabatan'            => 'required|string',
             'jenis_tenaga_kerja' => 'required|string', // Contoh: Tetap, Kontrak, Freelance
             'departemen'         => 'required|string', // Contoh: Produksi, Akuntansi, Penjualan
+            'tanggal_masuk'      => 'nullable|date',
         ]);
 
         $karyawan->update($validated);

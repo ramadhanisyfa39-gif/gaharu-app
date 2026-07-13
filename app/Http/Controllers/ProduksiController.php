@@ -20,13 +20,22 @@ class ProduksiController extends Controller
     | 1. HALAMAN RIWAYAT & DRAFT PRODUKSI
     |--------------------------------------------------------------------------
     */
-    public function index()
+    public function index(Request $request)
     {
-        $riwayatProduksi = Produksi::with(['details.produk', 'pesanan.customer'])
-            ->orderBy('id', 'desc')
-            ->get();
+        $search = $request->query('search');
+        $query = Produksi::with(['details.produk', 'pesanan.customer']);
 
-        return view('produksi.index', compact('riwayatProduksi'));
+        if ($search) {
+            $query->where('no_produksi', 'like', '%' . $search . '%');
+        }
+
+        $riwayatProduksi = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
+
+        $totalData = Produksi::count();
+        $totalDraft = Produksi::where('status_produksi', 'Draft')->count();
+        $totalApproved = Produksi::where('status_produksi', 'Selesai')->count();
+
+        return view('produksi.index', compact('riwayatProduksi', 'totalData', 'totalDraft', 'totalApproved'));
     }
 
     /*

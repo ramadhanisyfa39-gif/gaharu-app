@@ -5,6 +5,14 @@
                 <h4 class="fw-bold m-0" style="color:#9c4f18; font-size: 1.25rem;">Dashboard Produksi</h4>
                 <small class="text-muted" style="font-size: 0.7rem;">Ringkasan aktivitas manufaktur & work order CV Gaharu</small>
             </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('laporan.produksi.dashboard', ['format' => 'excel']) }}" class="btn btn-success btn-sm fw-bold">
+                    📊 Export WO Excel
+                </a>
+                <a href="{{ route('laporan.produksi.dashboard', ['format' => 'pdf']) }}" class="btn btn-danger btn-sm fw-bold">
+                    📕 Export WO PDF
+                </a>
+            </div>
         </div>
     </x-slot>
 

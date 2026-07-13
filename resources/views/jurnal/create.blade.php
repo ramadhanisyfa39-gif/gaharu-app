@@ -53,7 +53,7 @@
                                         <select name="details[0][account_id]" class="form-select select2" required>
                                             <option value="">-- Pilih Akun --</option>
                                             @foreach($coas as $coa)
-                                            <option value="{{ $coa->id }}">[{{ $coa->kode_akun }}] {{ $coa->nama_akun }}</option>
+                                            <option value="{{ $coa->id }}">[{{ $coa->kode }}] {{ $coa->nama }}</option>
                                             @endforeach
                                         </select>
                                     </td>

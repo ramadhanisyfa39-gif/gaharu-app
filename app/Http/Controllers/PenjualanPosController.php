@@ -14,16 +14,21 @@ use Illuminate\Support\Facades\Log;
 
 class PenjualanPosController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
+        $search = $request->query('search');
         $query = PenjualanPos::latest();
         
         if ($user->gudang_id) {
             $query->where('gudang_id', $user->gudang_id);
         }
+
+        if ($search) {
+            $query->where('no_transaksi', 'like', '%' . $search . '%');
+        }
         
-        $data = $query->get();
+        $data = $query->paginate(10)->withQueryString();
         return view('penjualan_pos.index', compact('data'));
     }
 
@@ -65,6 +70,10 @@ class PenjualanPosController extends Controller
             'harga'       => 'required|array',
             'harga.*'     => 'required|numeric',
         ]);
+
+        if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
+            return back()->with('error', 'Tanggal transaksi tidak boleh sebelum hari ini.')->withInput();
+        }
 
         $user = auth()->user();
         if ($user->gudang_id && $request->gudang_id != $user->gudang_id) {
@@ -173,6 +182,10 @@ class PenjualanPosController extends Controller
             'harga'       => 'required|array',
             'harga.*'     => 'required|numeric',
         ]);
+
+        if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
+            return back()->with('error', 'Tanggal transaksi tidak boleh sebelum hari ini.')->withInput();
+        }
 
         $user = auth()->user();
         if ($user->gudang_id && $request->gudang_id != $user->gudang_id) {
@@ -293,8 +306,8 @@ class PenjualanPosController extends Controller
 
             if (!empty($pesanErrorStok)) {
                 DB::rollBack();
-                $errorList = implode('<br>', $pesanErrorStok);
-                return back()->with('error', "<b>Gagal Approve!</b> Stok bahan baku tidak mencukupi:<br>" . $errorList);
+                $errorList = implode(", ", $pesanErrorStok);
+                return back()->with('error', "Gagal Approve! Stok bahan baku tidak mencukupi: " . $errorList);
             }
 
             // -- C. Potong Stok & Hitung FIFO

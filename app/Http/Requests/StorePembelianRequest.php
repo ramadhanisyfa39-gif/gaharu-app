@@ -39,6 +39,30 @@ class StorePembelianRequest extends FormRequest
             'items.*.barang_id.required' => 'Barang wajib dipilih.',
             'items.*.qty.required' => 'Qty wajib diisi.',
             'items.*.harga.required' => 'Harga wajib diisi.',
+            'tanggal.after_or_equal' => 'Tanggal transaksi tidak boleh sebelum hari ini.',
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Validasi tanggal transaksi minimal hari ini
+            if ($this->input('tanggal') && date('Y-m-d', strtotime($this->input('tanggal'))) < date('Y-m-d')) {
+                $validator->errors()->add('tanggal', 'Tanggal transaksi tidak boleh sebelum hari ini.');
+            }
+
+            // Validasi minimum order
+            foreach ($this->input('items', []) as $index => $item) {
+                if (isset($item['barang_id']) && isset($item['qty'])) {
+                    $barang = \App\Models\MasterBarang::find($item['barang_id']);
+                    if ($barang && $item['qty'] < $barang->minimum_order) {
+                        $validator->errors()->add(
+                            "items.{$index}.qty", 
+                            "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
+                        );
+                    }
+                }
+            }
+        });
     }
 }

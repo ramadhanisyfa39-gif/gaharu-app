@@ -14,9 +14,19 @@
             </div>
         @endif
 
-        <a href="{{ route('pembelian.create') }}" class="btn btn-primary mb-3">
-            Tambah Pembelian
-        </a>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <a href="{{ route('pembelian.create') }}" class="btn btn-primary mb-0">
+                Tambah Pembelian
+            </a>
+
+            <form action="{{ route('pembelian.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari kode/supplier..." value="{{ request('search') }}" style="width: 220px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px; border: none; padding: 5px 15px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('pembelian.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px; padding: 5px 15px;">Reset</a>
+                @endif
+            </form>
+        </div>
 
         <table class="table table-bordered align-middle" style="font-size:13px;">
             <thead>
@@ -37,8 +47,16 @@
                     @php
                         // Hitung sisa/kekurangan pembayaran
                         $total      = (float) $item->total;
-                        $persenDp   = (int) ($item->persen_dp ?? 0);
-                        $nominalDp  = $persenDp > 0 ? round($total * $persenDp / 100) : 0;
+                        if ($item->metode_pembayaran === 'dp') {
+                            if ($item->nominal_dp && $item->nominal_dp > 0) {
+                                $nominalDp = (float) $item->nominal_dp;
+                            } else {
+                                $persenDp   = (int) ($item->persen_dp ?? 0);
+                                $nominalDp  = $persenDp > 0 ? round($total * $persenDp / 100) : 0;
+                            }
+                        } else {
+                            $nominalDp = 0;
+                        }
 
                         $kekurangan = match(true) {
                             // COD atau sudah lunas → tidak ada kekurangan
@@ -86,7 +104,6 @@
                                 @php
                                     $labelMetode = [
                                         'cod'    => ['text' => 'COD',   'class' => 'bg-success'],
-                                        'termin' => ['text' => 'Termin', 'class' => 'bg-warning text-dark'],
                                         'dp'     => ['text' => 'DP ' . $item->persen_dp . '%', 'class' => 'bg-info'],
                                     ][$item->metode_pembayaran];
                                 @endphp
@@ -239,8 +256,6 @@
                             <div class="d-flex gap-2">
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_cod" value="cod" onchange="toggleFieldPembayaran('cod')">
                                 <label class="btn btn-outline-success" for="opt_cod">COD</label>
-                                <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_termin" value="termin" onchange="toggleFieldPembayaran('termin')">
-                                <label class="btn btn-outline-warning" for="opt_termin">Termin</label>
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_dp" value="dp" onchange="toggleFieldPembayaran('dp')">
                                 <label class="btn btn-outline-info" for="opt_dp">DP</label>
                             </div>
@@ -255,16 +270,27 @@
                             </div>
                         </div>
                         <div id="field_dp" class="d-none">
-                            <div class="mb-3">
-                                <label class="form-label">Persentase DP</label>
-                                <div class="input-group">
-                                    <input type="number" name="persen_dp" id="inputPersenDP" class="form-control" min="1" max="99" placeholder="cth: 50" oninput="hitungNominalDP()">
-                                    <span class="input-group-text">%</span>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-semibold">Persentase DP</label>
+                                    <div class="input-group">
+                                        <input type="number" name="persen_dp" id="inputPersenDP" class="form-control" min="1" max="99" placeholder="cth: 30" oninput="updateDariPersen()">
+                                        <span class="input-group-text">%</span>
+                                    </div>
                                 </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label fw-semibold">Nominal DP</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rp</span>
+                                        <input type="number" name="nominal_dp" id="inputNominalDP" class="form-control" min="1" placeholder="cth: 150000" oninput="updateDariNominal()">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
                                 <small class="text-muted" id="keteranganDP"></small>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Estimasi Pelunasan</label>
+                                <label class="form-label fw-semibold">Estimasi Pelunasan</label>
                                 <input type="date" name="tanggal_pelunasan" class="form-control">
                             </div>
                         </div>
@@ -354,6 +380,9 @@
             document.querySelectorAll('input[name=metode_pembayaran]').forEach(r => r.checked = false);
             document.getElementById('field_termin').classList.add('d-none');
             document.getElementById('field_dp').classList.add('d-none');
+            document.getElementById('inputPersenDP').value = '';
+            document.getElementById('inputNominalDP').value = '';
+            document.getElementById('keteranganDP').textContent = '';
             new bootstrap.Modal(document.getElementById('modalPembayaran')).show();
         }
 
@@ -368,12 +397,24 @@
             document.querySelector('input[name=tanggal_jatuh_tempo]').value = tgl.toISOString().split('T')[0];
         }
 
-        function hitungNominalDP() {
-            const persen    = parseInt(document.getElementById('inputPersenDP').value) || 0;
-            const nominalDP = Math.round(totalAktif * persen / 100);
-            const sisa      = totalAktif - nominalDP;
-            document.getElementById('keteranganDP').textContent =
-                'DP = Rp ' + nominalDP.toLocaleString('id-ID') + ' · Sisa = Rp ' + sisa.toLocaleString('id-ID');
+        function updateDariPersen() {
+            const persen = parseFloat(document.getElementById('inputPersenDP').value) || 0;
+            const nominal = Math.round(totalAktif * persen / 100);
+            document.getElementById('inputNominalDP').value = nominal > 0 ? nominal : '';
+            hitungKeteranganDP(nominal);
+        }
+
+        function updateDariNominal() {
+            const nominal = parseFloat(document.getElementById('inputNominalDP').value) || 0;
+            const persen = totalAktif > 0 ? Math.round((nominal / totalAktif) * 100) : 0;
+            document.getElementById('inputPersenDP').value = persen > 0 ? persen : '';
+            hitungKeteranganDP(nominal);
+        }
+
+        function hitungKeteranganDP(nominal) {
+            const sisa = totalAktif - nominal;
+            document.getElementById('keteranganDP').innerHTML =
+                'DP = Rp ' + nominal.toLocaleString('id-ID') + ' · Sisa = <strong class="text-danger">Rp ' + sisa.toLocaleString('id-ID') + '</strong>';
         }
 
         // ── Detail Pembayaran ──
@@ -396,11 +437,12 @@
                 document.getElementById('dp_sisa').textContent = 'Rp ' + total.toLocaleString('id-ID');
             }
             if (data.metode === 'dp') {
-                const nominalDP = Math.round(total * data.persen_dp / 100);
+                const nominalDP = parseFloat(data.nominal_dp) || Math.round(total * (data.persen_dp || 0) / 100);
+                const persenDP = data.persen_dp || (total > 0 ? Math.round((nominalDP / total) * 100) : 0);
                 const sisa = total - nominalDP;
                 document.getElementById('row_nominal_dp').classList.remove('d-none');
                 document.getElementById('row_sisa_dp').classList.remove('d-none');
-                document.getElementById('dp_nominal').textContent = 'Rp ' + nominalDP.toLocaleString('id-ID') + ' (' + data.persen_dp + '%)';
+                document.getElementById('dp_nominal').textContent = 'Rp ' + nominalDP.toLocaleString('id-ID') + ' (' + persenDP + '%)';
                 document.getElementById('dp_sisa').textContent   = 'Rp ' + sisa.toLocaleString('id-ID');
                 if (data.tanggal_pelunasan) {
                     document.getElementById('row_pelunasan_tgl').classList.remove('d-none');

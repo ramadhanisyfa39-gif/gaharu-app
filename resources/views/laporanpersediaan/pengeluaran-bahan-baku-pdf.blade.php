@@ -1,59 +1,73 @@
-{{-- pengeluaran-bahan-baku-pdf.blade.php --}}
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DejaVu Sans',sans-serif; font-size:10px; color:#222; }
-    .header { border-bottom:3px solid #5a3416; padding-bottom:10px; margin-bottom:14px; }
-    .header h1 { font-size:17px; font-weight:700; color:#5a3416; }
-    .header .meta { font-size:10px; color:#888; margin-top:3px; }
-    table { width:100%; border-collapse:collapse; }
-    thead th { background:#5a3416; color:#fff; padding:6px 8px; font-size:9px; text-transform:uppercase; }
-    tbody tr:nth-child(even) { background:#fdf9f6; }
-    tbody tr.sub td { background:#f8f8f8; color:#777; font-size:9px; }
-    tbody td { padding:5px 8px; border-bottom:1px solid #f0e8e0; }
-    tfoot td { background:#fdf3ec; font-weight:700; color:#5a3416; padding:6px 8px; border-top:2px solid #eadfd4; }
-    .badge { display:inline-block; padding:2px 6px; border-radius:10px; font-size:8px; font-weight:600; }
-    .bs { background:#d1e7dd; color:#0a3622; }
-    .bd { background:#e2e3e5; color:#41464b; }
-    .text-right { text-align:right; }
-    .text-center { text-align:center; }
-    .footer { margin-top:16px; border-top:1px solid #eee; padding-top:6px; font-size:9px; color:#aaa; text-align:right; }
-</style>
+    <title>Laporan Pengeluaran Bahan Baku</title>
+    <style>
+        body { font-family: sans-serif; font-size: 11px; color: #333; margin: 20px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { margin: 0; font-size: 18px; color: #1e3a8a; }
+        .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
+        .info-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
+        .info-table td { padding: 4px 0; font-size: 11px; }
+        .main-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .main-table th { background-color: #1e3a8a; color: #ffffff; text-align: left; padding: 8px; font-weight: bold; font-size: 11px; }
+        .main-table td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 10px; }
+        .main-table tr:nth-child(even) { background-color: #fcfcfc; }
+        .main-table tr.sub td { background-color: #f9f9f9; color: #666; font-size: 9px; }
+        .main-table tfoot td { background-color: #f8f9fa; font-weight: bold; padding: 8px; border-top: 2px solid #333; font-size: 11px; color: #333; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
+        .bs { background-color: #d1e7dd; color: #0a3622; }
+        .bd { background-color: #e2e3e5; color: #41464b; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .fw-bold { font-weight: bold; }
+    </style>
 </head>
 <body>
+
     <div class="header">
-        <h1>Laporan Pengeluaran Bahan Baku</h1>
-        <div class="meta">
-            Dicetak: {{ now()->format('d M Y, H:i') }}
-            @if(request('dari') || request('sampai'))
-                · Periode: {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
-            @endif
-        </div>
+        <h2>LAPORAN PENGELUARAN BAHAN BAKU</h2>
+        <p>CV Gaharu App</p>
     </div>
-    <table>
+
+    <table class="info-table">
+        <tr>
+            <td width="15%"><strong>Periode Laporan</strong></td>
+            <td width="3%">:</td>
+            <td>
+                @if(request('dari') || request('sampai'))
+                    {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
+                @else
+                    Semua Periode
+                @endif
+            </td>
+            <td width="15%" class="text-right"><strong>Tanggal Cetak</strong></td>
+            <td width="3%">:</td>
+            <td width="20%">{{ date('d-m-Y H:i') }}</td>
+        </tr>
+    </table>
+
+    <table class="main-table">
         <thead>
             <tr>
-                <th>Kode</th>
+                <th width="100">Kode</th>
                 <th>Tanggal</th>
                 <th>Gudang</th>
-                <th class="text-center">Item</th>
-                <th class="text-right">Nilai HPP</th>
-                <th class="text-center">Status</th>
+                <th class="text-center" width="60">Item</th>
+                <th class="text-right" width="120">Nilai HPP</th>
+                <th class="text-center" width="80">Status</th>
             </tr>
         </thead>
         <tbody>
             @foreach($data as $row)
                 <tr>
-                    <td>{{ $row->kode_pengeluaran }}</td>
+                    <td class="fw-bold">{{ $row->kode_pengeluaran }}</td>
                     <td>{{ \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') }}</td>
                     <td>{{ $row->gudang->nama ?? '-' }}</td>
                     <td class="text-center">{{ $row->details->count() }}</td>
-                    <td class="text-right">Rp {{ number_format($row->details->sum('hpp_total'), 0, ',', '.') }}</td>
+                    <td class="text-right fw-bold">Rp {{ number_format($row->details->sum('hpp_total'), 0, ',', '.') }}</td>
                     <td class="text-center">
-                        <span class="badge {{ $row->status === 'approved' ? 'bs' : 'bd' }}">{{ ucfirst($row->status) }}</span>
+                        <span class="badge {{ $row->status === 'approved' ? 'bs' : 'bd' }}">{{ $row->status }}</span>
                     </td>
                 </tr>
                 @foreach($row->details as $d)
@@ -69,12 +83,12 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="4">Total HPP</td>
-                <td class="text-right">Rp {{ number_format($data->sum(fn($d) => $d->details->sum('hpp_total')), 0, ',', '.') }}</td>
+                <td colspan="4" class="text-right">TOTAL HPP:</td>
+                <td class="text-right text-danger">Rp {{ number_format($data->sum(fn($d) => $d->details->sum('hpp_total')), 0, ',', '.') }}</td>
                 <td></td>
             </tr>
         </tfoot>
     </table>
-    <div class="footer">Sistem ERP Gaharu · {{ auth()->user()->nama ?? '' }} · {{ now()->format('d/m/Y H:i') }}</div>
+
 </body>
 </html>

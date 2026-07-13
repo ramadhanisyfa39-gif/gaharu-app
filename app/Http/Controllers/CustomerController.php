@@ -7,10 +7,27 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $data = Customer::all();
+        $search = $request->query('search');
+        $query = Customer::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%')
+                  ->orWhere('jenis', 'like', '%' . $search . '%')
+                  ->orWhere('no_hp', 'like', '%' . $search . '%');
+            });
+        }
+
+        $data = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
         return view('customer.index', compact('data'));
+    }
+
+    public function show($id)
+    {
+        $customer = Customer::findOrFail($id);
+        return view('customer.show', compact('customer'));
     }
 
     public function create()

@@ -6,9 +6,31 @@
     <div class="container">
         <h3 class="mb-3">Data Barang</h3>
 
-        <button type="button" class="btn mb-3 text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahBarang">
-            + Tambah Barang
-        </button>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <button type="button" class="btn text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahBarang">
+                + Tambah Barang
+            </button>
+
+            <form action="{{ route('barang.index') }}" method="GET" class="d-flex gap-2">
+                <select name="kategori_id" class="form-select form-select-sm" style="width: 180px;">
+                    <option value="">-- Semua Kategori --</option>
+                    @foreach($kategori as $k)
+                        <option value="{{ $k->id }}" {{ request('kategori_id') == $k->id ? 'selected' : '' }}>{{ $k->nama }}</option>
+                    @endforeach
+                </select>
+                <div class="input-group input-group-sm" style="width: 220px;">
+                    <input type="text" name="search" class="form-control" placeholder="Cari nama/kode..." value="{{ request('search') }}">
+                    <button type="submit" class="btn text-white" style="background-color: #d88656; border: none;">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                @if(request('kategori_id') || request('search'))
+                    <a href="{{ route('barang.index') }}" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </a>
+                @endif
+            </form>
+        </div>
 
         @if ($errors->any())
             <div class="alert alert-danger">
@@ -42,6 +64,7 @@
                             <th style="background-color: #d88656; color: white;">Satuan</th>
                             <th style="background-color: #d88656; color: white;">Jenis</th>
                             <th style="background-color: #d88656; color: white;">Min. Stock</th>
+                            <th style="background-color: #d88656; color: white;">Min. Order</th>
                             <th style="background-color: #d88656; color: white;">Aksi</th>
                         </tr>
                     </thead>
@@ -74,7 +97,15 @@
                                     @endif
                                 </td>
                                 <td>
+                                    <span class="fw-bold text-dark">{{ number_format($d->minimum_order ?? 1) }}</span> 
+                                    <small class="text-muted">{{ $d->satuan }}</small>
+                                </td>
+                                <td>
                                     <div class="d-flex justify-content-center gap-1">
+                                        <a href="{{ route('barang.show', $d->id) }}" class="btn btn-info btn-sm text-white">
+                                            Detil
+                                        </a>
+
                                         <form action="{{ route('barang.toggle', $d->id) }}" method="POST">
                                             @csrf
                                             @method('PATCH')
@@ -108,6 +139,9 @@
                 </table>
             </div>
         </div>
+        <div class="mt-3">
+            {{ $data->links() }}
+        </div>
     </div>
 
     {{-- MODAL TAMBAH BARANG --}}
@@ -116,7 +150,7 @@
             <div class="modal-content">
                 <div class="modal-header text-white" style="background-color: #d88656;">
                     <h5 class="modal-title" id="modalTambahBarangLabel">Tambah Barang Baru</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 
                 <form action="{{ route('barang.store') }}" method="POST" id="formTambahBarang">
@@ -141,7 +175,7 @@
 
                             <div class="col-md-6 mb-3">
                                 <label class="fw-semibold">Nama Barang</label>
-                                <input type="text" name="nama" class="form-control" required>
+                                <input type="text" name="nama" id="nama_barang" class="form-control" required autocomplete="off">
                             </div>
 
                             <div class="col-md-6 mb-3">
@@ -159,48 +193,33 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-6 mb-3" id="group-min-stock" style="display: none;">
+                            <div class="col-md-6 mb-3" id="group-min-stock" style="display: block;">
                                 <label class="fw-semibold text-danger">Minimum Stock (Batas Kritis)</label>
                                 <input type="number" name="minimum_stock" id="minimum_stock" class="form-control" placeholder="Contoh: 10" min="0">
                             </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="fw-semibold text-primary">Minimum Order (Batas Order)</label>
+                                <input type="number" name="minimum_order" id="minimum_order" class="form-control" placeholder="Default: 1" min="1" value="1" step="0.01">
+                            </div>
                         </div>
 
-                        </div>
+                    </div>
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
                         <button type="submit" class="btn text-white" style="background-color: #d88656">Simpan</button>
                     </div>
-                
+                </form>
             </div>
         </div>
     </div>
-
-    <style>
-    .btn-close-white {
-        filter: invert(1) grayscale(1) brightness(2);
-    }
-    </style>
 
     <script>
     document.addEventListener("DOMContentLoaded", function () {
         const jenis = document.getElementById('jenis');
         const groupMinStock = document.getElementById('group-min-stock');
-
         const minStockInput = document.getElementById('minimum_stock');
-
-        // TOGGLE FORM DINAMIS (Harga & Minimum Stock)
-        function toggleForm() {
-            if (jenis.value === 'BAHAN_BAKU') {
-                groupMinStock.style.display = "block";
-            } else {
-                groupMinStock.style.display = "none";
-                minStockInput.value = '';
-            }
-        }
-
-        jenis.addEventListener('change', toggleForm);
-        toggleForm();
 
         // AUTO GENERATE KODE BARANG BERDASARKAN KATEGORI
         const kategori = document.getElementById('kategori_id');
@@ -211,7 +230,7 @@
                 return;
             }
 
-            fetch('/barang/generate-kode/' + kategoriId)
+            fetch("{{ route('barang.generate-kode', ':kategori') }}".replace(':kategori', kategoriId))
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('kode_barang').value = data.kode_barang;
@@ -221,6 +240,59 @@
         if (kategori.value != '') {
             kategori.dispatchEvent(new Event('change'));
         }
+
+        // VALIDASI NAMA BARANG DUPLIKAT DENGAN AJAX (Lebih Tangguh)
+        const form = document.getElementById('formTambahBarang');
+        let bypassCheck = false;
+
+        form.addEventListener('submit', function (e) {
+            if (bypassCheck) return;
+            e.preventDefault(); // Block submit pertama kali
+
+            try {
+                const namaInput = document.getElementById('nama_barang');
+                if (!namaInput) {
+                    bypassFormSubmit();
+                    return;
+                }
+
+                const namaVal = namaInput.value.trim();
+                if (!namaVal) {
+                    bypassFormSubmit();
+                    return;
+                }
+
+                fetch("{{ route('barang.check-nama') }}?nama=" + encodeURIComponent(namaVal))
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error("HTTP error " + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.exists) {
+                            const confirmSubmit = confirm("Nama Barang ini sudah terdaftar, apakah tetap ingin diinput?");
+                            if (confirmSubmit) {
+                                bypassFormSubmit();
+                            }
+                        } else {
+                            bypassFormSubmit();
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Duplicate name check failed:", err);
+                        bypassFormSubmit();
+                    });
+            } catch (err) {
+                console.error("Error in duplicate check handler:", err);
+                bypassFormSubmit();
+            }
+
+            function bypassFormSubmit() {
+                bypassCheck = true;
+                form.submit();
+            }
+        });
     });
     </script>
 </x-app-layout>

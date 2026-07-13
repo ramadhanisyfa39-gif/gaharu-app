@@ -20,6 +20,13 @@
                 <p class="text-muted mb-0 small">Manajemen penyelesaian produksi dan alokasi stok produk jadi</p>
             </div>
             <div class="d-flex gap-2">
+                <form action="{{ route('produksi.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no produksi..." value="{{ request('search') }}" style="width: 200px; border-radius: 8px;">
+                    <button type="submit" class="btn btn-sm text-white btn-custom-orange" style="border-radius: 8px; border: none; padding: 5px 15px; font-weight: 600;">Cari</button>
+                    @if(request('search'))
+                        <a href="{{ route('produksi.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 8px; padding: 5px 15px; text-decoration: none;">Reset</a>
+                    @endif
+                </form>
                 <a href="{{ route('dashboard') }}" class="btn btn-secondary text-white rounded-3 shadow-sm px-3 btn-sm d-flex align-items-center gap-2">
                     <i class="bi bi-arrow-left"></i> Dashboard
                 </a>
@@ -31,9 +38,9 @@
 
         {{-- SUMMARY CARDS --}}
         @php
-            $totalData = $riwayatProduksi->count();
-            $totalDraft = $riwayatProduksi->where('status_produksi', 'Draft')->count();
-            $totalApproved = $riwayatProduksi->where('status_produksi', 'Selesai')->count();
+            $totalData = $totalData ?? $riwayatProduksi->count();
+            $totalDraft = $totalDraft ?? $riwayatProduksi->where('status_produksi', 'Draft')->count();
+            $totalApproved = $totalApproved ?? $riwayatProduksi->where('status_produksi', 'Selesai')->count();
         @endphp
         <div class="row mb-4 g-3">
             <div class="col-md-4">
@@ -182,6 +189,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="mt-3">
+            {{ $riwayatProduksi->links() }}
         </div>
     </div>
 </x-app-layout>

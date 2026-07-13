@@ -10,6 +10,18 @@
 
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-4">
+                @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i> Terjadi Kesalahan Input:</div>
+                    <ul class="mb-0 ps-3">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                @endif
+
                 <form action="{{ route('pesanan.store') }}" method="POST">
                     @csrf
 
@@ -29,12 +41,17 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tanggal</label>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Tanggal Transaksi</label>
                             <input type="datetime-local" name="tanggal" class="form-control" required>
                         </div>
 
-                        <div class="col-md-6 mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Estimasi Tanggal Produksi</label>
+                            <input type="date" name="estimasi_produksi" class="form-control">
+                        </div>
+
+                        <div class="col-md-4 mb-4">
                             <label class="form-label">Estimasi Kirim</label>
                             <input type="datetime-local" name="estimasi_kirim" class="form-control" required>
                         </div>

@@ -209,11 +209,12 @@
                                 <input
                                     type="number"
                                     name="qty[]"
-                                    class="form-control"
+                                    class="form-control qty-input"
                                     min="1"
                                     step="0.01"
                                     placeholder="Qty"
                                     required>
+                                <small class="text-danger stok-warning d-block mt-1" style="display:none;"></small>
 
                             </td>
 
@@ -347,10 +348,11 @@ function tambahBaris()
                 <input
                     type="number"
                     name="qty[]"
-                    class="form-control"
+                    class="form-control qty-input"
                     min="1"
                     step="0.01"
                     required>
+                <small class="text-danger stok-warning d-block mt-1" style="display:none;"></small>
 
             </td>
 
@@ -385,6 +387,44 @@ function hapusBaris(button)
         row.remove();
     }
 }
+
+function checkStok(row) {
+    let select = row.querySelector('.barang-select');
+    let qtyInput = row.querySelector('.qty-input');
+    let warning = row.querySelector('.stok-warning');
+
+    if (!select || !qtyInput || !warning) return;
+
+    let selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || select.value === "") {
+        warning.style.display = "none";
+        return;
+    }
+
+    let stok = parseFloat(selectedOption.getAttribute('data-stok')) || 0;
+    let qty = parseFloat(qtyInput.value) || 0;
+
+    if (qty > stok) {
+        warning.innerHTML = `⚠️ Stok tidak mencukupi! Tersedia: <strong>${stok}</strong>`;
+        warning.style.display = "block";
+    } else {
+        warning.style.display = "none";
+    }
+}
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('barang-select')) {
+        let row = e.target.closest('tr');
+        checkStok(row);
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('qty-input')) {
+        let row = e.target.closest('tr');
+        checkStok(row);
+    }
+});
 
 </script>
 

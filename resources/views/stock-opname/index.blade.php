@@ -22,15 +22,24 @@
 
         </div>
 
-        <button
-            class="btn btn-primary px-4"
-            data-bs-toggle="modal"
-            data-bs-target="#createOpnameModal">
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('stock-opname.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no opname/ket..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('stock-opname.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px;">Reset</a>
+                @endif
+            </form>
+            <button
+                class="btn btn-primary px-4"
+                data-bs-toggle="modal"
+                data-bs-target="#createOpnameModal">
 
-            <i class="bi bi-plus-circle me-2"></i>
-            Buat Stock Opname
+                <i class="bi bi-plus-circle me-2"></i>
+                Buat Stock Opname
 
-        </button>
+            </button>
+        </div>
 
     </div>
     @if(session('success'))

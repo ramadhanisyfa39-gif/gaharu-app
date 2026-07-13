@@ -111,6 +111,20 @@
 
     </div>
 
+    <div class="col-md-6 mb-3">
+
+        <label>Minimum Order (Batas Order)</label>
+
+        <input type="number"
+               name="minimum_order"
+               id="minimum_order"
+               value="{{ $data->minimum_order ?? 1.00 }}"
+               class="form-control"
+               min="1"
+               step="0.01">
+
+    </div>
+
 </div>
 
 <div class="mt-3">

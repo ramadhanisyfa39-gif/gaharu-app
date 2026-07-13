@@ -25,7 +25,7 @@ class LaporanController extends Controller
         // =========================================================================
         $tableMapping = [
             'jurnal_penjualan_pos' => 'jurnal_penjualan_pos', 
-            'jurnal_penjualan_b2b' => 'jurnal_penjualan_b2b', 
+            'penjualan_b2b' => 'jurnal_penjualan_b2b', 
             'jurnal_pembelian'     => 'jurnal_pembelian',     
         ];
 
@@ -274,7 +274,7 @@ class LaporanController extends Controller
         })->where('saldo', '!=', 0);
 
         // --- 3. AMBIL DATA PASIVA (HANYA KEWAJIBAN & DATA MODAL AWAL SECARA SPESIFIK) ---
-        $passiva = ChartOfAccount::whereIn('tipe', ['Kewajiban', 'Modal'])
+        $passiva = ChartOfAccount::whereIn('tipe', ['Liabilitas', 'Ekuitas'])
             ->where('nama', 'not like', '%Prive%') 
             ->get()
             ->map(function ($coa) use ($itemsInPeriod) {
@@ -307,13 +307,12 @@ class LaporanController extends Controller
 
         $labaBerjalan = $totalPendapatan - $totalBeban;
 
-        // Hitung total nilai modal secara manual untuk return data jika dibutuhkan oleh sistem
-        $totalModalAwal = $passiva->where('tipe', 'Modal')->sum('saldo');
+        // Hitung total nilai modal secara manual menggunakan tipe 'Ekuitas'
+        $totalModalAwal = $passiva->where('tipe', 'Ekuitas')->sum('saldo');
         $modalAkhir = $totalModalAwal + $labaBerjalan - $totalPrive;
 
         return view('laporan.neraca.index', compact('aktiva', 'passiva', 'labaBerjalan', 'totalPrive', 'modalAkhir', 'bulan', 'tahun'));
     }
-
 
     public function arusKasIndex(Request $request)
     {

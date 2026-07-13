@@ -8,10 +8,26 @@ use App\Http\Controllers\Controller; // ⬅️ INI WAJIB
 
 class KategoriController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $data = Kategori::all();
+        $search = $request->query('search');
+        $query = Kategori::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%')
+                  ->orWhere('prefix', 'like', '%' . $search . '%');
+            });
+        }
+
+        $data = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
         return view('kategori.index', compact('data'));
+    }
+
+    public function show($id)
+    {
+        $kategori = Kategori::findOrFail($id);
+        return view('kategori.show', compact('kategori'));
     }
 
     public function create()

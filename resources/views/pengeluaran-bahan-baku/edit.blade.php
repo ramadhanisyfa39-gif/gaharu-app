@@ -64,16 +64,17 @@
 
                                     <select
                                         name="barang_id[]"
-                                        class="form-control"
+                                        class="form-control barang-select"
                                         required>
 
                                         @foreach($barang as $b)
 
                                             <option
                                                 value="{{ $b->id }}"
+                                                data-stok="{{ $b->stok }}"
                                                 {{ $detail->barang_id == $b->id ? 'selected' : '' }}>
 
-                                                {{ $b->nama }}
+                                                {{ $b->nama }} (Tersedia: {{ number_format($b->stok) }})
 
                                             </option>
 
@@ -90,8 +91,9 @@
                                         step="0.01"
                                         name="qty[]"
                                         value="{{ $detail->qty }}"
-                                        class="form-control"
+                                        class="form-control qty-input"
                                         required>
+                                    <small class="text-danger stok-warning d-block mt-1" style="display:none;"></small>
 
                                 </td>
 
@@ -132,5 +134,52 @@
     </div>
 
 </div>
+
+<script>
+function checkStok(row) {
+    let select = row.querySelector('.barang-select');
+    let qtyInput = row.querySelector('.qty-input');
+    let warning = row.querySelector('.stok-warning');
+
+    if (!select || !qtyInput || !warning) return;
+
+    let selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || select.value === "") {
+        warning.style.display = "none";
+        return;
+    }
+
+    let stok = parseFloat(selectedOption.getAttribute('data-stok')) || 0;
+    let qty = parseFloat(qtyInput.value) || 0;
+
+    if (qty > stok) {
+        warning.innerHTML = `⚠️ Stok tidak mencukupi! Tersedia: <strong>${stok}</strong>`;
+        warning.style.display = "block";
+    } else {
+        warning.style.display = "none";
+    }
+}
+
+// Jalankan checkStok awal saat halaman dibuka untuk setiap baris
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('#table-detail tbody tr, table tbody tr').forEach(function(row) {
+        checkStok(row);
+    });
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('barang-select')) {
+        let row = e.target.closest('tr');
+        checkStok(row);
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('qty-input')) {
+        let row = e.target.closest('tr');
+        checkStok(row);
+    }
+});
+</script>
 
 </x-app-layout>

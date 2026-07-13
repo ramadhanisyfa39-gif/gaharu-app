@@ -3,8 +3,16 @@
 <div class="container">
 
     {{-- HEADER --}}
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="mb-0">Work Order Produksi</h3>
+
+        <form action="{{ route('wo.index') }}" method="GET" class="d-flex gap-2">
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no WO..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
+            @if(request('search'))
+                <a href="{{ route('wo.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px;">Reset</a>
+            @endif
+        </form>
     </div>
 
     {{-- REFERENSI PESANAN DIBUNGKUS FORM UNTUK WO MASSAL --}}
@@ -194,6 +202,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="mt-3">
+            {{ $wo->links() }}
         </div>
     </div>
 

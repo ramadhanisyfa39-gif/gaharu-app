@@ -297,5 +297,49 @@ class FifoService
 
         return $result;
     }
-    
+
+    public function getEstimatedHargaFIFO(int $barangId, float $qtyKeluar, int $gudangId): array
+    {
+        $batches = StokGudangBatch::where('barang_id', $barangId)
+            ->where('gudang_id', $gudangId)
+            ->where('qty_sisa', '>', 0)
+            ->where('is_habis', false)
+            ->orderBy('id')
+            ->get();
+
+        $sisaPermintaan = $qtyKeluar;
+        $totalHpp = 0;
+
+        foreach ($batches as $batch) {
+            if ($sisaPermintaan <= 0) {
+                break;
+            }
+            $ambilQty = min($batch->qty_sisa, $sisaPermintaan);
+            $totalHpp += $ambilQty * $batch->harga_per_qty;
+            $sisaPermintaan -= $ambilQty;
+        }
+
+        // If there's still remaining qty required (allowNegative / fallback logic)
+        if ($sisaPermintaan > 0) {
+            $hargaFallback = DB::table('stok_gudang_batch')
+                ->where('barang_id', $barangId)
+                ->where('gudang_id', $gudangId)
+                ->avg('harga_per_qty');
+
+            if (!$hargaFallback) {
+                $hargaFallback = DB::table('master_barang')
+                    ->where('id', $barangId)
+                    ->value('hpp_referensi') ?? 0;
+            }
+
+            $totalHpp += $sisaPermintaan * $hargaFallback;
+        }
+
+        $hargaSatuan = $qtyKeluar > 0 ? ($totalHpp / $qtyKeluar) : 0;
+
+        return [
+            'harga_satuan' => $hargaSatuan,
+            'total_harga'  => $totalHpp
+        ];
+    }
 }

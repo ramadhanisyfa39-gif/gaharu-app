@@ -17,24 +17,24 @@
 
         </div>
 
-        <div>
-
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('pengeluaran-bahan-baku.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no pengeluaran..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('pengeluaran-bahan-baku.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px;">Reset</a>
+                @endif
+            </form>
             <a href="{{ route('dashboard') }}"
                class="btn btn-secondary">
-
                 <i class="bi bi-arrow-left"></i>
                 Dashboard
-
             </a>
-
             <a href="{{ route('pengeluaran-bahan-baku.create') }}"
                class="btn btn-primary">
-
                 <i class="bi bi-plus-circle"></i>
                 Tambah
-
             </a>
-
         </div>
 
     </div>
@@ -51,7 +51,7 @@
                     <h6>Total Pengeluaran</h6>
 
                     <h2 class="fw-bold">
-                        {{ $data->count() }}
+                        {{ $data->total() }}
                     </h2>
 
                 </div>
@@ -103,14 +103,18 @@
 
     </div>
 
-    @if(session('success'))
-
-        <div class="alert alert-success">
-
-            {{ session('success') }}
-
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Berhasil!</strong> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+    @endif
 
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Gagal!</strong> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     @endif
 
     <!-- TABEL -->
@@ -261,11 +265,11 @@
                     </tbody>
 
                 </table>
-
             </div>
-
         </div>
-
+        <div class="mt-3">
+            {{ $data->links() }}
+        </div>
     </div>
 
 </div>

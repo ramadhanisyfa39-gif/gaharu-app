@@ -22,11 +22,15 @@
                 <form action="{{ route('adjustment.store') }}" method="POST" id="form-jurnal">
                     @csrf
                     <div class="row mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold">Tanggal</label>
                             <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal', date('Y-m-d')) }}" required>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">No Referensi</label>
+                            <input type="text" name="no_ref" class="form-control" value="{{ old('no_ref', 'AJP-' . date('Ymd') . '-' . rand(1000, 9999)) }}" required placeholder="Contoh: AJP-001">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label fw-bold">Deskripsi</label>
                             <textarea name="deskripsi" class="form-control" rows="1" required placeholder="Keterangan transaksi...">{{ old('deskripsi') }}</textarea>
                         </div>

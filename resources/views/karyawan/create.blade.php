@@ -22,9 +22,8 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Jenis Tenaga Kerja</label>
                         <select name="jenis_tenaga_kerja" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            <option value="Tenaga Ahli">Tenaga Ahli</option>
-                            <option value="Staff">Staff</option>
-                            <option value="Operasional">Operasional</option>
+                            <option value="Karyawan Tetap">Karyawan Tetap</option>
+                            <option value="Karyawan Kontrak">Karyawan Kontrak</option>
                         </select>
                     </div>
 
@@ -33,16 +32,21 @@
                         <select name="departemen" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                             <option value="Gudang">Gudang</option>
                             <option value="Produksi">Produksi</option>
-                            <option value="Penjualan">Penjualan</option>
-                            <option value="Akuntansi">Akuntansi</option>
+                            <option value="Manajemen">Manajemen</option>
+                            <option value="Operasional">Operasional</option>
                         </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
+                        <input type="date" name="tanggal_masuk" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     </div>
 
                     <div class="flex items-center gap-4">
                         <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                             Simpan Karyawan
                         </button>
-                        <a href="{{ route('coa.index') }}" class="text-sm text-gray-600 hover:text-gray-900 underline">
+                        <a href="{{ route('karyawan.index') }}" class="text-sm text-gray-600 hover:text-gray-900 underline">
                             Batal
                         </a>
                     </div>

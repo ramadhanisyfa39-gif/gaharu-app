@@ -12,19 +12,29 @@ use Illuminate\Support\Facades\DB;
 
 class PengirimanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $pengirimans = Pengiriman::with('pesanan.customer')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $search = $request->query('search');
+        $query = Pengiriman::with('pesanan.customer');
 
-        return view('pengiriman.index', compact('pengirimans'));
+        if ($search) {
+            $query->where('no_pengiriman', 'like', '%' . $search . '%');
+        }
+
+        $pengirimans = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+
+        $totalData = Pengiriman::count();
+        $totalDraft = Pengiriman::where('status_pengiriman', 'Draft')->count();
+        $totalApproved = Pengiriman::where('status_pengiriman', 'Selesai')->count();
+
+        return view('pengiriman.index', compact('pengirimans', 'totalData', 'totalDraft', 'totalApproved'));
     }
 
     public function create()
     {
         $pesanans = Pesanan::with('customer')
             ->where('status_pesanan', 'Siap kirim')
+            ->where('status_pembayaran', 'Lunas')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -86,6 +96,10 @@ class PengirimanController extends Controller
             return back()->with('error', 'Data pesanan tidak ditemukan.');
         }
 
+        if ($pesanan->status_pembayaran !== 'Lunas') {
+            return back()->with('error', 'Gagal membuat pengiriman: Pesanan B2B ini belum lunas.');
+        }
+
         DB::beginTransaction();
         try {
             // Simpan data sebagai DRAFT
@@ -127,7 +141,9 @@ class PengirimanController extends Controller
             return redirect()->route('pengiriman.index')->with('error', 'Pengiriman yang sudah disetujui tidak dapat diedit.');
         }
 
-        $pesanans = Pesanan::with('customer')->get(); // Mengambil semua untuk keperluan edit
+        $pesanans = Pesanan::with('customer')
+            ->where('status_pembayaran', 'Lunas')
+            ->get(); // Mengambil pesanan lunas untuk keperluan edit
 
         return view('pengiriman.edit', compact('pengiriman', 'pesanans'));
     }
@@ -138,6 +154,11 @@ class PengirimanController extends Controller
 
         if ($pengiriman->status_pengiriman !== 'Draft') {
             return redirect()->route('pengiriman.index')->with('error', 'Pengiriman yang sudah disetujui tidak dapat diubah.');
+        }
+
+        $pesanan = DB::table('pesanan')->where('id', $pengiriman->pesanan_id)->first();
+        if (!$pesanan || $pesanan->status_pembayaran !== 'Lunas') {
+            return back()->with('error', 'Gagal memperbarui pengiriman: Pesanan B2B ini belum lunas.');
         }
 
         $request->validate([
@@ -197,6 +218,11 @@ class PengirimanController extends Controller
 
         if ($pengiriman->status_pengiriman !== 'Draft') {
             return back()->with('error', 'Data ini sudah disetujui sebelumnya.');
+        }
+
+        $pesanan = DB::table('pesanan')->where('id', $pengiriman->pesanan_id)->first();
+        if (!$pesanan || $pesanan->status_pembayaran !== 'Lunas') {
+            return back()->with('error', 'Gagal memproses Approve: Pesanan B2B ini belum lunas.');
         }
 
         DB::beginTransaction();

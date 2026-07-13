@@ -14,6 +14,11 @@ class Karyawan extends Model
         'jabatan',
         'jenis_tenaga_kerja',
         'departemen',
+        'tanggal_masuk',
+    ];
+
+    protected $casts = [
+        'tanggal_masuk' => 'date',
     ];
 
 

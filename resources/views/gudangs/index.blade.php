@@ -11,9 +11,18 @@
             <small class="text-muted">Kelola data gudang perusahaan</small>
         </div>
 
-        <a href="{{ route('gudangs.create') }}" class="btn btn-primary btn-sm">
-            + Tambah Gudang
-        </a>
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('gudangs.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama/kategori..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('gudangs.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px;">Reset</a>
+                @endif
+            </form>
+            <a href="{{ route('gudangs.create') }}" class="btn btn-primary btn-sm">
+                + Tambah Gudang
+            </a>
+        </div>
     </div>
 
     <div class="card-body">
@@ -41,6 +50,10 @@
                             <td>{{ $gudang->kategori }}</td>
 
                             <td class="text-center">
+                                <a href="{{ route('gudangs.show', $gudang->id) }}" class="btn btn-info btn-sm text-white">
+                                    Detil
+                                </a>
+
                                 <a href="{{ route('gudangs.edit', $gudang->id) }}" class="btn btn-warning btn-sm">
                                     Edit
                                 </a>

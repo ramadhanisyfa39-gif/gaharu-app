@@ -22,10 +22,11 @@ class CoaMasterSeeder extends Seeder
 
         // 2. Daftar Akun Induk (Parent Accounts)
         $parents = [
-            ['kode' => '1100', 'nama' => 'kas di bank bri dan Bank', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
+            ['kode' => '1100', 'nama' => 'Kas dan Bank', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
             ['kode' => '1200', 'nama' => 'Piutang Usaha', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
             ['kode' => '1300', 'nama' => 'Persediaan', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
-            ['kode' => '1400', 'nama' => 'Aset Tetap (Milik Sendiri)', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
+            ['kode' => '1400', 'nama' => 'Aset Tetap', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
+            ['kode' => '1500', 'nama' => 'Perlengkapan', 'tipe' => 'Aset', 'saldo_normal' => 'debit'],
             ['kode' => '2100', 'nama' => 'Utang Usaha', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit'],
             ['kode' => '2200', 'nama' => 'Utang Pajak & Gaji', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit'],
             ['kode' => '3100', 'nama' => 'Ekuitas', 'tipe' => 'Ekuitas', 'saldo_normal' => 'kredit'],
@@ -34,8 +35,7 @@ class CoaMasterSeeder extends Seeder
             ['kode' => '6100', 'nama' => 'Beban Gaji Karyawan', 'tipe' => 'Beban', 'saldo_normal' => 'debit'],
             ['kode' => '6200', 'nama' => 'Beban Utilitas Pemelihaaran & Perlengkapan', 'tipe' => 'Beban', 'saldo_normal' => 'debit'],
             ['kode' => '6300', 'nama' => 'Beban Pemasaran & Penyusutan Aset', 'tipe' => 'Beban', 'saldo_normal' => 'debit'],
-            ['kode' => '8100', 'nama' => 'Pendapatan Non-Operasional', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit'],
-            ['kode' => '9100', 'nama' => 'Beban Non-Operasional', 'tipe' => 'Beban', 'saldo_normal' => 'debit'],
+            ['kode' => '6400', 'nama' => 'Beban Lain-lain', 'tipe' => 'Beban', 'saldo_normal' => 'debit'],
         ];
 
         $parentIds = [];
@@ -51,7 +51,7 @@ class CoaMasterSeeder extends Seeder
         // 3. Daftar Akun Anak (Child Accounts) beserta pemetaan parent_id nya
         $children = [
             // Kas & Bank (1100)
-            ['kode' => '1101', 'nama' => 'kas di bank bri di Bank BRI', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1100'],
+            ['kode' => '1101', 'nama' => 'Kas di Bank BRI', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1100'],
 
             // Piutang Usaha (1200)
             ['kode' => '1201', 'nama' => 'Piutang Dagang Klien B2B', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1200'],
@@ -70,8 +70,9 @@ class CoaMasterSeeder extends Seeder
             ['kode' => '1405', 'nama' => 'Akumulasi Penyusutan - Mesin & Peralatan Kafe', 'tipe' => 'Aset', 'saldo_normal' => 'kredit', 'parent_kode' => '1400'],
             ['kode' => '1406', 'nama' => 'Kendaraan Operasional', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1400'],
             ['kode' => '1407', 'nama' => 'Akumulasi Penyusutan - Kendaraan Operasional', 'tipe' => 'Aset', 'saldo_normal' => 'kredit', 'parent_kode' => '1400'],
-            ['kode' => '1408', 'nama' => 'Perlengkapan Kantor', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1400'],
-            ['kode' => '1409', 'nama' => 'Akumulasi Penyusutan - Inventaris Kantor & Interior', 'tipe' => 'Aset', 'saldo_normal' => 'kredit', 'parent_kode' => '1400'],
+
+            // Perlengkapan (1500)
+            ['kode' => '1501', 'nama' => 'Perlengkapan Operasional', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1500'],
 
             // Utang Usaha (2100)
             ['kode' => '2101', 'nama' => 'Utang Dagang Supplier', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2100'],
@@ -79,9 +80,8 @@ class CoaMasterSeeder extends Seeder
 
             // Utang Pajak & Gaji (2200)
             ['kode' => '2201', 'nama' => 'PPN Keluaran', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
-            ['kode' => '2202', 'nama' => 'Utang Pajak Restoran PB1', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
-            ['kode' => '2203', 'nama' => 'Utang Gaji Karyawan', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
-            ['kode' => '2204', 'nama' => 'Utang THR', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
+            ['kode' => '2202', 'nama' => 'Utang Gaji Karyawan', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
+            ['kode' => '2203', 'nama' => 'Utang THR', 'tipe' => 'Liabilitas', 'saldo_normal' => 'kredit', 'parent_kode' => '2200'],
 
             // Ekuitas (3100)
             ['kode' => '3101', 'nama' => 'Modal Disetor', 'tipe' => 'Ekuitas', 'saldo_normal' => 'kredit', 'parent_kode' => '3100'],
@@ -96,7 +96,6 @@ class CoaMasterSeeder extends Seeder
             // Harga Pokok Penjualan (5100)
             ['kode' => '5101', 'nama' => 'HPP Penjualan POS', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
             ['kode' => '5102', 'nama' => 'HPP Penjualan B2B', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
-            ['kode' => '5103', 'nama' => 'Selisih Stock Opname', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
 
             // Beban Gaji Karyawan (6100)
             ['kode' => '6101', 'nama' => 'Beban Gaji Karyawan', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6100'],
@@ -120,14 +119,10 @@ class CoaMasterSeeder extends Seeder
             ['kode' => '6306', 'nama' => 'Beban Penyusutan - Kendaraan Operasional', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
             ['kode' => '6307', 'nama' => 'Beban Penyusutan - Inventaris Kantor & Interior', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
 
-            // Pendapatan Non-Operasional (8100)
-            ['kode' => '8101', 'nama' => 'Pendapatan Selisih kas di bank briir / Uang Kembalian Diikhlaskan', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '8100'],
-            ['kode' => '8102', 'nama' => 'Pendapatan Jasa Giro / Bunga Bank', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '8100'],
-
-            // Beban Non-Operasional (9100)
-            ['kode' => '9101', 'nama' => 'Beban Selisih kas di bank briir / Pembulatan Kurang Kembalian', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '9100'],
-            ['kode' => '9102', 'nama' => 'Beban Administrasi Bank & Pajak Bunga Bank', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '9100'],
-        ];
+            // Beban Lain-lain (6400)
+            ['kode' => '6401', 'nama' => 'Beban Selisih HPP', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6400'],
+            
+            ];
 
         foreach ($children as $child) {
             $parentKode = $child['parent_kode'];

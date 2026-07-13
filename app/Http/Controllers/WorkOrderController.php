@@ -14,12 +14,19 @@ use Illuminate\Support\Facades\DB;
 
 class WorkOrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $wo = WorkOrder::with([
+        $search = $request->query('search');
+        $query = WorkOrder::with([
             'details.pesanan.customer',
             'details.produk'
-        ])->latest()->get(); 
+        ]);
+
+        if ($search) {
+            $query->where('no_wo', 'like', '%' . $search . '%');
+        }
+
+        $wo = $query->latest()->paginate(10)->withQueryString(); 
     
         // Tampilkan pesanan yang status bayarnya DP atau Lunas untuk dibuatkan WO
         $pesanan = Pesanan::with(['details.produk', 'customer'])

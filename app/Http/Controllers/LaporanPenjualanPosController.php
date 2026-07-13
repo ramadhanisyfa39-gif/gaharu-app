@@ -52,6 +52,19 @@ class LaporanPenjualanPosController extends Controller
 
         $total_laba = $total_omzet - $total_hpp;
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper');
+            $pdf->loadView('penjualan_pos.laporan-pdf', compact(
+                'data_penjualan', 'tanggal_mulai', 'tanggal_selesai',
+                'total_omzet', 'total_hpp', 'total_laba'
+            ));
+            return $pdf->download('laporan-penjualan-pos-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcel($data_penjualan);
+        }
+
         return view('penjualan_pos.laporan', compact(
             'data_penjualan',
             'gudang',
@@ -62,5 +75,34 @@ class LaporanPenjualanPosController extends Controller
             'total_hpp',
             'total_laba'
         ));
+    }
+
+    private function exportExcel($data)
+    {
+        $filename = 'laporan-penjualan-pos-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($data) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['No', 'No. Transaksi', 'Tanggal & Waktu', 'Gudang / Outlet', 'Total Omzet', 'Total HPP', 'Laba Kotor']);
+            foreach ($data as $index => $row) {
+                fputcsv($f, [
+                    $index + 1,
+                    $row->kode_transaksi,
+                    Carbon::parse($row->tanggal)->format('d-m-Y H:i'),
+                    $row->gudang->nama ?? '-',
+                    $row->total,
+                    $row->calculated_hpp,
+                    $row->calculated_laba,
+                ]);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

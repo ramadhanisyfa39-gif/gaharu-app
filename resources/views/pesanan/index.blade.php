@@ -57,12 +57,19 @@
     <div class="container py-4" style="margin-top: 5.5rem !important;">
         
         {{-- HEADER SECTION --}}
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h4 class="mb-1 fw-bold text-dark" style="font-weight: 800; letter-spacing: -0.5px;">Data Pesanan & Transaksi</h4>
                 <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i> Validasi otomatis tombol aksi berdasarkan status alur kerja produksi (Work Order).</p>
             </div>
             <div class="d-flex gap-2">
+                <form action="{{ route('pesanan.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no pesanan/customer..." value="{{ request('search') }}" style="width: 220px; border-radius: 8px; border: 1px solid #eaeaea; padding: 7px 12px;">
+                    <button type="submit" class="btn btn-sm text-white" style="background-color: #db7946; border-radius: 8px; border: none; padding: 7px 15px; font-weight: 600;">Cari</button>
+                    @if(request('search'))
+                        <a href="{{ route('pesanan.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 8px; padding: 7px 15px; text-decoration: none; display: inline-flex; align-items: center;">Reset</a>
+                    @endif
+                </form>
                 <a href="{{ route('pesanan.create') }}" class="btn btn-custom-orange shadow-sm d-inline-flex align-items-center gap-2">
                     <i class="bi bi-plus-circle-fill"></i> Tambah Pesanan Baru
                 </a>
@@ -73,9 +80,9 @@
         @php
             $dataPesanan = $pesanans ?? $pesanan ?? collect();
             
-            $totalPesanan = $dataPesanan->count();
-            $totalProses = $dataPesanan->whereIn('status_pesanan', ['Draft', 'Proses', 'Siap kirim', 'pending', 'ready'])->count();
-            $totalSelesai = $dataPesanan->where('status_pesanan', 'Selesai')->count();
+            $totalPesanan = $totalPesanan ?? $dataPesanan->count();
+            $totalProses = $totalProses ?? $dataPesanan->whereIn('status_pesanan', ['Draft', 'Proses', 'Siap kirim', 'pending', 'ready'])->count();
+            $totalSelesai = $totalSelesai ?? $dataPesanan->where('status_pesanan', 'Selesai')->count();
         @endphp
 
         {{-- SUMMARY CARDS --}}
@@ -321,6 +328,9 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <div class="mt-3">
+                {{ $pesanan->links() }}
             </div>
         </div>
     </div>

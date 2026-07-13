@@ -34,6 +34,13 @@
                 <p class="text-muted mb-0 small">Manajemen pengiriman stok barang dan surat jalan</p>
             </div>
             <div class="d-flex gap-2">
+                <form action="{{ route('pengiriman.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+                    <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no pengiriman..." value="{{ request('search') }}" style="width: 200px; border-radius: 8px;">
+                    <button type="submit" class="btn btn-sm text-white btn-custom-orange action-btn" style="border-radius: 8px; border: none; padding: 5px 15px; font-weight: 600;">Cari</button>
+                    @if(request('search'))
+                        <a href="{{ route('pengiriman.index') }}" class="btn btn-sm btn-secondary action-btn" style="border-radius: 8px; padding: 5px 15px; text-decoration: none;">Reset</a>
+                    @endif
+                </form>
                 <a href="{{ route('dashboard') }}" class="btn btn-secondary text-white rounded-3 shadow-sm px-3 action-btn d-flex align-items-center gap-2">
                     <i class="bi bi-arrow-left"></i> Dashboard
                 </a>
@@ -45,9 +52,9 @@
 
         {{-- SUMMARY CARDS --}}
         @php
-            $totalData = $pengirimans->count();
-            $totalDraft = $pengirimans->where('status_pengiriman', 'Draft')->count();
-            $totalApproved = $pengirimans->where('status_pengiriman', 'Selesai')->count();
+            $totalData = $totalData ?? $pengirimans->count();
+            $totalDraft = $totalDraft ?? $pengirimans->where('status_pengiriman', 'Draft')->count();
+            $totalApproved = $totalApproved ?? $pengirimans->where('status_pengiriman', 'Selesai')->count();
         @endphp
         <div class="row mb-4 g-3">
             <div class="col-md-4">
@@ -168,6 +175,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="mt-3">
+            {{ $pengirimans->links() }}
         </div>
     </div>
 </x-app-layout>

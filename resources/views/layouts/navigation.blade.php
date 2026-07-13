@@ -21,15 +21,15 @@
     ]);
 
     $financeActive = request()->routeIs([
-        'jurnal.*', 'jurnal-penjualanb2b.*', 'jurnal-penjualanpos.*',
-        'adjustment.*', 'closing.*',
+        'jurnal.*', 'jurnal-penjualanb2b.*', 'jurnal-penjualanpos.*', 'jurnal-pembelian.*',
+        'adjustment.*', 'closing.*', 
         'laporan.laba-rugi.*', 'laporan.neraca.*', 'laporan.arus-kas.*',
         'laporan.neraca-saldo.*', 'laporan.buku-besar.*',
     ]);
 
     $reportsActive = request()->routeIs([
         'laporan.pembelian', 'laporan.stok-gudang', 'laporan.pengeluaran-bahan-baku',
-        'laporan.stock-opname', 'penjualan_pos.laporan', 'laporan.penjualan',
+        'laporan.stock-opname', 'laporan-penjualan-pos', 'laporan.penjualan',
         'laporan.hpp', 'laporan.rekapitulasi',
         'laporan.produksi.dashboard',
     ]);
@@ -217,6 +217,9 @@
                     <a href="{{ route('jurnal.index') }}" class="{{ request()->routeIs('jurnal.index') ? 'active' : '' }}">
                         <i class="bi bi-journal-check me-2" style="font-size:12px;"></i>General Journal
                     </a>
+                    <a href="{{ route('jurnal-pembelian.index') }}" class="{{ request()->routeIs('jurnal-pembelian.*') ? 'active' : '' }}">
+                        <i class="bi bi-journal-plus me-2" style="font-size:12px;"></i>Purchase Journal
+                    </a>
                     <a href="{{ route('jurnal-penjualanb2b.index') }}" class="{{ request()->routeIs('jurnal-penjualanb2b.*') ? 'active' : '' }}">
                         <i class="bi bi-journal-plus me-2" style="font-size:12px;"></i>B2B Sales Journal
                     </a>
@@ -244,6 +247,9 @@
                     <div class="submenu-divider">OTHERS</div>
                     <a href="{{ route('laporan.neraca-saldo.index') }}" class="{{ request()->routeIs('laporan.neraca-saldo.*') ? 'active' : '' }}">
                         <i class="bi bi-list-check me-2" style="font-size:12px;"></i>Trial Balance
+                    </a>
+                    <a href="{{ route('laporan.buku-besar.index') }}" class="{{ request()->routeIs('laporan.buku-besar.*') ? 'active' : '' }}">
+                        <i class="bi bi-list-check me-2" style="font-size:12px;"></i>General Ledger
                     </a>
                 </div>
             </div>

@@ -1,9 +1,19 @@
 <x-app-layout>
 <div class="container py-4">
     {{-- JUDUL HALAMAN --}}
-    <div class="mb-4">
-        <h4 class="fw-bold text-dark">Laporan Penjualan B2B</h4>
-        <p class="text-muted small">Pantau ringkasan omzet dan performa penjualan berkala.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold text-dark mb-1">Laporan Penjualan B2B</h4>
+            <p class="text-muted small mb-0">Pantau ringkasan omzet dan performa penjualan berkala.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('laporan.penjualan', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success">
+                📊 Export Excel
+            </a>
+            <a href="{{ route('laporan.penjualan', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger">
+                📕 Export PDF
+            </a>
+        </div>
     </div>
 
     {{-- KARTU FILTER TANGGAL --}}
@@ -66,7 +76,8 @@
                         <th>Tanggal</th>
                         <th>Status Pesanan</th>
                         <th>Status Bayar</th>
-                        <th class="text-end pe-4">Total</th>
+                        <th class="text-end">Total HPP</th>
+                        <th class="text-end pe-4">Total Omzet</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,13 +105,16 @@
                                     </span>
                                 @endif
                             </td>
+                            <td class="text-end text-muted">
+                                Rp {{ number_format($p->total_hpp ?? 0, 0, ',', '.') }}
+                            </td>
                             <td class="text-end pe-4 fw-bold text-dark">
                                 Rp {{ number_format($p->details_sum_subtotal ?? 0, 0, ',', '.') }}
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-muted py-5">
+                            <td colspan="7" class="text-muted py-5 text-center">
                                 <i class="bi bi-folder-x fs-1 d-block mb-2 text-secondary"></i>
                                 Tidak ada data penjualan ditemukan pada periode ini.
                             </td>

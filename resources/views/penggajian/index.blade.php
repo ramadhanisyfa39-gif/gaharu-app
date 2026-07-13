@@ -6,11 +6,18 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b pb-4">
                     <div>
                         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                            [MODE TESTING] Sistem Manajemen Penggajian & Jurnal
+                            Sistem Manajemen Penggajian & Jurnal
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">Kelola data payroll kolektif per periode dan integrasi jurnal umum.</p>
                     </div>
-                    <div>
+                    <div class="flex gap-2 items-center">
+                        <form action="{{ route('penggajian.index') }}" method="GET" class="flex gap-2">
+                            <input type="text" name="search" class="border rounded px-3 py-1 text-sm" placeholder="Cari periode/karyawan..." value="{{ request('search') }}" style="width: 220px;">
+                            <button type="submit" class="bg-gray-800 text-white px-3 py-1 rounded text-sm">Cari</button>
+                            @if(request('search'))
+                                <a href="{{ route('penggajian.index') }}" class="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm">Reset</a>
+                            @endif
+                        </form>
                         <button @click="openModalPeriode = true" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm text-sm font-medium transition-all cursor-pointer">
                             + Buat Periode Baru
                         </button>
@@ -157,6 +164,9 @@
                             </button>
                         </div>
                     </form>
+                </div>
+                <div class="mt-4">
+                    {{ $payrolls->links() }}
                 </div>
             </div>
         </div>

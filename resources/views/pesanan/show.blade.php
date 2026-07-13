@@ -58,8 +58,20 @@
                         @endif
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <hr class="my-3">
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted fw-bold">Estimasi Tanggal Kirim</label>
+                        <h6 class="text-dark fw-semibold">{{ date('d M Y H:i', strtotime($pesanan->estimasi_kirim)) }}</h6>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted fw-bold">Estimasi Tanggal Produksi</label>
+                        <h6 class="text-primary fw-bold">{{ $pesanan->estimasi_produksi ? date('d M Y', strtotime($pesanan->estimasi_produksi)) : '— (Tidak Perlu Produksi / Sudah Siap)' }}</h6>
+                    </div>
+                </div>
 
         <div class="card border-0 shadow-sm">
             <div class="card-body">

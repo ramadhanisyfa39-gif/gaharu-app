@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('barang', BarangController::class)->names('barang');
         Route::patch('barang/{barang}/toggle', [BarangController::class, 'toggle'])->name('barang.toggle');
         Route::get('/barang/generate-kode/{kategori}', [BarangController::class, 'generateKode'])->name('barang.generate-kode');
+        Route::get('/barang/check-nama', [BarangController::class, 'checkNama'])->name('barang.check-nama');
     });
 
 
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
         Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
         Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
         Route::put('adjustment/{id}/approve', [JurnalController::class, 'adjustmentApprove'])->name('adjustment.approve');
+        Route::post('adjustment/approve-batch', [JurnalController::class, 'adjustmentApproveBatch'])->name('adjustment.approve_batch');
 
         // Jurnal Pembelian
         Route::get('/jurnal-pembelian', [JurnalController::class, 'pembelianIndex'])->name('jurnal-pembelian.index');
@@ -166,7 +168,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-penjualanb2b/create/{id}', [JurnalController::class, 'penjualanb2bCreate'])->name('jurnal-penjualanb2b.create');
         Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'penjualanB2BStore'])->name('jurnal-penjualanb2b.store');
         Route::get('/jurnal-penjualanb2b/show/{id}', [JurnalController::class, 'penjualanB2BShow'])->name('jurnal-penjualanb2b.show');
-        Route::get('/buku-pembantu-uangmuka', [JurnalController::class, 'bukuPembantuUangMuka'])->name('bukupembantu-uangmuka.index');
+        Route::get('/bukupembantu-uangmuka', [JurnalController::class, 'bukuPembantuUangMuka'])->name('bukupembantu-uangmuka.index');
 
         // Laporan Keuangan
         Route::prefix('laporan')->name('laporan.')->group(function () {

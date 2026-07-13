@@ -5,11 +5,11 @@
         </h2>
     </x-slot>
 
-    <div class="container">
+    <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold">Riwayat Jurnal Penyesuaian</h2>
-            <a href="{{ route('adjustment.create') }}" class="btn btn-primary shadow-sm">
-                <i class="fas fa-plus"></i> Tambah Jurnal
+            <h2 class="fw-bold m-0" style="color: #9c4f18; font-size: 1.5rem;">Riwayat Jurnal Penyesuaian</h2>
+            <a href="{{ route('adjustment.create') }}" class="btn btn-primary shadow-sm" style="background-color: #9c4f18; border-color: #9c4f18;">
+                <i class="fas fa-plus me-1"></i> Tambah Jurnal
             </a>
         </div>
 
@@ -20,24 +20,56 @@
         </div>
         @endif
 
-        <div class="card shadow-sm">
+        @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
+
+        {{-- BATCH POSTING CARD (POSTING MASSAL) --}}
+        <div class="card mb-4 border-0 shadow-sm bg-light">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3" style="color: #9c4f18;"><i class="fas fa-mail-bulk me-2 text-primary"></i> Posting Jurnal Massal</h5>
+                <form action="{{ route('adjustment.approve_batch') }}" method="POST" class="row g-3 align-items-end" onsubmit="return confirm('Posting semua jurnal penyesuaian draft pada rentang tanggal ini ke Buku Besar?')">
+                    @csrf
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold text-muted">Dari Tanggal</label>
+                        <input type="date" name="start_date" class="form-control" required value="{{ request('start_date', date('Y-m-01')) }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold text-muted">Sampai Tanggal</label>
+                        <input type="date" name="end_date" class="form-control" required value="{{ request('end_date', date('Y-m-t')) }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-success w-100 shadow-sm">
+                            <i class="fas fa-check-double me-1"></i> Posting Terpilih
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- TABLE CARD --}}
+        <div class="card shadow-sm border-0">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Tanggal</th>
+                                <th class="ps-3">Tanggal</th>
                                 <th>No. Ref</th>
                                 <th>Deskripsi</th>
                                 <th class="text-end">Total Debit</th>
                                 <th class="text-end">Total Kredit</th>
-                                <th class="text-center">Aksi</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center pe-3">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($adjustments as $adjustment)
                             <tr>
-                                <td>{{ \Carbon\Carbon::parse($adjustment->tanggal)->format('d/m/Y') }}</td>
+                                <td class="ps-3">{{ \Carbon\Carbon::parse($adjustment->tanggal)->format('d/m/Y') }}</td>
                                 <td><span class="badge bg-light text-dark border font-monospace">{{ $adjustment->no_ref }}</span></td>
                                 <td>{{ Str::limit($adjustment->deskripsi, 50) }}</td>
                                 <td class="text-end fw-semibold text-success">
@@ -46,10 +78,30 @@
                                 <td class="text-end fw-semibold text-danger">
                                     Rp {{ number_format($adjustment->details->sum('kredit'), 0, ',', '.') }}
                                 </td>
+                                <td class="text-center">
+                                    @if($adjustment->status === 'approved')
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Posted</span>
+                                    @else
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Draft</span>
+                                    @endif
+                                </td>
+                                <td class="text-center pe-3">
+                                    @if($adjustment->status !== 'approved')
+                                        <form action="{{ route('adjustment.approve', $adjustment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Posting jurnal penyesuaian ini ke Buku Besar?')">
+                                            @csrf
+                                            @method('PUT')
+                                            <button type="submit" class="btn btn-sm btn-success py-0.5 px-2" style="font-size: 0.7rem;">
+                                                <i class="fas fa-check me-1"></i> Post
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-muted small">-</span>
+                                    @endif
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Belum ada transaksi jurnal yang tercatat.</td>
+                                <td colspan="7" class="text-center text-muted py-4">Belum ada transaksi jurnal yang tercatat.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -58,5 +110,4 @@
             </div>
         </div>
     </div>
-    </script>
 </x-app-layout>

@@ -19,11 +19,19 @@ class StockOpnameController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request)
     {
-        $stockOpname = StockOpname::with(['gudang', 'user'])
-            ->latest()
-            ->paginate(20);
+        $search = $request->query('search');
+        $query = StockOpname::with(['gudang', 'user']);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('no_opname', 'like', '%' . $search . '%')
+                  ->orWhere('keterangan', 'like', '%' . $search . '%');
+            });
+        }
+
+        $stockOpname = $query->latest()->paginate(20)->withQueryString();
 
         $gudangs = MasterGudang::orderBy('nama')->get();
 
@@ -291,6 +299,44 @@ public function detailJson(string $id)
                         'source_id'        => $opname->id,
                         'user_id'          => Auth::id() ?? 1,
                     ]);
+
+                    // 3. Kirim otomatis ke Jurnal Penyesuaian (Surplus)
+                    $totalHargaSO = $detail->selisih * $hargaUnit;
+                    if ($totalHargaSO > 0) {
+                        $isOperational = $detail->barang && ($detail->barang->is_operational || !$detail->barang->is_bahan_baku);
+                        $coaCode = $isOperational ? '1302' : '1301';
+                        $idPersediaan = DB::table('chart_of_accounts')->where('kode', $coaCode)->value('id') ?? ($isOperational ? 20 : 19);
+                        
+                        $idPendapatanLain = DB::table('chart_of_accounts')->where('kode', '8103')->value('id') 
+                            ?? DB::table('chart_of_accounts')->where('kode', '8100')->value('id') 
+                            ?? 13;
+
+                        $jp = \App\Models\JurnalPenyesuaian::create([
+                            'tanggal'     => now(),
+                            'deskripsi'   => "[AJP] Penyesuaian Lebih (Surplus) Stock Opname: " . ($detail->barang->nama ?? 'Barang'),
+                            'no_ref'      => 'AJP-SO-SURPLUS-' . $opname->kode_opname . '-' . rand(100, 999),
+                            'source_type' => 'stock_opname',
+                            'source_id'   => $opname->id,
+                            'created_by'  => Auth::id() ?? 1,
+                            'status'      => 'approved',
+                        ]);
+
+                        // Debit: Persediaan (1301 / 1302)
+                        $jp->details()->create([
+                            'account_id'   => $idPersediaan,
+                            'debit'        => $totalHargaSO,
+                            'kredit'       => 0,
+                            'journal_type' => \App\Models\JurnalPenyesuaian::class,
+                        ]);
+
+                        // Kredit: Pendapatan Lain-lain
+                        $jp->details()->create([
+                            'account_id'   => $idPendapatanLain,
+                            'debit'        => 0,
+                            'kredit'       => $totalHargaSO,
+                            'journal_type' => \App\Models\JurnalPenyesuaian::class,
+                        ]);
+                    }
                 }
             }
 

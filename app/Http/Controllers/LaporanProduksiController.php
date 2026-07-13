@@ -49,7 +49,49 @@ class LaporanProduksiController extends Controller
             ->orderBy('produksi.tanggal_mulai', 'desc')
             ->get();
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper');
+            $pdf->loadView('laporanproduksi.rekapitulasi-pdf', compact(
+                'rekapitulasi', 'startDate', 'endDate'
+            ));
+            return $pdf->download('laporan-rekapitulasi-produksi-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelRekapitulasi($rekapitulasi);
+        }
+
         return view('laporanproduksi.rekapitulasi', compact('rekapitulasi', 'startDate', 'endDate'));
+    }
+
+    private function exportExcelRekapitulasi($data)
+    {
+        $filename = 'laporan-rekapitulasi-produksi-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($data) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['Tanggal', 'Kode Produksi', 'Kode WO', 'Nama Produk', 'Gudang Tujuan', 'Target WO', 'Realisasi Output', 'Status']);
+            foreach ($data as $row) {
+                fputcsv($f, [
+                    \Carbon\Carbon::parse($row->tanggal)->format('d-m-Y'),
+                    $row->kode_produksi,
+                    $row->kode_wo ?? '-',
+                    $row->nama_produk,
+                    $row->nama_gudang ?? 'Gudang B2B',
+                    $row->qty_target,
+                    $row->qty_hasil,
+                    strtoupper($row->status_produksi ?? 'SELESAI'),
+                ]);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
@@ -72,17 +114,58 @@ class LaporanProduksiController extends Controller
                 DB::raw('SUM(produksi_detail.hpp_total) as total_hpp')
             )
             ->whereBetween('produksi.tanggal_mulai', [$startDate, $endDate])
-            ->groupBy('master_barang.kode_barang', 'master_barang.nama', 'master_barang.satuan')
+            ->groupBy('master_barang.id', 'master_barang.kode_barang', 'master_barang.nama', 'master_barang.satuan')
             ->orderBy('total_hpp', 'desc')
             ->get();
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper');
+            $pdf->loadView('laporanproduksi.hpp-pdf', compact(
+                'laporanHpp', 'startDate', 'endDate'
+            ));
+            return $pdf->download('laporan-hpp-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelHpp($laporanHpp);
+        }
+
         return view('laporanproduksi.hpp', compact('laporanHpp', 'startDate', 'endDate'));
+    }
+
+    private function exportExcelHpp($data)
+    {
+        $filename = 'laporan-hpp-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($data) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['Kode Barang', 'Nama Produk Jadi', 'Total Qty Produksi', 'Satuan', 'Total Nilai HPP', 'Rata-rata HPP / Satuan']);
+            foreach ($data as $row) {
+                $hppPerSatuan = $row->total_qty > 0 ? ($row->total_hpp / $row->total_qty) : 0;
+                fputcsv($f, [
+                    $row->kode_barang,
+                    $row->nama_produk,
+                    $row->total_qty,
+                    $row->satuan ?? 'Pcs',
+                    $row->total_hpp,
+                    $hppPerSatuan,
+                ]);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
      * 3. DASHBOARD PRODUKSI (REPORTS)
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         // 1. Mini Summary Cards
         $woAktif = WorkOrder::where('status_wo', 'Diproses')->count();
@@ -171,29 +254,44 @@ class LaporanProduksiController extends Controller
             ->get();
 
         // 5. Status Work Order
-        $workOrderStatus = WorkOrder::with('pembuat')
-            ->latest()
-            ->limit(5)
-            ->get()
-            ->map(function ($wo) {
-                $totalRencana = $wo->details()->sum('qty_rencana');
-                
-                $pesananIds = $wo->details()->pluck('pesanan_id')->filter()->unique()->toArray();
-                $produkIds = $wo->details()->pluck('produk_id')->filter()->unique()->toArray();
-                
-                $totalAlokasi = 0;
-                if (!empty($pesananIds) && !empty($produkIds)) {
-                    $totalAlokasi = DB::table('alokasi_produksi_pesanan')
-                        ->whereIn('pesanan_id', $pesananIds)
-                        ->whereIn('produk_id', $produkIds)
-                        ->sum('qty_alokasi');
-                }
-                
-                $wo->total_rencana = $totalRencana;
-                $wo->total_realisasi = $totalAlokasi;
-                $wo->persentase = $totalRencana > 0 ? round(($totalAlokasi / $totalRencana) * 100, 2) : 0;
-                return $wo;
-            });
+        $workOrderStatusQuery = WorkOrder::with('pembuat')->latest();
+        
+        // If exporting, get all instead of limit 5
+        if ($request->format === 'pdf' || $request->format === 'excel') {
+            $workOrderStatus = $workOrderStatusQuery->get();
+        } else {
+            $workOrderStatus = $workOrderStatusQuery->limit(5)->get();
+        }
+
+        $workOrderStatus = $workOrderStatus->map(function ($wo) {
+            $totalRencana = $wo->details()->sum('qty_rencana');
+            
+            $pesananIds = $wo->details()->pluck('pesanan_id')->filter()->unique()->toArray();
+            $produkIds = $wo->details()->pluck('produk_id')->filter()->unique()->toArray();
+            
+            $totalAlokasi = 0;
+            if (!empty($pesananIds) && !empty($produkIds)) {
+                $totalAlokasi = DB::table('alokasi_produksi_pesanan')
+                    ->whereIn('pesanan_id', $pesananIds)
+                    ->whereIn('produk_id', $produkIds)
+                    ->sum('qty_alokasi');
+            }
+            
+            $wo->total_rencana = $totalRencana;
+            $wo->total_realisasi = $totalAlokasi;
+            $wo->persentase = $totalRencana > 0 ? round(($totalAlokasi / $totalRencana) * 100, 2) : 0;
+            return $wo;
+        });
+
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper');
+            $pdf->loadView('laporanproduksi.dashboard-pdf', compact('workOrderStatus'));
+            return $pdf->download('laporan-work-order-status-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelWO($workOrderStatus);
+        }
 
         return view('laporanproduksi.dashboard', compact(
             'woAktif',
@@ -206,5 +304,34 @@ class LaporanProduksiController extends Controller
             'produkTeratas',
             'workOrderStatus'
         ));
+    }
+
+    private function exportExcelWO($data)
+    {
+        $filename = 'laporan-work-order-status-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($data) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['Kode WO', 'Tanggal WO', 'Pembuat', 'Total Rencana Qty', 'Total Realisasi Qty', 'Realisasi %', 'Status']);
+            foreach ($data as $row) {
+                fputcsv($f, [
+                    $row->kode_wo,
+                    \Carbon\Carbon::parse($row->tanggal_wo)->format('d-m-Y'),
+                    $row->pembuat->nama ?? 'Sistem',
+                    $row->total_rencana,
+                    $row->total_realisasi,
+                    $row->persentase . '%',
+                    $row->status_wo,
+                ]);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

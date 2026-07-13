@@ -337,6 +337,7 @@ class JurnalController extends Controller
     {
         $request->validate([
             'tanggal' => 'required|date',
+            'no_ref' => 'required|string|max:100',
             'deskripsi' => 'required|string|max:255',
             'details' => 'required|array|min:2',
             'details.*.account_id' => 'required|exists:chart_of_accounts,id',
@@ -363,7 +364,7 @@ class JurnalController extends Controller
             $jurnal = JurnalPenyesuaian::create([
                 'tanggal'     => $request->tanggal,
                 'deskripsi'   => "[AJP] " . $request->deskripsi,
-                'no_ref'      => 'AJP-' . date('Ymd') . '-' . time(),
+                'no_ref'      => $request->no_ref,
                 'source_type' => 'adjustment',
                 'source_id'   => 0,
                 'created_by'  => Auth::id(),
@@ -414,6 +415,24 @@ class JurnalController extends Controller
         return redirect()->back()->with('success', 'Jurnal berhasil diposting ke Buku Besar!');
     }
 
+    public function adjustmentApproveBatch(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $updatedCount = JurnalPenyesuaian::where('status', 'draft')
+            ->whereBetween('tanggal', [$request->start_date, $request->end_date])
+            ->update(['status' => 'approved']);
+
+        if ($updatedCount > 0) {
+            return redirect()->back()->with('success', "Berhasil memposting {$updatedCount} jurnal penyesuaian ke Buku Besar!");
+        }
+
+        return redirect()->back()->with('error', 'Tidak ada jurnal penyesuaian berstatus draft yang ditemukan pada rentang tanggal tersebut.');
+    }
+
     public function pembelianIndex()
     {
         $semuaPembelian = \App\Models\Pembelian::with(['supplier', 'gudang'])
@@ -429,27 +448,21 @@ class JurnalController extends Controller
                 return $rows->pluck('tahap')->map(fn($t) => trim(strtolower((string)$t)))->filter()->toArray();
             });
 
-        $pembeliansBelum = $semuaPembelian->filter(function ($p) use ($tahapTersimpan) {
+        $pembeliansBelum = collect();
+
+        foreach ($semuaPembelian as $p) {
             $tahapSeharusnya = $this->tahapSeharusnyaAda($p);
             $sudahAda        = $tahapTersimpan->get($p->id, []);
             $tahapKurang     = array_diff($tahapSeharusnya, $sudahAda);
 
-            return count($tahapKurang) > 0;
-        })->values();
-
-        $pembeliansBelum = $pembeliansBelum->map(function ($p) use ($tahapTersimpan) {
-            $tahapSeharusnya     = $this->tahapSeharusnyaAda($p);
-            $sudahAda            = $tahapTersimpan->get($p->id, []);
-            $tahapKurang         = array_diff($tahapSeharusnya, $sudahAda);
-
-            // Mengambil string murni elemen pertama dari sisa tahapan
-            $p->tahap_selanjutnya = array_values($tahapKurang)[0] ?? null;
-
-            // PERBAIKAN: Mengirimkan properti tahap_selanjutnya sebagai argumen kedua
-            $p->total_keluar = $this->hitungTotalKeluar($p, $p->tahap_selanjutnya);
-
-            return $p;
-        });
+            foreach ($tahapKurang as $tahap) {
+                // Kloning objek agar aman diubah propertinya per baris antrean
+                $clone = clone $p;
+                $clone->tahap_selanjutnya = $tahap;
+                $clone->total_keluar = $this->hitungTotalKeluar($p, $tahap);
+                $pembeliansBelum->push($clone);
+            }
+        }
 
         $jurnalsSudah = DB::table('jurnal_pembelian')
             ->join('journal_items', function ($join) {
@@ -546,28 +559,35 @@ class JurnalController extends Controller
         return 0;
     }
 
-    public function pembelianCreate($id)
+    public function pembelianCreate(Request $request, $id)
     {
-        $pembelian = \App\Models\Pembelian::with(['supplier'])->findOrFail($id);
+        $pembelian = \App\Models\Pembelian::with(['supplier', 'details.barang'])->findOrFail($id);
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
+        // Deteksi apakah pembelian berisi barang operasional / perlengkapan (bukan bahan baku)
+        $hasOperational = false;
+        foreach ($pembelian->details as $det) {
+            if ($det->barang && ($det->barang->is_operational || !$det->barang->is_bahan_baku)) {
+                $hasOperational = true;
+                break;
+            }
+        }
+
+        $debitCoaCode = $hasOperational ? '1302' : '1301'; // 1302 = Persediaan Perlengkapan Operasional & ATK, 1301 = Persediaan Bahan Baku
+
         $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
-        $idPersediaanBB   = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 6;
+        $idPersediaan     = DB::table('chart_of_accounts')->where('kode', $debitCoaCode)->value('id') ?? ($hasOperational ? 19 : 18);
         $idUangMukaPemb   = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
         $idPPNMasukan     = DB::table('chart_of_accounts')->where('kode', '1203')->value('id') ?? 8;
 
         $tarifPpn = 0.10;
         $defaultDetails = [];
-        $tahap          = null;
 
         $dppTotal     = floatval($pembelian->total);
         $ppnTotal     = round($dppTotal * $tarifPpn, 0);
         $totalKontrak = $dppTotal + $ppnTotal;
 
         $persenDP   = floatval($pembelian->persen_dp ?? 0);
-        $isDiterima = (bool) $pembelian->is_diterima;
-        $isLunas    = (bool) $pembelian->is_lunas;
-
         $nominalDP        = floatval($pembelian->nominal_dp ?? ($totalKontrak * ($persenDP / 100)));
         $nominalPelunasan = $totalKontrak - $nominalDP;
 
@@ -575,49 +595,49 @@ class JurnalController extends Controller
             ->where('source_type', 'pembelian')
             ->where('source_id', $pembelian->id)
             ->pluck('tahap')
+            ->map(fn($t) => trim(strtolower((string)$t)))
             ->filter()
             ->toArray();
 
-        $sudahAdaPelunasan = in_array('pelunasan', $tahapTersimpan);
+        // Tentukan tahap berdasarkan query parameter, jika tidak ada fallback ke saran tahap kurang pertama
+        $tahapReq = trim(strtolower((string)$request->query('tahap')));
+        $tahapSeharusnya = $this->tahapSeharusnyaAda($pembelian);
+        $tahapKurang = array_diff($tahapSeharusnya, $tahapTersimpan);
+        $tahapSaran = array_values($tahapKurang)[0] ?? null;
 
-        if (!$isDiterima) {
-            if ($isLunas) {
-                $tahap = 'pelunasan';
-                $defaultDetails = [
-                    ['account_id' => $idUangMukaPemb, 'debit' => $nominalPelunasan, 'kredit' => 0],
-                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
-                ];
-            } else {
-                $tahap = 'dp';
-                $defaultDetails = [
-                    ['account_id' => $idUangMukaPemb, 'debit' => $nominalDP, 'kredit' => 0],
-                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalDP]
-                ];
-            }
+        $tahap = in_array($tahapReq, ['dp', 'pelunasan', 'reklas_lunas', 'gabungan', 'cod']) ? $tahapReq : $tahapSaran;
+
+        if ($tahap === 'dp') {
+            $defaultDetails = [
+                ['account_id' => $idUangMukaPemb, 'debit' => $nominalDP, 'kredit' => 0],
+                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalDP]
+            ];
+        } elseif ($tahap === 'pelunasan') {
+            $defaultDetails = [
+                ['account_id' => $idUangMukaPemb, 'debit' => $nominalPelunasan, 'kredit' => 0],
+                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
+            ];
+        } elseif ($tahap === 'reklas_lunas') {
+            $defaultDetails = [
+                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
+                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $totalKontrak]
+            ];
+        } elseif ($tahap === 'gabungan') {
+            $defaultDetails = [
+                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
+                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $nominalDP],
+                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
+            ];
         } else {
-            if ($isLunas && $sudahAdaPelunasan) {
-                $tahap = 'reklas_lunas';
-                $defaultDetails = [
-                    ['account_id' => $idPersediaanBB, 'debit' => $dppTotal, 'kredit' => 0],
-                    ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                    ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $totalKontrak]
-                ];
-            } elseif ($persenDP > 0 && $isLunas && !$sudahAdaPelunasan) {
-                $tahap = 'gabungan';
-                $defaultDetails = [
-                    ['account_id' => $idPersediaanBB, 'debit' => $dppTotal, 'kredit' => 0],
-                    ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                    ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $nominalDP],
-                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
-                ];
-            } else {
-                $tahap = 'cod';
-                $defaultDetails = [
-                    ['account_id' => $idPersediaanBB, 'debit' => $dppTotal, 'kredit' => 0],
-                    ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $totalKontrak]
-                ];
-            }
+            // Default ke COD
+            $tahap = 'cod';
+            $defaultDetails = [
+                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
+                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $totalKontrak]
+            ];
         }
 
         return view('jurnal-pembelian.create', compact('pembelian', 'coas', 'defaultDetails', 'tahap'));
@@ -723,9 +743,10 @@ class JurnalController extends Controller
             ->pluck('source_id')
             ->toArray();
 
-        // 2. Antrean Atas: Tarik data transaksi POS harian yang BELUM dijurnal
+        // 2. Antrean Atas: Tarik data transaksi POS harian yang BELUM dijurnal dan sudah disetujui (status = 'SUKSES')
         $penjualanPosBelum = DB::table('penjualan_pos')
             ->whereNotIn('id', $sudahDijurnal)
+            ->where('status', 'SUKSES')
             ->select(
                 'id',
                 'tanggal',
@@ -778,6 +799,10 @@ class JurnalController extends Controller
 
         if (!$penjualan) {
             return back()->with('error', 'Data induk penjualan POS tidak ditemukan.');
+        }
+
+        if (($penjualan->status ?? 'Draft') !== 'SUKSES') {
+            return redirect()->route('jurnal-penjualanpos.index')->with('error', 'Transaksi POS ini belum di-approve.');
         }
 
         // 2. Ambil master data COA untuk dropdown penyesuaian di form view
@@ -850,6 +875,10 @@ class JurnalController extends Controller
     public function penjualanposStore(Request $request, $id)
     {
         $penjualan = DB::table('penjualan_pos')->where('id', $id)->first();
+
+        if (!$penjualan || ($penjualan->status ?? 'Draft') !== 'SUKSES') {
+            return redirect()->route('jurnal-penjualanpos.index')->with('error', 'Transaksi POS ini belum di-approve.');
+        }
 
         $request->validate([
             'tanggal'              => 'required|date',

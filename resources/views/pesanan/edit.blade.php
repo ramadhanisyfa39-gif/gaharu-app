@@ -39,6 +39,18 @@
 
         <div class="card-body p-4">
 
+            @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+                <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-2"></i> Terjadi Kesalahan Input:</div>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            @endif
+
             <form action="{{ route('pesanan.update', $pesanan->id) }}"
                   method="POST">
 
@@ -82,28 +94,21 @@
 
                 </div>
 
-                <div class="mb-3">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Tanggal Transaksi</label>
+                        <input type="datetime-local" name="tanggal" class="form-control" value="{{ date('Y-m-d\TH:i', strtotime($pesanan->tanggal)) }}" required>
+                    </div>
 
-                    <label class="form-label">
-                        Tanggal
-                    </label>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Estimasi Tanggal Produksi</label>
+                        <input type="date" name="estimasi_produksi" class="form-control" value="{{ $pesanan->estimasi_produksi }}">
+                    </div>
 
-                    <input type="datetime-local"
-                           name="tanggal"
-                           class="form-control"
-                           value="{{ date('Y-m-d\TH:i', strtotime($pesanan->tanggal)) }}">
-
-                </div>
-
-                <div class="mb-4"> <label class="form-label">
-                        Estimasi Kirim
-                    </label>
-
-                    <input type="datetime-local"
-                           name="estimasi_kirim"
-                           class="form-control"
-                           value="{{ date('Y-m-d\TH:i', strtotime($pesanan->estimasi_kirim)) }}">
-
+                    <div class="col-md-4 mb-4">
+                        <label class="form-label">Estimasi Kirim</label>
+                        <input type="datetime-local" name="estimasi_kirim" class="form-control" value="{{ date('Y-m-d\TH:i', strtotime($pesanan->estimasi_kirim)) }}" required>
+                    </div>
                 </div>
 
                 {{-- REVISI: Bagian input dropdown "Status Pesanan" telah dihapus sepenuhnya di sini --}}

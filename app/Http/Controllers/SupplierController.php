@@ -10,9 +10,20 @@ class SupplierController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $suppliers = Supplier::orderBy('id', 'desc')->paginate(10);
+        $search = $request->query('search');
+        $query = Supplier::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%')
+                  ->orWhere('no_hp', 'like', '%' . $search . '%')
+                  ->orWhere('alamat', 'like', '%' . $search . '%');
+            });
+        }
+
+        $suppliers = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
         return view('suppliers.index', compact('suppliers'));
     }
@@ -51,7 +62,8 @@ class SupplierController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $supplier = Supplier::findOrFail($id);
+        return view('suppliers.show', compact('supplier'));
     }
 
     /**

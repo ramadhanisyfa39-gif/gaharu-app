@@ -19,9 +19,18 @@
             <small class="text-muted">Kelola data supplier perusahaan</small>
         </div>
 
-        <button type="button" class="btn text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahSupplier">
-    + Tambah Supplier
-</button>
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('suppliers.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama/no_hp..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm text-white" style="background-color: #d88656; border-radius: 6px; border: none; padding: 5px 15px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('suppliers.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px; padding: 5px 15px;">Reset</a>
+                @endif
+            </form>
+            <button type="button" class="btn text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahSupplier">
+                + Tambah Supplier
+            </button>
+        </div>
     </div>
 
     <div class="card-body">
@@ -52,9 +61,13 @@
                             <td>{{ $supplier->alamat ?? '-' }}</td>
 
                             <td class="text-center">
-                                <a href="{{ route('suppliers.edit', $supplier->id) }}" class="btn btn-warning btn-sm">
-                                    Edit
-                                </a>
+                                 <a href="{{ route('suppliers.show', $supplier->id) }}" class="btn btn-info btn-sm text-white">
+                                     Detil
+                                 </a>
+
+                                 <a href="{{ route('suppliers.edit', $supplier->id) }}" class="btn btn-warning btn-sm">
+                                     Edit
+                                 </a>
 
                                 <form action="{{ route('suppliers.destroy', $supplier->id) }}"
                                       method="POST"

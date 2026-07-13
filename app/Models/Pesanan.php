@@ -14,10 +14,12 @@ class Pesanan extends Model
         'customer_id',
         'tanggal',
         'estimasi_kirim',
+        'estimasi_produksi',
         'total_pesanan',
         'status_pesanan',
-        'status_pembayaran', // Tambahkan ini
-        'created_by'
+        'status_pembayaran',
+        'created_by',
+        'gudang_id'
     ];
 
     // Hubungkan ke tabel pembayaran yang akan kita buat nanti

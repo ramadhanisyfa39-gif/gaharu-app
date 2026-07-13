@@ -40,7 +40,7 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Jenis Tenaga Kerja</label>
                         <select name="jenis_tenaga_kerja" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            @foreach(['Tenaga Ahli', 'Staff', 'Operasional'] as $jenis)
+                            @foreach(['Karyawan Tetap', 'Karyawan Kontrak'] as $jenis)
                             <option value="{{ $jenis }}" {{ old('jenis_tenaga_kerja', $karyawan->jenis_tenaga_kerja) == $jenis ? 'selected' : '' }}>
                                 {{ $jenis }}
                             </option>
@@ -51,12 +51,19 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Departemen</label>
                         <select name="departemen" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            @foreach(['Gudang', 'Produksi', 'Penjualan', 'Akuntansi'] as $dept)
+                            @foreach(['Gudang', 'Produksi', 'Manajemen', 'Operasional'] as $dept)
                             <option value="{{ $dept }}" {{ old('departemen', $karyawan->departemen) == $dept ? 'selected' : '' }}>
                                 {{ $dept }}
                             </option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
+                        <input type="date" name="tanggal_masuk"
+                            value="{{ old('tanggal_masuk', $karyawan->tanggal_masuk ? $karyawan->tanggal_masuk->format('Y-m-d') : '') }}"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     </div>
 
                     <div class="flex items-center justify-end mt-4">

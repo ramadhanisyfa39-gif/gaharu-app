@@ -10,9 +10,19 @@ class GudangController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $gudangs = MasterGudang::orderBy('id', 'desc')->paginate(10);
+        $search = $request->query('search');
+        $query = MasterGudang::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%')
+                  ->orWhere('kategori', 'like', '%' . $search . '%');
+            });
+        }
+
+        $gudangs = $query->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
         return view('gudangs.index', compact('gudangs'));
     }

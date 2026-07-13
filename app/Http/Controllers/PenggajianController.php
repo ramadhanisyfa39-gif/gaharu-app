@@ -17,10 +17,21 @@ class PenggajianController extends Controller
      * TAMPILAN UTAMA: Mengirimkan data penggajian yang sudah di-group berdasarkan periode.
      * Ini digunakan untuk mengisi baris kotak periode di halaman depan.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Mengambil semua data penggajian untuk agregasi di sisi blade/view
-        $payrolls = Penggajian::with('karyawan')->orderBy('created_at', 'desc')->get();
+        $search = $request->query('search');
+        $query = Penggajian::with('karyawan');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('periode', 'like', '%' . $search . '%')
+                  ->orWhereHas('karyawan', function($kq) use ($search) {
+                      $kq->where('nama_karyawan', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $payrolls = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
         $karyawans = Karyawan::all();
 
         return view('penggajian.index', compact('payrolls', 'karyawans'));

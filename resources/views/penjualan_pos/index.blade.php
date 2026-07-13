@@ -2,12 +2,19 @@
 
 <div class="container py-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="fw-bold mb-0">Penjualan POS</h3>
 
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('penjualan_pos.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no transaksi..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('penjualan_pos.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px;">Reset</a>
+                @endif
+            </form>
             <a href="{{ route('penjualan_pos.laporan') }}"
-               class="btn btn-success px-4 me-2 shadow-sm">
+               class="btn btn-success px-4 shadow-sm">
                📊 Lihat Laporan
             </a>
 
@@ -115,6 +122,9 @@
                 </table>
             </div>
             
+        </div>
+        <div class="mt-3 px-3 pb-3">
+            {{ $data->links() }}
         </div>
     </div>
 </div>

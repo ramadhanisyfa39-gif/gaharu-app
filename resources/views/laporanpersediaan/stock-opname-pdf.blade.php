@@ -1,74 +1,176 @@
-{{-- stock-opname-pdf.blade.php --}}
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DejaVu Sans',sans-serif; font-size:10px; color:#222; }
-    .header { border-bottom:3px solid #5a3416; padding-bottom:10px; margin-bottom:14px; }
-    .header h1 { font-size:17px; font-weight:700; color:#5a3416; }
-    .header .meta { font-size:10px; color:#888; margin-top:3px; }
-    table { width:100%; border-collapse:collapse; }
-    thead th { background:#5a3416; color:#fff; padding:6px 8px; font-size:9px; text-transform:uppercase; }
-    tbody tr:nth-child(even) { background:#fdf9f6; }
-    tbody tr.sub td { background:#f8f8f8; color:#777; font-size:9px; }
-    tbody td { padding:5px 8px; border-bottom:1px solid #f0e8e0; }
-    tfoot td { background:#fdf3ec; font-weight:700; color:#5a3416; padding:6px 8px; border-top:2px solid #eadfd4; }
-    .badge { display:inline-block; padding:2px 6px; border-radius:10px; font-size:8px; font-weight:600; }
-    .bs { background:#d1e7dd; color:#0a3622; }
-    .bd { background:#e2e3e5; color:#41464b; }
-    .plus  { color:#198754; font-weight:700; }
-    .minus { color:#dc3545; font-weight:700; }
-    .text-right  { text-align:right; }
-    .text-center { text-align:center; }
-    .footer { margin-top:16px; border-top:1px solid #eee; padding-top:6px; font-size:9px; color:#aaa; text-align:right; }
-</style>
+    <title>Laporan Stock Opname</title>
+    <style>
+        /* Pengaturan Dasar */
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            font-size: 12px; 
+            color: #333; 
+            margin: 30px; 
+        }
+        
+        /* Bagian Header (Kop Laporan) */
+        .header { 
+            text-align: center; 
+            margin-bottom: 25px; 
+            border-bottom: 2px solid #1e3a8a; 
+            padding-bottom: 12px; 
+        }
+        .header h2 { 
+            margin: 0; 
+            font-size: 20px; 
+            color: #1e3a8a; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        .header p { 
+            margin: 5px 0 0 0; 
+            font-size: 13px; 
+            color: #555; 
+        }
+
+        /* Tabel Informasi Periode & Tanggal */
+        .info-table { 
+            width: 100%; 
+            margin-bottom: 20px; 
+            border-collapse: collapse; 
+        }
+        .info-table td { 
+            padding: 4px 0; 
+            font-size: 12px; 
+        }
+
+        /* Tabel Data Utama */
+        .main-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+        .main-table th, .main-table td { 
+            border: 1px solid #d1d5db; 
+            padding: 8px 10px; 
+        }
+        .main-table th { 
+            background-color: #1e3a8a; 
+            color: #ffffff; 
+            text-align: left; 
+            font-weight: bold; 
+            font-size: 12px; 
+        }
+        .main-table td { 
+            font-size: 11px; 
+        }
+        
+        /* Baris Data Utama */
+        .main-table tbody tr.main-row { 
+            background-color: #ffffff; 
+        }
+        .main-table tbody tr.main-row:nth-of-type(even) { 
+            background-color: #f9fafb; 
+        }
+
+        /* Baris Sub/Detail Item */
+        .main-table tr.sub td { 
+            background-color: #f3f4f6; 
+            color: #4b5563; 
+            font-size: 10px; 
+            border-top: 1px dashed #cbd5e1; 
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        /* Footer / Total */
+        .main-table tfoot td { 
+            background-color: #e5e7eb; 
+            font-weight: bold; 
+            font-size: 12px; 
+            color: #1f2937; 
+            border-top: 2px solid #9ca3af;
+        }
+
+        /* Label / Badge Status */
+        .badge { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        .bs { background-color: #d1e7dd; color: #0f5132; }
+        .bd { background-color: #e2e3e5; color: #41464b; }
+
+        /* Warna Angka Selisih */
+        .plus  { color: #166534 !important; font-weight: bold; }
+        .minus { color: #dc2626 !important; font-weight: bold; }
+
+        /* Utility Classes */
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .fw-bold { font-weight: bold !important; }
+    </style>
 </head>
 <body>
+
     <div class="header">
-        <h1>Laporan Stock Opname</h1>
-        <div class="meta">
-            Dicetak: {{ now()->format('d M Y, H:i') }}
-            @if(request('dari') || request('sampai'))
-                · Periode: {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
-            @endif
-        </div>
+        <h2>LAPORAN STOCK OPNAME</h2>
+        <p>CV Gaharu App</p>
     </div>
-    <table>
+
+    <table class="info-table">
+        <tr>
+            <td width="15%" class="fw-bold">Periode Laporan</td>
+            <td width="2%">:</td>
+            <td>
+                @if(request('dari') || request('sampai'))
+                    {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
+                @else
+                    Semua Periode
+                @endif
+            </td>
+            <td width="15%" class="text-right fw-bold">Tanggal Cetak</td>
+            <td width="2%" class="text-center">:</td>
+            <td width="20%">{{ date('d-m-Y H:i') }}</td>
+        </tr>
+    </table>
+
+    <table class="main-table">
         <thead>
             <tr>
-                <th>Kode Opname</th>
-                <th>Tanggal</th>
-                <th>Gudang</th>
-                <th class="text-center">Item</th>
-                <th class="text-center">Selisih +</th>
-                <th class="text-center">Selisih −</th>
-                <th class="text-right">Nilai Selisih</th>
-                <th class="text-center">Status</th>
+                <th width="15%">Kode Opname</th>
+                <th width="12%">Tanggal</th>
+                <th width="15%">Gudang</th>
+                <th class="text-center" width="8%">Item</th>
+                <th class="text-center" width="10%">Selisih +</th>
+                <th class="text-center" width="10%">Selisih −</th>
+                <th class="text-right" width="18%">Nilai Selisih</th>
+                <th class="text-center" width="12%">Status</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($data as $row)
+            @forelse($data as $row)
                 @php
                     $sPlus  = $row->details->where('selisih','>',0)->sum('selisih');
                     $sMinus = $row->details->where('selisih','<',0)->sum('selisih');
                     $sNilai = $row->details->sum('nilai_selisih');
                 @endphp
-                <tr>
-                    <td>{{ $row->kode_opname }}</td>
+                
+                <tr class="main-row">
+                    <td class="fw-bold">{{ $row->kode_opname }}</td>
                     <td>{{ \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') }}</td>
                     <td>{{ $row->gudang->nama ?? '-' }}</td>
                     <td class="text-center">{{ $row->details->count() }}</td>
                     <td class="text-center plus">{{ $sPlus > 0 ? '+'.number_format($sPlus,2) : '—' }}</td>
                     <td class="text-center minus">{{ $sMinus < 0 ? number_format($sMinus,2) : '—' }}</td>
-                    <td class="text-right {{ $sNilai < 0 ? 'minus' : ($sNilai > 0 ? 'plus' : '') }}">
+                    <td class="text-right fw-bold {{ $sNilai < 0 ? 'minus' : ($sNilai > 0 ? 'plus' : '') }}">
                         {{ $sNilai != 0 ? 'Rp '.number_format($sNilai,0,',','.') : '—' }}
                     </td>
                     <td class="text-center">
-                        <span class="badge {{ $row->status === 'approved' ? 'bs' : 'bd' }}">{{ ucfirst($row->status) }}</span>
+                        <span class="badge {{ $row->status === 'approved' ? 'bs' : 'bd' }}">{{ $row->status }}</span>
                     </td>
                 </tr>
+                
                 @foreach($row->details->where('selisih','!=',0) as $d)
                     <tr class="sub">
                         <td style="padding-left:18px;">↳ {{ $d->barang->nama ?? '-' }}</td>
@@ -80,16 +182,23 @@
                         <td></td>
                     </tr>
                 @endforeach
-            @endforeach
+                
+            @empty
+                <tr>
+                    <td colspan="8" class="text-center">Belum ada data Stock Opname.</td>
+                </tr>
+            @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6">Total Nilai Selisih</td>
-                <td class="text-right">Rp {{ number_format($data->sum(fn($d) => $d->details->sum('nilai_selisih')), 0, ',', '.') }}</td>
+                <td colspan="6" class="text-right">TOTAL NILAI SELISIH:</td>
+                <td class="text-right fw-bold {{ $data->sum(fn($d) => $d->details->sum('nilai_selisih')) < 0 ? 'minus' : 'plus' }}">
+                    Rp {{ number_format($data->sum(fn($d) => $d->details->sum('nilai_selisih')), 0, ',', '.') }}
+                </td>
                 <td></td>
             </tr>
         </tfoot>
     </table>
-    <div class="footer">Sistem ERP Gaharu · {{ auth()->user()->nama ?? '' }} · {{ now()->format('d/m/Y H:i') }}</div>
+
 </body>
 </html>

@@ -22,7 +22,8 @@ class MasterBarang extends Model
         'harga_jual_pos',
         'hpp_referensi',
         'is_active',
-        'minimum_stock'
+        'minimum_stock',
+        'minimum_order'
     ];
 
     public function kategori()

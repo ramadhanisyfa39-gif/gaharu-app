@@ -127,21 +127,60 @@
 
                         <td>
                             <div class="judul-sisi">Passiva</div>
-                            <table width="100%">
-                                @foreach($passiva as $item)
-                                <tr>
-                                    <td style="border:none; padding: 5px 0;">{{ $item->nama }}</td>
-                                    <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
-                                </tr>
+                            
+                            <!-- Sub-bagian Kewajiban -->
+                            <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">KEWAJIBAN (LIABILITAS)</div>
+                            <table width="100%" style="margin-bottom: 15px;">
+                                @php $totalKewajiban = 0; @endphp
+                                @foreach($passiva->where('tipe', 'Liabilitas') as $item)
+                                    @php $totalKewajiban += $item->saldo; @endphp
+                                    <tr>
+                                        <td style="border:none; padding: 3px 0;">{{ $item->nama }}</td>
+                                        <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
+                                    </tr>
                                 @endforeach
-                                <tr>
-                                    <td style="border:none; padding: 5px 0; font-style: italic; color: blue;">Laba Tahun Berjalan</td>
-                                    <td style="border:none; text-align: right; color: blue;">Rp {{ number_format($labaBerjalan, 0, ',', '.') }}</td>
+                                @if($passiva->where('tipe', 'Liabilitas')->count() == 0)
+                                    <tr>
+                                        <td style="border:none; padding: 3px 0; font-style: italic;" class="text-muted">Tidak ada kewajiban</td>
+                                        <td style="border:none; text-align: right;">Rp 0</td>
+                                    </tr>
+                                @endif
+                                <tr style="border-top: 1px solid #ccc; font-weight: bold;">
+                                    <td style="border:none; padding: 5px 0;">Total Kewajiban</td>
+                                    <td style="border:none; text-align: right;">Rp {{ number_format($totalKewajiban, 0, ',', '.') }}</td>
                                 </tr>
                             </table>
-                            <div class="total-box">
+
+                            <!-- Sub-bagian Ekuitas -->
+                            <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">EKUITAS (MODAL)</div>
+                            <table width="100%">
+                                @php $totalEkuitasTabel = 0; @endphp
+                                @foreach($passiva->where('tipe', 'Ekuitas') as $item)
+                                    @php $totalEkuitasTabel += $item->saldo; @endphp
+                                    <tr>
+                                        <td style="border:none; padding: 3px 0;">{{ $item->nama }}</td>
+                                        <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                                <tr>
+                                    <td style="border:none; padding: 3px 0; font-style: italic; color: blue;">Laba Tahun Berjalan</td>
+                                    <td style="border:none; text-align: right; color: blue;">Rp {{ number_format($labaBerjalan, 0, ',', '.') }}</td>
+                                </tr>
+                                @if(isset($totalPrive) && $totalPrive != 0)
+                                <tr>
+                                    <td style="border:none; padding: 3px 0; font-style: italic; color: red;">Prive (Pengurangan Modal)</td>
+                                    <td style="border:none; text-align: right; color: red;">(Rp {{ number_format($totalPrive, 0, ',', '.') }})</td>
+                                </tr>
+                                @endif
+                                <tr style="border-top: 1px solid #ccc; font-weight: bold;">
+                                    <td style="border:none; padding: 5px 0;">Total Ekuitas</td>
+                                    <td style="border:none; text-align: right;">Rp {{ number_format($totalEkuitasTabel + $labaBerjalan - $totalPrive, 0, ',', '.') }}</td>
+                                </tr>
+                            </table>
+
+                            <div class="total-box" style="margin-top: 20px;">
                                 <span>TOTAL PASSIVA</span>
-                                <span>Rp {{ number_format($passiva->sum('saldo') + $labaBerjalan, 0, ',', '.') }}</span>
+                                <span>Rp {{ number_format($totalKewajiban + $totalEkuitasTabel + $labaBerjalan - $totalPrive, 0, ',', '.') }}</span>
                             </div>
                         </td>
                     </tr>

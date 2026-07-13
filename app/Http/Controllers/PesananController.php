@@ -16,9 +16,26 @@ class PesananController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $pesanan = Pesanan::with(['customer', 'pembayaran'])->orderBy('created_at', 'desc')->get();
+        // Auto-delete pesanan lebih dari 2 hari jika belum bayar DP (status_pembayaran == 'Belum Bayar')
+        Pesanan::where('status_pembayaran', 'Belum Bayar')
+            ->where('tanggal', '<', now()->subDays(2)->format('Y-m-d H:i:s'))
+            ->delete();
+
+        $search = $request->query('search');
+        $query = Pesanan::with(['customer', 'pembayaran']);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('no_pesanan', 'like', '%' . $search . '%')
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('nama', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        $pesanan = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         // Ambil status WO secara realtime untuk dilempar ke sistem UI Blade
         foreach ($pesanan as $p) {
@@ -31,7 +48,11 @@ class PesananController extends Controller
             }
         }
 
-        return view('pesanan.index', compact('pesanan'));
+        $totalPesanan = Pesanan::count();
+        $totalProses = Pesanan::whereIn('status_pesanan', ['Draft', 'Proses', 'Siap kirim', 'pending', 'ready'])->count();
+        $totalSelesai = Pesanan::where('status_pesanan', 'Selesai')->count();
+
+        return view('pesanan.index', compact('pesanan', 'totalPesanan', 'totalProses', 'totalSelesai'));
     }
 
     /**
@@ -50,11 +71,41 @@ class PesananController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'customer_id' => 'required',
+            'tanggal' => 'required',
+            'estimasi_kirim' => 'required',
+            'produk_id' => 'required|array|min:1',
+            'qty' => 'required|array|min:1',
+            'harga' => 'required|array|min:1',
+            'subtotal' => 'required|array|min:1',
+        ]);
+
+        if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
+            return redirect()->back()->withErrors(['tanggal' => 'Tanggal transaksi tidak boleh sebelum hari ini.'])->withInput();
+        }
+
+        if (date('Y-m-d', strtotime($request->estimasi_kirim)) < date('Y-m-d', strtotime($request->tanggal))) {
+            return redirect()->back()->withErrors(['estimasi_kirim' => 'Estimasi kirim tidak boleh sebelum tanggal transaksi.'])->withInput();
+        }
+
+        foreach ($request->produk_id as $key => $produkId) {
+            if (!$produkId) continue;
+            $barang = MasterBarang::find($produkId);
+            $qty = $request->qty[$key] ?? 0;
+            if ($barang && $qty < $barang->minimum_order) {
+                return redirect()->back()->withErrors([
+                    'qty' => "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
+                ])->withInput();
+            }
+        }
+
         $pesanan = Pesanan::create([
             'kode_pesanan' => $request->kode_pesanan,
             'customer_id' => $request->customer_id,
             'tanggal' => $request->tanggal,
             'estimasi_kirim' => $request->estimasi_kirim,
+            'estimasi_produksi' => $request->estimasi_produksi,
             'total_pesanan' => $request->total_pesanan,
             'status_pesanan' => 'pending',
             'status_pembayaran' => 'Belum Bayar',
@@ -110,6 +161,35 @@ class PesananController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $request->validate([
+            'customer_id' => 'required',
+            'tanggal' => 'required',
+            'estimasi_kirim' => 'required',
+            'produk_id' => 'required|array|min:1',
+            'qty' => 'required|array|min:1',
+            'harga' => 'required|array|min:1',
+            'subtotal' => 'required|array|min:1',
+        ]);
+
+        if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
+            return redirect()->back()->withErrors(['tanggal' => 'Tanggal transaksi tidak boleh sebelum hari ini.'])->withInput();
+        }
+
+        if (date('Y-m-d', strtotime($request->estimasi_kirim)) < date('Y-m-d', strtotime($request->tanggal))) {
+            return redirect()->back()->withErrors(['estimasi_kirim' => 'Estimasi kirim tidak boleh sebelum tanggal transaksi.'])->withInput();
+        }
+
+        foreach ($request->produk_id as $key => $produkId) {
+            if (!$produkId) continue;
+            $barang = MasterBarang::find($produkId);
+            $qty = $request->qty[$key] ?? 0;
+            if ($barang && $qty < $barang->minimum_order) {
+                return redirect()->back()->withErrors([
+                    'qty' => "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
+                ])->withInput();
+            }
+        }
+
         $pesanan = Pesanan::findOrFail($id);
     
         // update header pesanan
@@ -117,8 +197,8 @@ class PesananController extends Controller
             'customer_id' => $request->customer_id,
             'tanggal' => $request->tanggal,
             'estimasi_kirim' => $request->estimasi_kirim,
+            'estimasi_produksi' => $request->estimasi_produksi,
             'total_pesanan' => $request->total_pesanan,
-            //'status_pesanan' => $request->status_pesanan,
         ]);
     
         // hapus detail lama

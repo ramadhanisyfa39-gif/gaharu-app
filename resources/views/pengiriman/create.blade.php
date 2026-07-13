@@ -51,6 +51,9 @@
                             <option value="{{ $p->id }}">{{ $p->kode_pesanan }} ({{ $p->customer->nama ?? 'N/A' }})</option>
                         @endforeach
                     </select>
+                    <div id="pesanan_help" class="form-text text-muted" style="font-size: 11px;">
+                        <i class="bi bi-info-circle me-1"></i> Hanya pesanan yang <strong>sudah lunas</strong> yang muncul di daftar ini.
+                    </div>
                 </div>
                 
                 {{-- DIISI OTOMATIS OLEH JAVASCRIPT --}}

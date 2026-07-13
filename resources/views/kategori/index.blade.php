@@ -6,9 +6,19 @@
     <div class="container mt-4">
         <h2 class="mb-3 fw-semibold" style="color: #2d3748; font-size: 1.5rem;">Data Kategori</h2>
 
-        <button type="button" class="btn mb-4 text-white custom-btn-tambah" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
-            + Tambah Kategori
-        </button>
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <button type="button" class="btn text-white custom-btn-tambah" data-bs-toggle="modal" data-bs-target="#modalTambahKategori">
+                + Tambah Kategori
+            </button>
+
+            <form action="{{ route('kategori.index') }}" method="GET" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari kategori/prefix..." value="{{ request('search') }}" style="width: 220px; border-radius: 8px;">
+                <button type="submit" class="btn btn-sm text-white" style="background-color: #d88656; border-radius: 8px; border: none; padding: 5px 15px;">Cari</button>
+                @if(request('search'))
+                    <a href="{{ route('kategori.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 8px; padding: 5px 15px;">Reset</a>
+                @endif
+            </form>
+        </div>
 
         @if(session('success'))
     <div class="modal fade" id="modalSuksesCentang" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
@@ -68,6 +78,7 @@
                         <tr>
                             <th width="80" class="ps-4">No</th>
                             <th>Nama Kategori</th>
+                            <th>Prefix Kode</th>
                             <th width="180" class="text-center pe-4">Aksi</th>
                         </tr>
                     </thead>
@@ -76,10 +87,15 @@
                         <tr>
                             <td class="ps-4 text-secondary">{{ $loop->iteration }}</td>
                             <td class="fw-medium" style="color: #4a5568;">{{ $d->nama }}</td>
+                            <td><span class="badge bg-light text-dark border font-monospace px-2 py-1">{{ $d->prefix ?? '-' }}</span></td>
                             <td class="text-center pe-4">
+                                <a href="{{ route('kategori.show', $d->id) }}" class="btn btn-sm btn-info text-white me-1" style="border-radius: 6px; padding: 5px 14px; font-weight: 500;">
+                                    Detil
+                                </a>
+
                                 <button type="button" class="btn btn-sm btn-edit me-1" data-bs-toggle="modal" data-bs-target="#modalEditKategori{{ $d->id }}">
-    Edit
-</button>
+                                    Edit
+                                </button>
 
                                 <form action="{{ route('kategori.destroy', $d->id) }}" method="POST" style="display:inline">
                                     @csrf
@@ -92,7 +108,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="3" class="text-center py-4 text-secondary">
+                            <td colspan="4" class="text-center py-4 text-secondary">
                                 Data belum tersedia.
                             </td>
                         </tr>
@@ -100,6 +116,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="mt-3">
+            {{ $data->links() }}
         </div>
     </div>
 
@@ -114,9 +133,13 @@
                 <form action="{{ route('kategori.store') }}" method="POST">
                     @csrf
                     <div class="modal-body px-4 pt-3 pb-4">
-                        <div class="mb-2">
+                        <div class="mb-3">
                             <label for="nama" class="form-label custom-label">Nama Kategori</label>
                             <input type="text" name="nama" id="nama" class="form-control custom-input" placeholder="Contoh: POWDER, SYRUP, COFFEE" required autocomplete="off">
+                        </div>
+                        <div class="mb-2">
+                            <label for="prefix" class="form-label custom-label">Prefix Kode Barang (Maks. 5 Karakter)</label>
+                            <input type="text" name="prefix" id="prefix" class="form-control custom-input" placeholder="Contoh: POW, SYR, COF" maxlength="5" autocomplete="off" style="text-transform: uppercase;">
                         </div>
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex justify-content-end gap-2">
@@ -141,9 +164,13 @@
                     @csrf
                     @method('PUT')
                     <div class="modal-body px-4 pt-3 pb-4">
-                        <div class="mb-2">
+                        <div class="mb-3">
                             <label for="nama{{ $d->id }}" class="form-label custom-label">Nama Kategori</label>
                             <input type="text" name="nama" id="nama{{ $d->id }}" class="form-control custom-input" value="{{ $d->nama }}" required autocomplete="off">
+                        </div>
+                        <div class="mb-2">
+                            <label for="prefix{{ $d->id }}" class="form-label custom-label">Prefix Kode Barang (Maks. 5 Karakter)</label>
+                            <input type="text" name="prefix" id="prefix{{ $d->id }}" class="form-control custom-input" value="{{ $d->prefix }}" placeholder="Contoh: POW" maxlength="5" autocomplete="off" style="text-transform: uppercase;">
                         </div>
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex justify-content-end gap-2">

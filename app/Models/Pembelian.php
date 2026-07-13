@@ -19,6 +19,7 @@ class Pembelian extends Model
         'metode_pembayaran',
         'tanggal_jatuh_tempo',
         'persen_dp',
+        'nominal_dp',
         'tanggal_pelunasan',
         'catatan_pembayaran',
         'dicatat_oleh',
@@ -42,11 +43,12 @@ class Pembelian extends Model
     ];
 
     protected $casts = [
-       'is_diterima'       => 'boolean',
+        'is_diterima'       => 'boolean',
         'is_lunas'          => 'boolean',
         'lunas_at'          => 'datetime',
         'diterima_at'       => 'datetime',
         'nominal_pelunasan' => 'decimal:2',
+        'nominal_dp'        => 'decimal:2',
     ];
 
     public $timestamps = false;

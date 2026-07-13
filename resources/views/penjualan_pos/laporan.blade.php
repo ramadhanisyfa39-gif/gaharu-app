@@ -3,9 +3,17 @@
     
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold mb-0">Laporan Penjualan POS</h3>
-        <button onclick="window.print()" class="btn btn-secondary d-print-none">
-            🖨️ Cetak / Save PDF
-        </button>
+        <div class="d-print-none d-flex gap-2">
+            <a href="{{ route('penjualan_pos.laporan', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success">
+                📊 Export Excel
+            </a>
+            <a href="{{ route('penjualan_pos.laporan', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger">
+                📕 Export PDF
+            </a>
+            <button onclick="window.print()" class="btn btn-secondary">
+                🖨️ Cetak / Save PDF
+            </button>
+        </div>
     </div>
 
     <div class="card mb-4 d-print-none shadow-sm border-0">

@@ -1,58 +1,136 @@
-{{-- ============================================================ --}}
-{{-- pembelian-pdf.blade.php                                      --}}
-{{-- ============================================================ --}}
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-<meta charset="UTF-8">
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DejaVu Sans',sans-serif; font-size:11px; color:#222; }
-    .header { border-bottom:3px solid #5a3416; padding-bottom:10px; margin-bottom:14px; }
-    .header h1 { font-size:17px; font-weight:700; color:#5a3416; }
-    .header .meta { font-size:10px; color:#888; margin-top:3px; }
-    table { width:100%; border-collapse:collapse; }
-    thead th { background:#5a3416; color:#fff; padding:7px 9px; font-size:10px; text-transform:uppercase; }
-    tbody tr:nth-child(even) { background:#fdf9f6; }
-    tbody td { padding:6px 9px; border-bottom:1px solid #f0e8e0; font-size:11px; }
-    tfoot td { background:#fdf3ec; font-weight:700; color:#5a3416; padding:7px 9px; border-top:2px solid #eadfd4; }
-    .badge { display:inline-block; padding:2px 6px; border-radius:10px; font-size:9px; font-weight:600; }
-    .bs { background:#d1e7dd; color:#0a3622; }
-    .bw { background:#fff3cd; color:#664d03; }
-    .bi { background:#cff4fc; color:#055160; }
-    .bd { background:#e2e3e5; color:#41464b; }
-    .text-right { text-align:right; }
-    .footer { margin-top:16px; border-top:1px solid #eee; padding-top:6px; font-size:9px; color:#aaa; text-align:right; }
-</style>
+    <title>Laporan Pembelian</title>
+    <style>
+        /* Pengaturan Dasar */
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            font-size: 12px; 
+            color: #333; 
+            margin: 30px; 
+        }
+        
+        /* Bagian Header (Kop Laporan) */
+        .header { 
+            text-align: center; 
+            margin-bottom: 25px; 
+            border-bottom: 2px solid #1e3a8a; 
+            padding-bottom: 12px; 
+        }
+        .header h2 { 
+            margin: 0; 
+            font-size: 20px; 
+            color: #1e3a8a; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        .header p { 
+            margin: 5px 0 0 0; 
+            font-size: 13px; 
+            color: #555; 
+        }
+
+        /* Tabel Informasi Periode & Tanggal */
+        .info-table { 
+            width: 100%; 
+            margin-bottom: 20px; 
+            border-collapse: collapse; 
+        }
+        .info-table td { 
+            padding: 4px 0; 
+            font-size: 12px; 
+        }
+
+        /* Tabel Data Utama */
+        .main-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+        .main-table th, .main-table td { 
+            border: 1px solid #d1d5db; 
+            padding: 8px 10px; 
+        }
+        .main-table th { 
+            background-color: #1e3a8a; 
+            color: #ffffff; 
+            text-align: left; 
+            font-weight: bold; 
+            font-size: 12px; 
+        }
+        .main-table td { 
+            font-size: 11px; 
+        }
+        .main-table tbody tr:nth-child(even) { 
+            background-color: #f9fafb; 
+        }
+        .main-table tfoot td { 
+            background-color: #e5e7eb; 
+            font-weight: bold; 
+            font-size: 12px; 
+            color: #1f2937; 
+        }
+
+        /* Label / Badge Status */
+        .badge { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        .bs { background-color: #d1e7dd; color: #0f5132; }
+        .bw { background-color: #fff3cd; color: #664d03; }
+        .bi { background-color: #cff4fc; color: #055160; }
+        .bd { background-color: #e2e3e5; color: #41464b; }
+
+        /* Utility Classes */
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .text-danger { color: #dc3545 !important; }
+        .fw-bold { font-weight: bold !important; }
+    </style>
 </head>
 <body>
+
     <div class="header">
-        <h1>Laporan Pembelian</h1>
-        <div class="meta">
-            Dicetak: {{ now()->format('d M Y, H:i') }}
-            @if(request('dari') || request('sampai'))
-                · Periode: {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
-            @endif
-            @if(request('supplier_id'))
-                · Supplier: {{ $data->first()?->supplier->nama ?? '-' }}
-            @endif
-        </div>
+        <h2>LAPORAN PEMBELIAN</h2>
+        <p>CV Gaharu App</p>
     </div>
 
-    <table>
+    <table class="info-table">
+        <tr>
+            <td width="15%" class="fw-bold">Periode Laporan</td>
+            <td width="2%">:</td>
+            <td>
+                @if(request('dari') || request('sampai'))
+                    {{ request('dari') ?? '—' }} s/d {{ request('sampai') ?? '—' }}
+                @else
+                    Semua Periode
+                @endif
+            </td>
+            <td width="15%" class="text-right fw-bold">Tanggal Cetak</td>
+            <td width="2%" class="text-center">:</td>
+            <td width="15%">{{ date('d-m-Y H:i') }}</td>
+        </tr>
+    </table>
+
+    <table class="main-table">
         <thead>
             <tr>
-                <th>Kode</th>
-                <th>Tanggal</th>
-                <th>Supplier</th>
-                <th>Gudang</th>
-                <th class="text-right">Total</th>
-                <th>Metode</th>
-                <th>Jatuh Tempo</th>
+                <th width="12%">Kode</th>
+                <th width="10%">Tanggal</th>
+                <th width="20%">Supplier</th>
+                <th width="15%">Gudang</th>
+                <th class="text-right" width="15%">Total</th>
+                <th class="text-center" width="13%">Metode</th>
+                <th class="text-center" width="15%">Jatuh Tempo</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($data as $row)
+            @forelse($data as $row)
                 @php
                     [$label, $cls] = match($row->metode_pembayaran) {
                         'cod'    => ['COD',    'bs'],
@@ -62,24 +140,28 @@
                     };
                 @endphp
                 <tr>
-                    <td>{{ $row->kode_pembelian }}</td>
+                    <td class="fw-bold">{{ $row->kode_pembelian }}</td>
                     <td>{{ \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') }}</td>
                     <td>{{ $row->supplier->nama ?? '-' }}</td>
                     <td>{{ $row->gudang->nama ?? '-' }}</td>
-                    <td class="text-right">Rp {{ number_format($row->total, 0, ',', '.') }}</td>
-                    <td><span class="badge {{ $cls }}">{{ $label }}</span></td>
-                    <td>{{ $row->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '—' }}</td>
+                    <td class="text-right fw-bold">Rp {{ number_format($row->total, 0, ',', '.') }}</td>
+                    <td class="text-center"><span class="badge {{ $cls }}">{{ $label }}</span></td>
+                    <td class="text-center">{{ $row->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '—' }}</td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="7" class="text-center">Belum ada data transaksi pembelian.</td>
+                </tr>
+            @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="4">Total ({{ $totalTransaksi }} transaksi)</td>
-                <td class="text-right">Rp {{ number_format($totalNilai, 0, ',', '.') }}</td>
+                <td colspan="4" class="text-right">TOTAL ({{ $totalTransaksi }} transaksi):</td>
+                <td class="text-right text-danger">Rp {{ number_format($totalNilai, 0, ',', '.') }}</td>
                 <td colspan="2"></td>
             </tr>
         </tfoot>
     </table>
-    <div class="footer">Sistem ERP Gaharu · {{ auth()->user()->nama ?? '' }} · {{ now()->format('d/m/Y H:i') }}</div>
+
 </body>
 </html>

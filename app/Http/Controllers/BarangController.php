@@ -11,26 +11,43 @@ class BarangController extends Controller
 {
     // Jalur: app/Http/Controllers/BarangController.php
 
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Kode kamu yang sudah ada untuk mengambil data barang (biasanya seperti ini)
-        $data = MasterBarang::all(); // atau Barang::latest()->get(); sesuaikan dengan kode aslimu
+        $kategoriId = $request->query('kategori_id');
+        $search     = $request->query('search');
 
-        // 2. TAMBAHKAN BARIS INI untuk mengambil semua data kategori dari database
-        // (Pastikan nama Model Kategori sesuai dengan nama model di projekmu, misal: Kategori atau Category)
-        $kategori = \App\Models\Kategori::all(); 
+        $query = MasterBarang::with(['kategori', 'resep']);
 
-        // 3. Tambahkan 'kategori' di dalam fungsi compact() agar terkirim ke view index
-        return view('barang.index', compact('data', 'kategori'));
-        // Ambil data utama beserta relasinya untuk isi tabel
-        $data = MasterBarang::with(['kategori', 'resep'])->get(); 
+        if ($kategoriId) {
+            $query->where('kategori_id', $kategoriId);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%')
+                  ->orWhere('kode_barang', 'like', '%' . $search . '%');
+            });
+        }
+
+        $data = $query->orderBy('kode_barang', 'asc')->paginate(10)->withQueryString();
         
-        // Ambil data pendukung untuk mengisi dropdown di dalam modal popup
         $kategori = Kategori::all();
-        $reseps = ResepBtklBop::all(); 
+        $reseps   = ResepBtklBop::all(); 
 
-        // Kirim ketiganya ke view index
         return view('barang.index', compact('data', 'kategori', 'reseps'));
+    }
+
+    public function checkNama(Request $request)
+    {
+        $nama = $request->query('nama');
+        $exists = MasterBarang::whereRaw('LOWER(nama) = ?', [strtolower($nama)])->exists();
+        return response()->json(['exists' => $exists]);
+    }
+
+    public function show($id)
+    {
+        $barang = MasterBarang::with(['kategori', 'resep'])->findOrFail($id);
+        return view('barang.show', compact('barang'));
     }
 
     public function create()
@@ -45,8 +62,9 @@ class BarangController extends Controller
     {
         $kategori = Kategori::findOrFail($kategoriId);
 
-        // Ambil 3 huruf depan nama kategori
-        $prefix = strtoupper(substr($kategori->nama, 0, 3));
+        // Ambil prefix kategori, jika kosong gunakan 3 huruf depan nama kategori
+        $prefix = $kategori->prefix ?: strtoupper(substr($kategori->nama, 0, 3));
+        $prefix = strtoupper(trim($prefix));
 
         // Cari kode terakhir berdasarkan prefix
         $lastBarang = MasterBarang::where('kode_barang', 'like', $prefix . '%')
@@ -54,8 +72,8 @@ class BarangController extends Controller
             ->first();
 
         if ($lastBarang) {
-            // Ambil angka terakhir
-            $lastNumber = (int) substr($lastBarang->kode_barang, 3);
+            // Ambil angka terakhir berdasarkan panjang prefix dinamis
+            $lastNumber = (int) substr($lastBarang->kode_barang, strlen($prefix));
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;
@@ -101,7 +119,8 @@ class BarangController extends Controller
                 'hpp_referensi'         => $hpp,
                 'harga_jual_b2b'        => $harga_b2b,
                 'harga_jual_pos'        => $harga_pos,
-                'minimum_stock'         => $request->minimum_stock, // <-- FIX: Sekarang data minimum_stock ikut tersimpan ke database
+                'minimum_stock'         => $request->minimum_stock,
+                'minimum_order'         => $request->minimum_order ?? 1.00,
             ]);
     
             return redirect()->route('barang.index')->with('success', 'Data berhasil ditambah');
@@ -151,7 +170,8 @@ class BarangController extends Controller
             'hpp_referensi'  => $hpp,
             'harga_jual_b2b' => $harga_b2b,
             'harga_jual_pos' => $harga_pos,
-            'minimum_stock'  => $request->minimum_stock, // <-- FIX: Biar kalau diedit nilainya ter-update
+            'minimum_stock'  => $request->minimum_stock,
+            'minimum_order'  => $request->minimum_order ?? 1.00,
         ]);
     
         return redirect()->route('barang.index')->with('success', 'Data berhasil diupdate');

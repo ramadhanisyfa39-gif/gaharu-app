@@ -5,6 +5,20 @@
     Pengeluaran Bahan Baku
 </x-slot>
 
+@if (session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Berhasil!</strong> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if (session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Gagal!</strong> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
 @php
     $grandTotal = 0;
 @endphp
@@ -234,39 +248,19 @@
                             </td>
 
                             <td>
-
-                                @if($pengeluaran->status == 'approved')
-
-                                    Rp {{ number_format($hargaFIFO,2,',','.') }}
-
-                                @else
-
-                                    <span class="text-muted">
-                                        Menunggu Approve
-                                    </span>
-
+                                Rp {{ number_format($hargaFIFO,2,',','.') }}
+                                @if($pengeluaran->status !== 'approved' && $pengeluaran->status !== 'disetujui')
+                                    <small class="text-muted d-block" style="font-size: 9px;">(Estimasi)</small>
                                 @endif
-
                             </td>
 
                             <td>
-
-                                @if($pengeluaran->status == 'approved')
-
-                                    <strong>
-
-                                        Rp {{ number_format($detail->hpp_total,2,',','.') }}
-
-                                    </strong>
-
-                                @else
-
-                                    <span class="text-muted">
-                                        Menunggu Approve
-                                    </span>
-
+                                <strong>
+                                    Rp {{ number_format($detail->hpp_total,2,',','.') }}
+                                </strong>
+                                @if($pengeluaran->status !== 'approved' && $pengeluaran->status !== 'disetujui')
+                                    <small class="text-muted d-block" style="font-size: 9px;">(Estimasi)</small>
                                 @endif
-
                             </td>
 
                         </tr>
@@ -296,21 +290,19 @@
 
 </div>
 
-@if($pengeluaran->status == 'approved')
-
 <div class="row mt-4">
 
     <div class="col-md-4 ms-auto">
 
-        <div class="card p-4">
+        <div class="card p-4 shadow-sm border-0">
 
             <small class="text-muted">
-                Total Nilai FIFO
+                Total Nilai FIFO @if($pengeluaran->status !== 'approved' && $pengeluaran->status !== 'disetujui') (Estimasi) @endif
             </small>
 
             <h3
                 class="fw-bold mt-2"
-                style="color:#9c4f18;">
+                style="color:#1e3a8a;">
 
                 Rp {{ number_format($grandTotal,2,',','.') }}
 
@@ -321,8 +313,6 @@
     </div>
 
 </div>
-
-@endif
 
 @if($pengeluaran->status == 'draft')
 
