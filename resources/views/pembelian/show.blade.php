@@ -28,6 +28,42 @@
                     <strong>Total:</strong> 
                     Rp {{ number_format($pembelian->total, 0, ',', '.') }}
                 </p>
+
+                <p>
+                    <strong>Metode Pembayaran:</strong> 
+                    {{ strtoupper($pembelian->metode_pembayaran ?? 'Belum Dicatat') }}
+                </p>
+
+                @if($pembelian->metode_pembayaran === 'dp')
+                    <p>
+                        <strong>DP (Persentase / Nominal):</strong> 
+                        {{ $pembelian->persen_dp }}% / Rp {{ number_format($pembelian->nominal_dp, 0, ',', '.') }}
+                    </p>
+                    <p>
+                        <strong>Estimasi Pelunasan:</strong> 
+                        {{ $pembelian->tanggal_pelunasan ? \Carbon\Carbon::parse($pembelian->tanggal_pelunasan)->format('d M Y') : '-' }}
+                    </p>
+                @endif
+
+                @if($pembelian->metode_pembayaran === 'termin')
+                    <p>
+                        <strong>Jatuh Tempo:</strong> 
+                        {{ $pembelian->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($pembelian->tanggal_jatuh_tempo)->format('d M Y') : '-' }}
+                    </p>
+                    <p>
+                        <strong>Estimasi Pelunasan:</strong> 
+                        {{ $pembelian->tanggal_pelunasan ? \Carbon\Carbon::parse($pembelian->tanggal_pelunasan)->format('d M Y') : '-' }}
+                    </p>
+                @endif
+
+                <p>
+                    <strong>Status Pembayaran:</strong> 
+                    @if($pembelian->is_lunas)
+                        <span class="badge bg-success">Lunas ({{ $pembelian->lunas_at ? \Carbon\Carbon::parse($pembelian->lunas_at)->format('d M Y') : '' }})</span>
+                    @else
+                        <span class="badge bg-warning text-dark">Belum Lunas</span>
+                    @endif
+                </p>
             </div>
         </div>
 

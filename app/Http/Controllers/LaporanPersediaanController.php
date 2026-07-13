@@ -303,8 +303,13 @@ return view('laporanpersediaan.pengeluaran-bahan-baku', compact(
         $callback = function () use ($data) {
             $f = fopen('php://output', 'w');
             fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($f, ['Kode', 'Tanggal', 'Supplier', 'Gudang', 'Total', 'Metode Bayar', 'Jatuh Tempo', 'Dicatat Pada']);
+            fputcsv($f, ['Kode', 'Tanggal', 'Supplier', 'Gudang', 'Total', 'Metode Bayar', 'Jatuh Tempo', 'Status Lunas', 'Tanggal Pelunasan', 'Dicatat Pada']);
             foreach ($data as $row) {
+                $statusLunas = $row->is_lunas ? 'Lunas' : 'Belum Lunas';
+                $tglPelunasan = $row->is_lunas && $row->lunas_at 
+                    ? Carbon::parse($row->lunas_at)->format('d/m/Y') 
+                    : ($row->tanggal_pelunasan ? Carbon::parse($row->tanggal_pelunasan)->format('d/m/Y') : '-');
+
                 fputcsv($f, [
                     $row->kode_pembelian,
                     Carbon::parse($row->tanggal)->format('d/m/Y'),
@@ -312,8 +317,10 @@ return view('laporanpersediaan.pengeluaran-bahan-baku', compact(
                     $row->gudang->nama ?? '-',
                     $row->total,
                     strtoupper($row->metode_pembayaran ?? 'Belum dicatat'),
-                    $row->tanggal_jatuh_tempo ?? '-',
-                    $row->dicatat_pada ?? '-',
+                    $row->tanggal_jatuh_tempo ? Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '-',
+                    $statusLunas,
+                    $tglPelunasan,
+                    $row->dicatat_pada ? Carbon::parse($row->dicatat_pada)->format('d/m/Y H:i:s') : '-',
                 ]);
             }
             fclose($f);

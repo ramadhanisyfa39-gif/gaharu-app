@@ -256,6 +256,8 @@
                             <div class="d-flex gap-2">
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_cod" value="cod" onchange="toggleFieldPembayaran('cod')">
                                 <label class="btn btn-outline-success" for="opt_cod">COD</label>
+                                <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_termin" value="termin" onchange="toggleFieldPembayaran('termin')">
+                                <label class="btn btn-outline-warning" for="opt_termin">Termin</label>
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_dp" value="dp" onchange="toggleFieldPembayaran('dp')">
                                 <label class="btn btn-outline-info" for="opt_dp">DP</label>
                             </div>
@@ -383,12 +385,35 @@
             document.getElementById('inputPersenDP').value = '';
             document.getElementById('inputNominalDP').value = '';
             document.getElementById('keteranganDP').textContent = '';
+            // Reset required
+            const tglPelunasan = document.querySelector('#formPembayaran input[name=tanggal_pelunasan]');
+            const tglJatuhTempo = document.querySelector('#formPembayaran input[name=tanggal_jatuh_tempo]');
+            if (tglPelunasan) tglPelunasan.removeAttribute('required');
+            if (tglJatuhTempo) tglJatuhTempo.removeAttribute('required');
             new bootstrap.Modal(document.getElementById('modalPembayaran')).show();
         }
 
         function toggleFieldPembayaran(metode) {
             document.getElementById('field_termin').classList.toggle('d-none', metode !== 'termin');
             document.getElementById('field_dp').classList.toggle('d-none', metode !== 'dp');
+
+            const tglPelunasan = document.querySelector('#formPembayaran input[name=tanggal_pelunasan]');
+            if (tglPelunasan) {
+                if (metode === 'dp' || metode === 'termin') {
+                    tglPelunasan.setAttribute('required', 'required');
+                } else {
+                    tglPelunasan.removeAttribute('required');
+                }
+            }
+
+            const tglJatuhTempo = document.querySelector('#formPembayaran input[name=tanggal_jatuh_tempo]');
+            if (tglJatuhTempo) {
+                if (metode === 'termin') {
+                    tglJatuhTempo.setAttribute('required', 'required');
+                } else {
+                    tglJatuhTempo.removeAttribute('required');
+                }
+            }
         }
 
         function isiJatuhTempo(hari) {
@@ -435,6 +460,10 @@
                 document.getElementById('dp_jatuh_tempo').textContent = data.tanggal_jatuh_tempo ?? '-';
                 document.getElementById('row_sisa_dp').classList.remove('d-none');
                 document.getElementById('dp_sisa').textContent = 'Rp ' + total.toLocaleString('id-ID');
+                if (data.tanggal_pelunasan) {
+                    document.getElementById('row_pelunasan_tgl').classList.remove('d-none');
+                    document.getElementById('dp_pelunasan').textContent = data.tanggal_pelunasan;
+                }
             }
             if (data.metode === 'dp') {
                 const nominalDP = parseFloat(data.nominal_dp) || Math.round(total * (data.persen_dp || 0) / 100);

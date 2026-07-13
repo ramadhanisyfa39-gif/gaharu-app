@@ -110,6 +110,7 @@
                                 <th style="background-color: #d88656; color: white;" class="text-end">Total</th>
                                 <th style="background-color: #d88656; color: white;" class="text-center">Metode Bayar</th>
                                 <th style="background-color: #d88656; color: white;">Jatuh Tempo</th>
+                                <th style="background-color: #d88656; color: white;" class="text-center">Status</th>
                                 <th style="background-color: #d88656; color: white;">Dicatat</th>
                                 <th style="background-color: #d88656; color: white;" class="text-center">Aksi</th>
                             </tr>
@@ -140,12 +141,22 @@
                                     <td>
                                         @if($row->tanggal_jatuh_tempo)
                                             @php $jt = \Carbon\Carbon::parse($row->tanggal_jatuh_tempo); @endphp
-                                            <span class="{{ $jt->isPast() ? 'text-danger fw-semibold' : 'text-muted' }}">
+                                            <span class="{{ $jt->isPast() && !$row->is_lunas ? 'text-danger fw-semibold' : 'text-muted' }}">
                                                 {{ $jt->format('d M Y') }}
-                                                @if($jt->isPast()) <i class="bi bi-exclamation-circle"></i> @endif
+                                                @if($jt->isPast() && !$row->is_lunas) <i class="bi bi-exclamation-circle"></i> @endif
                                             </span>
                                         @else
                                             <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if($row->is_lunas)
+                                            <span class="badge bg-success">Lunas</span>
+                                            @if($row->lunas_at)
+                                                <small class="d-block text-muted" style="font-size: 10px;">{{ \Carbon\Carbon::parse($row->lunas_at)->format('d M Y') }}</small>
+                                            @endif
+                                        @else
+                                            <span class="badge bg-danger">Belum Lunas</span>
                                         @endif
                                     </td>
                                     <td class="text-muted" style="font-size:11px;">

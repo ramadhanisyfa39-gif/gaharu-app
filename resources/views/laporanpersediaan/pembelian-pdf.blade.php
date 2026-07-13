@@ -85,6 +85,7 @@
         .bw { background-color: #fff3cd; color: #664d03; }
         .bi { background-color: #cff4fc; color: #055160; }
         .bd { background-color: #e2e3e5; color: #41464b; }
+        .bl { background-color: #f8d7da; color: #842029; }
 
         /* Utility Classes */
         .text-right { text-align: right !important; }
@@ -122,11 +123,12 @@
             <tr>
                 <th width="12%">Kode</th>
                 <th width="10%">Tanggal</th>
-                <th width="20%">Supplier</th>
-                <th width="15%">Gudang</th>
-                <th class="text-right" width="15%">Total</th>
-                <th class="text-center" width="13%">Metode</th>
-                <th class="text-center" width="15%">Jatuh Tempo</th>
+                <th width="18%">Supplier</th>
+                <th width="13%">Gudang</th>
+                <th class="text-right" width="13%">Total</th>
+                <th class="text-center" width="10%">Metode</th>
+                <th class="text-center" width="12%">Jatuh Tempo</th>
+                <th class="text-center" width="12%">Status</th>
             </tr>
         </thead>
         <tbody>
@@ -147,10 +149,20 @@
                     <td class="text-right fw-bold">Rp {{ number_format($row->total, 0, ',', '.') }}</td>
                     <td class="text-center"><span class="badge {{ $cls }}">{{ $label }}</span></td>
                     <td class="text-center">{{ $row->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '—' }}</td>
+                    <td class="text-center">
+                        @if($row->is_lunas)
+                            <span class="badge bs">Lunas</span>
+                            @if($row->lunas_at)
+                                <div style="font-size: 8px; color: #555; margin-top: 2px;">{{ \Carbon\Carbon::parse($row->lunas_at)->format('d/m/Y') }}</div>
+                            @endif
+                        @else
+                            <span class="badge bl">Belum Lunas</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center">Belum ada data transaksi pembelian.</td>
+                    <td colspan="8" class="text-center">Belum ada data transaksi pembelian.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -158,7 +170,7 @@
             <tr>
                 <td colspan="4" class="text-right">TOTAL ({{ $totalTransaksi }} transaksi):</td>
                 <td class="text-right text-danger">Rp {{ number_format($totalNilai, 0, ',', '.') }}</td>
-                <td colspan="2"></td>
+                <td colspan="3"></td>
             </tr>
         </tfoot>
     </table>

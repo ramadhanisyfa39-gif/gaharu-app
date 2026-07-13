@@ -130,28 +130,25 @@
                         {{-- QTY --}}
                         <td>
                             <input
-                                type="number"
-                                step="0.01"
+                                type="text"
                                 name="items[0][qty]"
-                                class="form-control qty-input"
+                                class="form-control qty-input mask-number"
                                 required>
                         </td>
 
                         {{-- TOTAL HARGA --}}
                         <td>
                             <input
-                                type="number"
-                                step="0.01"
+                                type="text"
                                 name="items[0][harga]"
-                                class="form-control harga-input"
+                                class="form-control harga-input mask-number"
                                 required>
                         </td>
 
                         {{-- HARGA PER QTY (display only, tidak dikirim ke server) --}}
                         <td>
                             <input
-                                type="number"
-                                step="0.01"
+                                type="text"
                                 class="form-control harga-per-qty"
                                 readonly
                                 tabindex="-1">
@@ -257,26 +254,23 @@
 
                     <td>
                         <input
-                            type="number"
-                            step="0.01"
+                            type="text"
                             name="items[${rowIndex}][qty]"
-                            class="form-control qty-input"
+                            class="form-control qty-input mask-number"
                             required>
                     </td>
 
                     <td>
                         <input
-                            type="number"
-                            step="0.01"
+                            type="text"
                             name="items[${rowIndex}][harga]"
-                            class="form-control harga-input"
+                            class="form-control harga-input mask-number"
                             required>
                     </td>
 
                     <td>
                         <input
-                            type="number"
-                            step="0.01"
+                            type="text"
                             name="items[${rowIndex}][harga_per_qty]"
                             class="form-control harga-per-qty"
                             readonly
@@ -396,6 +390,21 @@
         |--------------------------------------------------------------------------
         */
 
+        function getCleanNumber(val) {
+            if (!val) return 0;
+            let clean = val.replace(/\./g, '').replace(/,/g, '.');
+            return parseFloat(clean) || 0;
+        }
+
+        function formatNumberIndonesian(value) {
+            let parts = value.replace(/[^0-9,]/g, '').split(',');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            if (parts.length > 2) {
+                parts = [parts[0], parts.slice(1).join('')];
+            }
+            return parts.join(',');
+        }
+
         function calculateHargaPerQty(row)
         {
             const qtyInput =
@@ -408,10 +417,10 @@
                 row.querySelector('.harga-per-qty');
 
             const qty =
-                parseFloat(qtyInput.value) || 0;
+                getCleanNumber(qtyInput.value);
 
             const harga =
-                parseFloat(hargaInput.value) || 0;
+                getCleanNumber(hargaInput.value);
 
             let hasil = 0;
 
@@ -419,8 +428,9 @@
                 hasil = harga / qty;
             }
 
+            // Tampilkan dengan desimal 2 digit dan format ribuan
             hargaPerQtyInput.value =
-                hasil.toFixed(2);
+                formatNumberIndonesian(hasil.toFixed(2).replace('.', ','));
         }
 
         /*
@@ -463,6 +473,38 @@
 
                 calculateHargaPerQty(row);
             }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | MASK INDONESIAN NUMBER FORMAT ON TYPING
+        |--------------------------------------------------------------------------
+        */
+
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('mask-number')) {
+                let cursorPosition = e.target.selectionStart;
+                let originalLength = e.target.value.length;
+                
+                let formatted = formatNumberIndonesian(e.target.value);
+                e.target.value = formatted;
+                
+                let newLength = formatted.length;
+                e.target.selectionStart = cursorPosition + (newLength - originalLength);
+                e.target.selectionEnd = cursorPosition + (newLength - originalLength);
+            }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | CLEAN MASK BEFORE SUBMIT
+        |--------------------------------------------------------------------------
+        */
+
+        document.querySelector('form').addEventListener('submit', function (e) {
+            document.querySelectorAll('.mask-number').forEach(input => {
+                input.value = getCleanNumber(input.value);
+            });
         });
 
     </script>

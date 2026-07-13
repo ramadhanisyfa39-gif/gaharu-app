@@ -234,8 +234,10 @@ class PembelianController extends Controller
             'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
             'persen_dp'           => 'nullable|integer|min:1|max:99',
             'nominal_dp'          => 'nullable|numeric|min:0',
-            'tanggal_pelunasan'   => 'nullable|date',
+            'tanggal_pelunasan'   => 'required_if:metode_pembayaran,dp,termin|nullable|date',
             'catatan_pembayaran'  => 'nullable|string|max:500',
+        ], [
+            'tanggal_pelunasan.required_if' => 'Tanggal pelunasan wajib diisi untuk metode DP/Termin.'
         ]);
 
         if ($validated['metode_pembayaran'] === 'dp') {

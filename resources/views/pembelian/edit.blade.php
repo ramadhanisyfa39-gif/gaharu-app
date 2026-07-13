@@ -87,22 +87,20 @@
 
                             <td>
                                 <input 
-                                    type="number" 
-                                    step="0.01" 
+                                    type="text" 
                                     name="items[{{ $index }}][qty]" 
-                                    class="form-control" 
-                                    value="{{ $detail->qty }}"
+                                    class="form-control qty-input mask-number" 
+                                    value="{{ number_format($detail->qty, 2, ',', '.') }}"
                                     required
                                 >
                             </td>
 
                             <td>
                                 <input 
-                                    type="number" 
-                                    step="0.01" 
+                                    type="text" 
                                     name="items[{{ $index }}][harga]" 
-                                    class="form-control" 
-                                    value="{{ $detail->harga }}"
+                                    class="form-control harga-input mask-number" 
+                                    value="{{ number_format($detail->harga, 2, ',', '.') }}"
                                     required
                                 >
                             </td>
@@ -161,20 +159,18 @@
 
                     <td>
                         <input 
-                            type="number" 
-                            step="0.01" 
+                            type="text" 
                             name="items[${rowIndex}][qty]" 
-                            class="form-control" 
+                            class="form-control qty-input mask-number" 
                             required
                         >
                     </td>
 
                     <td>
                         <input 
-                            type="number" 
-                            step="0.01" 
+                            type="text" 
                             name="items[${rowIndex}][harga]" 
-                            class="form-control" 
+                            class="form-control harga-input mask-number" 
                             required
                         >
                     </td>
@@ -209,6 +205,53 @@
                     alert('Minimal harus ada 1 barang.');
                 }
             }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | MASK INDONESIAN NUMBER FORMAT
+        |--------------------------------------------------------------------------
+        */
+
+        function getCleanNumber(val) {
+            if (!val) return 0;
+            let clean = val.replace(/\./g, '').replace(/,/g, '.');
+            return parseFloat(clean) || 0;
+        }
+
+        function formatNumberIndonesian(value) {
+            let parts = value.replace(/[^0-9,]/g, '').split(',');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            if (parts.length > 2) {
+                parts = [parts[0], parts.slice(1).join('')];
+            }
+            return parts.join(',');
+        }
+
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('mask-number')) {
+                let cursorPosition = e.target.selectionStart;
+                let originalLength = e.target.value.length;
+                
+                let formatted = formatNumberIndonesian(e.target.value);
+                e.target.value = formatted;
+                
+                let newLength = formatted.length;
+                e.target.selectionStart = cursorPosition + (newLength - originalLength);
+                e.target.selectionEnd = cursorPosition + (newLength - originalLength);
+            }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | CLEAN MASK BEFORE SUBMIT
+        |--------------------------------------------------------------------------
+        */
+
+        document.querySelector('form').addEventListener('submit', function (e) {
+            document.querySelectorAll('.mask-number').forEach(input => {
+                input.value = getCleanNumber(input.value);
+            });
         });
     </script>
 </x-app-layout>

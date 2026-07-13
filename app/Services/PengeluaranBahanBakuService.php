@@ -93,8 +93,12 @@ class PengeluaranBahanBakuService
                     $gudangAsalId
                 );
 
+                $hppTotal = 0;
+
                 // Buat batch FIFO baru di Gudang Tujuan dengan harga modal aslinya
                 foreach ($fifoResult as $layer) {
+                    $totalHarga = $layer['qty_keluar'] * $layer['harga_per_qty'];
+                    $hppTotal  += $totalHarga;
                     
                     // Tarik data batch asal untuk menyalin ID Supplier dan ID Pembelian
                     $originalBatch = StokGudangBatch::find($layer['batch_id']);
@@ -114,6 +118,14 @@ class PengeluaranBahanBakuService
                     ]);
                 }
 
+                // Update detail dengan nominal HPP FIFO yang benar
+                $avgHppSatuan = $detail->qty > 0 ? ($hppTotal / $detail->qty) : 0;
+                $detail->update([
+                    'harga_satuan' => $avgHppSatuan,
+                    'total_harga'  => $hppTotal,
+                    'hpp_total'    => $hppTotal,
+                ]);
+
                 /*
                 |--------------------------------------------------------------------------
                 | KURANGI STOK SUMMARY
@@ -121,18 +133,13 @@ class PengeluaranBahanBakuService
                 */
 
                 $this->stockService->stockOut([
-                    'barang_id'
-                        => $detail->barang_id,
-                    'gudang_asal_id'
-                        => $gudangAsalId,
-                    'qty'
-                        => $detail->qty,
-                    'source_type'
-                        => 'pengeluaran_bahan_baku',
-                    'source_id'
-                        => $pengeluaran->id,
-                    'user_id'
-                        => $userId,
+                    'barang_id'       => $detail->barang_id,
+                    'gudang_asal_id'  => $gudangAsalId,
+                    'qty'             => $detail->qty,
+                    'total_harga'     => $hppTotal,
+                    'source_type'     => 'pengeluaran_bahan_baku',
+                    'source_id'       => $pengeluaran->id,
+                    'user_id'         => $userId,
                 ]);
 
                 /*
@@ -142,18 +149,13 @@ class PengeluaranBahanBakuService
                 */
 
                 $this->stockService->stockIn([
-                    'barang_id'
-                        => $detail->barang_id,
-                    'gudang_tujuan_id'
-                        => $pengeluaran->gudang_id,
-                    'qty'
-                        => $detail->qty,
-                    'source_type'
-                        => 'pengeluaran_bahan_baku',
-                    'source_id'
-                        => $pengeluaran->id,
-                    'user_id'
-                        => $userId,
+                    'barang_id'       => $detail->barang_id,
+                    'gudang_tujuan_id'=> $pengeluaran->gudang_id,
+                    'qty'             => $detail->qty,
+                    'total_harga'     => $hppTotal,
+                    'source_type'     => 'pengeluaran_bahan_baku',
+                    'source_id'       => $pengeluaran->id,
+                    'user_id'         => $userId,
                 ]);
             }
 
