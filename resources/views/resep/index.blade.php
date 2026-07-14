@@ -208,9 +208,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // Daftarkan Objek Instance Modal Bootstrap 5 secara eksplisit
     const elemenModal = document.getElementById('modalResep');
     const bsModalInstance = new bootstrap.Modal(elemenModal);
 
@@ -224,9 +226,32 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputSatuanOutput = document.getElementById('satuan_output');
     
     const tbodyBahan = document.querySelector('#table-bahan tbody');
-    const rowBlueprint = tbodyBahan.querySelector('tr').cloneNode(true);
+    const rowBlueprint = tbodyBahan.querySelector('tr').cloneNode(true); // RAW, sebelum Choices ikut campur
 
-    // Sinkronisasi otomatis input teks kolom 'Satuan' bahan baku
+    // =======================================================
+    // CHOICES.JS — Produk & Bahan Baku jadi bisa diketik
+    // =======================================================
+    const produkChoices = new Choices(selectProduk, {
+        searchEnabled: true,
+        itemSelectText: '',
+        shouldSort: false, // sudah diurutkan abjad dari controller
+    });
+
+    function initBahanChoices(row) {
+        let select = row.querySelector('.bahan-select');
+        if (select.choicesInstance) return select.choicesInstance;
+        select.choicesInstance = new Choices(select, {
+            searchEnabled: true,
+            itemSelectText: '',
+            shouldSort: false,
+        });
+        return select.choicesInstance;
+    }
+
+    // init baris pertama yang sudah ada di HTML sejak awal load
+    initBahanChoices(tbodyBahan.querySelector('tr'));
+
+    // Sinkronisasi otomatis kolom 'Satuan' bahan baku
     function sinkronkanSatuanBahan(row) {
         let select = row.querySelector('.bahan-select');
         let optionTerpilih = select.options[select.selectedIndex];
@@ -234,28 +259,27 @@ document.addEventListener("DOMContentLoaded", function () {
         row.querySelector('.satuan-input').value = satuan ?? '';
     }
 
-    // Mengunci & set otomatis kolom satuan output ketika produk dipilih
     selectProduk.addEventListener('change', function() {
-        let satuan = this.options[this.selectedIndex].dataset.satuan;
-        inputSatuanOutput.value = satuan ?? '';
+        let opt = this.options[this.selectedIndex];
+        inputSatuanOutput.value = opt ? (opt.dataset.satuan ?? '') : '';
     });
 
-    // Menangani perubahan dropdown bahan baku (Menggunakan Event Delegation)
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('bahan-select')) {
             sinkronkanSatuanBahan(e.target.closest('tr'));
         }
     });
 
-    // Aksi: Tambah baris baru bahan baku
+    // Tambah baris baru
     document.getElementById('btn-add-row').addEventListener('click', function() {
         let barisBaru = rowBlueprint.cloneNode(true);
         barisBaru.querySelectorAll('input').forEach(input => input.value = '');
         barisBaru.querySelector('.bahan-select').selectedIndex = 0;
         tbodyBahan.appendChild(barisBaru);
+        initBahanChoices(barisBaru);
     });
 
-    // Aksi: Hapus baris bahan baku
+    // Hapus baris
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('btn-remove-row')) {
             if (tbodyBahan.querySelectorAll('tr').length > 1) {
@@ -266,9 +290,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // ==========================================
-    // ACTION CONTROL: MODAL TAMBAH DATA BARU
-    // ==========================================
+    // ============ MODAL TAMBAH ============
     document.getElementById('btn-tambah-resep').addEventListener('click', function() {
         modalTitle.innerText = "Tambah Resep Baru";
         btnSubmit.innerText = "Simpan Resep";
@@ -277,20 +299,19 @@ document.addEventListener("DOMContentLoaded", function () {
         formMethod.value = "POST";
         
         formResep.reset();
-        selectProduk.removeAttribute('disabled');
+        produkChoices.enable();
+        produkChoices.removeActiveItems(); // reset tampilan balik ke placeholder
         warningProduk.classList.add('d-none');
         
-        // Kembalikan tabel ke form bersih (1 baris kosong)
         tbodyBahan.innerHTML = '';
-        tbodyBahan.appendChild(rowBlueprint.cloneNode(true));
+        let barisAwal = rowBlueprint.cloneNode(true);
+        tbodyBahan.appendChild(barisAwal);
+        initBahanChoices(barisAwal);
 
-        // Luncurkan modal
         bsModalInstance.show();
     });
 
-    // ==========================================
-    // ACTION CONTROL: MODAL EDIT DATA BARIS
-    // ==========================================
+    // ============ MODAL EDIT ============
     document.querySelectorAll('.btn-edit-resep').forEach(tombol => {
         tombol.addEventListener('click', function() {
             modalTitle.innerText = "Edit Resep Produk";
@@ -301,9 +322,8 @@ document.addEventListener("DOMContentLoaded", function () {
             formResep.action = `/resep/${idResep}`; 
             formMethod.value = "PUT";
 
-            // Mengunci dropdown produk agar integritas data master aman
-            selectProduk.value = this.dataset.produk_id;
-            selectProduk.setAttribute('disabled', 'true');
+            produkChoices.setChoiceByValue(this.dataset.produk_id);
+            produkChoices.disable();
             warningProduk.classList.remove('d-none');
 
             document.getElementById('output_qty').value = this.dataset.output_qty;
@@ -311,32 +331,48 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('btkl_per_batch').value = this.dataset.btkl;
             document.getElementById('bop_per_batch').value = this.dataset.bop;
 
-            // Bersihkan isi tabel lama & susun ulang berdasar array JSON relasi backend
             tbodyBahan.innerHTML = '';
             const arrayBahanBaku = JSON.parse(this.dataset.bahanbaku);
 
             if (arrayBahanBaku && arrayBahanBaku.length > 0) {
                 arrayBahanBaku.forEach(item => {
                     let barisEdit = rowBlueprint.cloneNode(true);
-                    
                     barisEdit.querySelector('.bahan-select').value = item.bahan_id;
                     barisEdit.querySelector('input[name="qty_bahan[]"]').value = parseFloat(item.qty_bahan);
                     
                     tbodyBahan.appendChild(barisEdit);
+                    initBahanChoices(barisEdit);
                     sinkronkanSatuanBahan(barisEdit);
                 });
             } else {
-                tbodyBahan.appendChild(rowBlueprint.cloneNode(true));
+                let barisKosong = rowBlueprint.cloneNode(true);
+                tbodyBahan.appendChild(barisKosong);
+                initBahanChoices(barisKosong);
             }
 
-            // Luncurkan modal edit
             bsModalInstance.show();
         });
     });
 
-    // Pembuka gembok proteksi field 'disabled' tepat sebelum submit agar dibaca Laravel Request
     formResep.addEventListener('submit', function() {
-        selectProduk.removeAttribute('disabled');
+        produkChoices.enable(); // buka gembok agar produk_id ikut terkirim
+    });
+
+    // =======================================================
+    // FIX: dropdown bahan baku bisa "terpotong" karena tabel
+    // punya overflow-y:auto. Matikan clipping saat dropdown dibuka.
+    // =======================================================
+    const bahanScrollContainer = document.querySelector('#table-bahan').closest('.table-responsive');
+
+    document.addEventListener('showDropdown', function(e) {
+        if (bahanScrollContainer.contains(e.target)) {
+            bahanScrollContainer.style.overflow = 'visible';
+        }
+    });
+    document.addEventListener('hideDropdown', function(e) {
+        if (bahanScrollContainer.contains(e.target)) {
+            bahanScrollContainer.style.overflow = 'auto';
+        }
     });
 });
 </script>

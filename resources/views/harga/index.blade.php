@@ -1,6 +1,8 @@
 <x-app-layout>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
     <style>
         .table-success-subtle {
@@ -60,9 +62,9 @@
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body bg-white p-4">
                         <label class="form-label fw-bold text-dark"><i class="bi bi-box-seam me-2 text-secondary"></i>Silakan Pilih Barang Jadi Terlebih Dahulu :</label>
-                        <select class="form-select form-select-lg border-2 shadow-none rounded-3" 
-                                style="border-color: #cbd5e1; font-size: 1rem;" 
-                                onchange="if(this.value) window.location.href='/harga-barang-pos/' + this.value">
+                        <select id="pilih-barang-jadi"
+                                class="form-select form-select-lg border-2 shadow-none rounded-3"
+                                style="border-color: #cbd5e1; font-size: 1rem;">
                             <option value="">-- Cari Nama atau Kode Barang Jadi --</option>
                             @foreach($listBarang as $b)
                                 <option value="{{ $b->id }}" {{ isset($barangTerpilih) && $barangTerpilih->id == $b->id ? 'selected' : '' }}>
@@ -160,11 +162,11 @@
                                 </thead>
                                 <tbody>
                                     @php $today = date('Y-m-d'); @endphp
-                                    
+
                                     @forelse($riwayatHarga as $h)
                                         @php
                                             $isAktif = ($today >= $h->tgl_mulai && $today <= $h->tgl_selesai);
-                                            
+
                                             if ($isAktif) {
                                                 if ($h->tgl_selesai == $today) {
                                                     $rowClass = 'table-warning-subtle border-start border-warning border-3';
@@ -265,4 +267,26 @@
             @endif
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectBarang = document.getElementById('pilih-barang-jadi');
+
+            new Choices(selectBarang, {
+                searchEnabled: true,
+                itemSelectText: '',
+                shouldSort: false, // sudah diurutkan dari controller
+                placeholder: true,
+                searchPlaceholderValue: 'Ketik nama atau kode barang...',
+            });
+
+            // Dipindah dari onchange inline -> addEventListener
+            // (lebih reliable dipicu setelah select dibungkus Choices.js)
+            selectBarang.addEventListener('change', function () {
+                if (this.value) {
+                    window.location.href = '/harga-barang-pos/' + this.value;
+                }
+            });
+        });
+    </script>
 </x-app-layout>

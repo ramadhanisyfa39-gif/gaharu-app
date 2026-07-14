@@ -12,7 +12,7 @@ class HargaBarangPosController extends Controller
     // Menampilkan halaman (GET)
     public function index($id = null)
     {
-        $listBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->get();
+        $listBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->orderBy('nama')->get();
         $barangTerpilih = null;
         $riwayatHarga = collect([]);
     
