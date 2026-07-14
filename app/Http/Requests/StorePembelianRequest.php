@@ -50,19 +50,6 @@ class StorePembelianRequest extends FormRequest
             if ($this->input('tanggal') && date('Y-m-d', strtotime($this->input('tanggal'))) < date('Y-m-d')) {
                 $validator->errors()->add('tanggal', 'Tanggal transaksi tidak boleh sebelum hari ini.');
             }
-
-            // Validasi minimum order
-            foreach ($this->input('items', []) as $index => $item) {
-                if (isset($item['barang_id']) && isset($item['qty'])) {
-                    $barang = \App\Models\MasterBarang::find($item['barang_id']);
-                    if ($barang && $item['qty'] < $barang->minimum_order) {
-                        $validator->errors()->add(
-                            "items.{$index}.qty", 
-                            "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
-                        );
-                    }
-                }
-            }
         });
     }
 }

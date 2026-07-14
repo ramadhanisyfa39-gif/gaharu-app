@@ -217,7 +217,7 @@
             }
 
             // Bersihkan format masker rupiah sebelum dikirim ke backend controller
-            const form = document.querySelector('form');
+            const form = document.querySelector('form[action*="penggajian"]');
             form.addEventListener('submit', function() {
                 inputs.forEach(input => {
                     input.value = input.value.replace(/[^0-9]/g, '');
