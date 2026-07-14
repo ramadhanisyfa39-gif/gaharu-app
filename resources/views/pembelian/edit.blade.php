@@ -248,7 +248,7 @@
         |--------------------------------------------------------------------------
         */
 
-        document.querySelector('form').addEventListener('submit', function (e) {
+        document.querySelector('form[action*="pembelian"]').addEventListener('submit', function (e) {
             document.querySelectorAll('.mask-number').forEach(input => {
                 input.value = getCleanNumber(input.value);
             });
