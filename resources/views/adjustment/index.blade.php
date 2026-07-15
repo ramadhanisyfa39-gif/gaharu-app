@@ -67,42 +67,88 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($adjustments as $adjustment)
-                            <tr>
-                                <td class="ps-3">{{ \Carbon\Carbon::parse($adjustment->tanggal)->format('d/m/Y') }}</td>
-                                <td><span class="badge bg-light text-dark border font-monospace">{{ $adjustment->no_ref }}</span></td>
-                                <td>{{ Str::limit($adjustment->deskripsi, 50) }}</td>
-                                <td class="text-end fw-semibold text-success">
-                                    Rp {{ number_format($adjustment->details->sum('debit'), 0, ',', '.') }}
-                                </td>
-                                <td class="text-end fw-semibold text-danger">
-                                    Rp {{ number_format($adjustment->details->sum('kredit'), 0, ',', '.') }}
-                                </td>
-                                <td class="text-center">
-                                    @if($adjustment->status === 'approved')
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Posted</span>
-                                    @else
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Draft</span>
-                                    @endif
-                                </td>
-                                <td class="text-center pe-3">
-                                    @if($adjustment->status !== 'approved')
-                                        <form action="{{ route('adjustment.approve', $adjustment->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Posting jurnal penyesuaian ini ke Buku Besar?')">
-                                            @csrf
-                                            @method('PUT')
-                                            <button type="submit" class="btn btn-sm btn-success py-0.5 px-2" style="font-size: 0.7rem;">
-                                                <i class="fas fa-check me-1"></i> Post
-                                            </button>
-                                        </form>
-                                    @else
-                                        <span class="text-muted small">-</span>
-                                    @endif
-                                </td>
-                            </tr>
+                            {{-- PROSES GROUPING DI LEVEL BLADE --}}
+                            @php
+                                $groupedAdjustments = $adjustments->groupBy(function($item) {
+                                    if ($item->source_type === 'pengeluaran_bahan_baku' && $item->source_id) {
+                                        return 'so_' . $item->source_id;
+                                    }
+                                    return 'manual_' . $item->id;
+                                });
+                            @endphp
+
+                            @forelse($groupedAdjustments as $groupKey => $groupItems)
+                                @php
+                                    $firstItem = $groupItems->first();
+                                    
+                                    // Menghitung akumulasi total debit & kredit dari seluruh item dalam grup
+                                    $totalDebit = $groupItems->sum(function($adj) {
+                                        return $adj->details->sum('debit');
+                                    });
+                                    $totalKredit = $groupItems->sum(function($adj) {
+                                        return $adj->details->sum('kredit');
+                                    });
+                                    
+                                    $isOtomatis = $firstItem->source_type === 'pengeluaran_bahan_baku';
+                                @endphp
+                                <tr>
+                                    <td class="ps-3">{{ \Carbon\Carbon::parse($firstItem->tanggal)->format('d/m/Y') }}</td>
+                                    <td>
+                                        @if($isOtomatis)
+                                            {{-- Memotong prefix acak agar nomor referensi tampak bersih --}}
+                                            <span class="badge bg-light text-dark border font-monospace">
+                                                {{ Str::beforeLast($firstItem->no_ref, '-') }}
+                                            </span>
+                                            <div class="mt-1">
+                                                <a href="{{ route('pengeluaran-bahan-baku.show', $firstItem->source_id) }}" 
+                                                   class="badge text-decoration-none bg-info-subtle text-info border border-info-subtle small shadow-sm" 
+                                                   target="_blank" 
+                                                   title="Klik untuk melihat dokumen Stock Opname asli">
+                                                    <i class="fas fa-boxes me-1"></i> Stock Opname ({{ $groupItems->count() }} Item)
+                                                </a>
+                                            </div>
+                                        @else
+                                            <span class="badge bg-light text-dark border font-monospace">{{ $firstItem->no_ref }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($isOtomatis)
+                                            [AJP] Penyesuaian Gabungan Stock Opname Gudang
+                                        @else
+                                            {{ Str::limit($firstItem->deskripsi, 50) }}
+                                        @endif
+                                    </td>
+                                    <td class="text-end fw-semibold text-success">
+                                        Rp {{ number_format($totalDebit, 0, ',', '.') }}
+                                    </td>
+                                    <td class="text-end fw-semibold text-danger">
+                                        Rp {{ number_format($totalKredit, 0, ',', '.') }}
+                                    </td>
+                                    <td class="text-center">
+                                        @if($firstItem->status === 'approved')
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Posted</span>
+                                        @else
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Draft</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center pe-3">
+                                        @if($firstItem->status !== 'approved' && !$isOtomatis)
+                                            <form action="{{ route('adjustment.approve', $firstItem->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Posting jurnal penyesuaian ini ke Buku Besar?')">
+                                                @csrf
+                                                @method('PUT')
+                                                <button type="submit" class="btn btn-sm btn-success py-0.5 px-2" style="font-size: 0.7rem;">
+                                                    <i class="fas fa-check me-1"></i> Post
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
                             @empty
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-4">Belum ada transaksi jurnal yang tercatat.</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Belum ada transaksi jurnal yang tercatat.</td>
+                                </tr>
                             @endforelse
                         </tbody>
                     </table>

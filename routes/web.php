@@ -126,7 +126,8 @@ Route::middleware('auth')->group(function () {
 
         // Closing & Adjustment
         Route::get('closing', [JurnalController::class, 'closingPage'])->name('closing.index');
-        Route::post('closing', [JurnalController::class, 'closePeriod'])->name('closing.create');
+        // Route::post('closing', [JurnalController::class, 'closePeriod'])->name('closing.create');
+        Route::post('/jurnal-closing', [JurnalController::class, 'closePeriod'])->name('closing.store');
         Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
         Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
         Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');

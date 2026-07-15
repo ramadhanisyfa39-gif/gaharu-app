@@ -165,7 +165,7 @@ class JurnalController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Validasi apakah periode ini sudah pernah dyclosing sebelumnya
+            // 1. Validasi apakah periode ini sudah pernah diclosing sebelumnya
             $alreadyClosed = Journal::where('source_type', 'closing')
                 ->whereMonth('tanggal', $bulan)
                 ->whereYear('tanggal', $tahun)
@@ -179,19 +179,24 @@ class JurnalController extends Controller
             $labaDitahan = ChartOfAccount::where('kode', '3103')->firstOrFail();
             $tanggalClosing = $endOfMonth;
 
-            // 3. Buat Header Jurnal Penutup di tabel 'journals' (Meminjam Header)
+            // 3. Buat Header Jurnal Penutup di tabel 'journals'
             $journal = Journal::create([
                 'tanggal'     => $tanggalClosing,
                 'deskripsi'   => "Jurnal Penutup Periode " . date('F', mktime(0, 0, 0, (int)$bulan, 1)) . " $tahun",
                 'no_ref'      => 'CLS-' . time(),
-                'source_type' => 'closing', // Papan nama pemisah
+                'source_type' => 'closing', 
                 'source_id'   => 0,
-                'status'      => 'approved', // Langsung approved karena closing otomatis oleh sistem
+                'status'      => 'approved', 
                 'created_by'  => Auth::id(),
             ]);
 
-            // Mapping tipe jurnal otomatis ke nama tabel database
-            $tableMapping = [
+            // --- PERBAIKAN MAPPING TABEL (MANUAL VS OTOMATIS) ---
+            $tabelManual = [
+                'jurnal_umum'                        => 'journals',
+                \App\Models\JurnalPenyesuaian::class => 'jurnal_penyesuaian',
+            ];
+
+            $tabelOtomatis = [
                 'jurnal_penjualan_pos' => 'jurnal_penjualan_pos', 
                 'jurnal_penjualan_b2b' => 'jurnal_penjualan_b2b', 
                 'jurnal_pembelian'     => 'jurnal_pembelian',     
@@ -199,19 +204,25 @@ class JurnalController extends Controller
 
             // 4. Ambil data mutasi berjalan secara bulk menggunakan query agregasi polimorfik
             $mutasiBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
-                ->where('journal_type', '!=', 'closing') // Jangan sertakan jurnal penutupan lainnya
-                ->where(function ($q) use ($startOfMonth, $endOfMonth, $tableMapping) {
-                    // Jurnal Manual
-                    $q->where(function ($queryManual) use ($startOfMonth, $endOfMonth) {
-                        $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
-                            ->whereHas('journal', function ($j) use ($startOfMonth, $endOfMonth) {
-                                $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-                                    ->where('status', 'approved');
-                            });
-                    });
+                ->where('journal_type', '!=', 'closing') 
+                ->where(function ($q) use ($startOfMonth, $endOfMonth, $tabelManual, $tabelOtomatis) {
+                    
+                    // Jalur Jurnal Manual (Harus Approved)
+                    foreach ($tabelManual as $type => $tableName) {
+                        $q->orWhere(function ($queryManual) use ($type, $tableName, $startOfMonth, $endOfMonth) {
+                            $queryManual->where('journal_type', $type)
+                                ->whereExists(function ($sub) use ($tableName, $startOfMonth, $endOfMonth) {
+                                    $sub->select(DB::raw(1))
+                                        ->from($tableName)
+                                        ->whereColumn("$tableName.id", 'journal_items.journal_id')
+                                        ->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                                        ->where('status', 'approved');
+                                });
+                        });
+                    }
 
-                    // Jurnal Otomatis (looping berdasarkan mapping tabel database)
-                    foreach ($tableMapping as $type => $tableName) {
+                    // Jalur Jurnal Otomatis (Langsung Dihitung)
+                    foreach ($tabelOtomatis as $type => $tableName) {
                         $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth, $endOfMonth) {
                             $queryOtomatis->where('journal_type', $type)
                                 ->whereExists(function ($sub) use ($tableName, $startOfMonth, $endOfMonth) {
@@ -256,8 +267,6 @@ class JurnalController extends Controller
                             'journal_type' => 'closing',
                             'debit'        => $neto > 0 ? $neto : 0,
                             'kredit'       => $neto < 0 ? abs($neto) : 0,
-                            'created_at'   => now(),
-                            'updated_at'   => now()
                         ];
                         $totalPendapatan += $neto;
                     }
@@ -271,15 +280,13 @@ class JurnalController extends Controller
                             'journal_type' => 'closing',
                             'debit'        => $neto < 0 ? abs($neto) : 0,
                             'kredit'       => $neto > 0 ? $neto : 0,
-                            'created_at'   => now(),
-                            'updated_at'   => now()
                         ];
                         $totalHppDanBeban += $neto;
                     }
                 }
             }
 
-            // 6. Hitung Laba/Rugi Bersih & Tembak ke Laba Ditahan
+            // 5. Hitung Laba/Rugi Bersih & Tembak ke Laba Ditahan
             $labaBersih = $totalPendapatan - $totalHppDanBeban;
 
             if ($labaBersih != 0) {
@@ -289,8 +296,6 @@ class JurnalController extends Controller
                     'journal_type' => 'closing',
                     'debit'        => $labaBersih < 0 ? abs($labaBersih) : 0,
                     'kredit'       => $labaBersih > 0 ? $labaBersih : 0,
-                    'created_at'   => now(),
-                    'updated_at'   => now()
                 ];
             }
 
@@ -306,7 +311,6 @@ class JurnalController extends Controller
             return back()->withErrors(['error' => 'Gagal menutup periode: ' . $e->getMessage()]);
         }
     }
-
     // Menampilkan Daftar Jurnal Penyesuaian
     public function adjustmentIndex()
     {

@@ -1,7 +1,7 @@
 <x-app-layout>
     <style>
         .closing-container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 40px auto;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
@@ -12,6 +12,7 @@
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             border: 1px solid #e5e7eb;
+            margin-bottom: 30px;
         }
 
         .closing-header {
@@ -105,7 +106,6 @@
             transform: translateY(-1px);
         }
 
-        /* Style untuk Alert */
         .alert {
             padding: 15px;
             border-radius: 8px;
@@ -124,6 +124,59 @@
             color: #991b1b;
             border: 1px solid #fecaca;
         }
+
+        /* Styling Tabel Histori */
+        .history-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e5e7eb;
+        }
+
+        .history-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .custom-table th {
+            background-color: #f8fafc;
+            color: #64748b;
+            padding: 12px;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .custom-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+
+        .badge-closed {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
     </style>
 
     <div class="py-12">
@@ -135,12 +188,19 @@
             </div>
             @endif
 
+            @if($errors->any())
+            <div class="alert alert-danger">
+                ⚠️ <strong>Gagal!</strong> {{ $errors->first() }}
+            </div>
+            @endif
+
             @if(session('error'))
             <div class="alert alert-danger">
                 ⚠️ <strong>Gagal!</strong> {{ session('error') }}
             </div>
             @endif
 
+            <!-- CARD FORM CLOSING -->
             <div class="closing-card">
                 <div class="closing-header">
                     <h2>Finalisasi Tutup Buku</h2>
@@ -156,7 +216,8 @@
                     </ul>
                 </div>
 
-                <form action="{{ route('closing.create') }}" method="POST" onsubmit="return confirm('Konfirmasi Akhir: Anda yakin ingin menutup buku periode ini?')">
+                {{-- Action diarahkan ke rute POST (closing.store) --}}
+                <form action="{{ route('closing.store') }}" method="POST" onsubmit="return confirm('Konfirmasi Akhir: Anda yakin ingin menutup buku periode ini?')">
                     @csrf
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -164,7 +225,8 @@
                             <label for="bulan">Pilih Bulan</label>
                             <select name="bulan" id="bulan" class="form-control" required>
                                 @foreach(range(1, 12) as $m)
-                                <option value="{{ sprintf('%02d', $m) }}" {{ date('m') == $m ? 'selected' : '' }}>
+                                {{-- Value dikirim berupa integer bersih $m --}}
+                                <option value="{{ $m }}" {{ date('m') == $m ? 'selected' : '' }}>
                                     {{ date('F', mktime(0, 0, 0, $m, 1)) }}
                                 </option>
                                 @endforeach
@@ -182,5 +244,40 @@
                     </button>
                 </form>
             </div>
+
+            <!-- CARD DAFTAR RIWAYAT HISTORI -->
+            <div class="history-card">
+                <div class="history-title">Riwayat Penutupan Periode</div>
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Tanggal Closing</th>
+                                <th>No. Referensi</th>
+                                <th>Deskripsi Jurnal</th>
+                                <th>Status Buku</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($closings as $closing)
+                                <tr>
+                                    <td>{{ date('d-m-Y', strtotime($closing->tanggal)) }}</td>
+                                    <td><code>{{ $closing->no_ref }}</code></td>
+                                    <td>{{ $closing->deskripsi }}</td>
+                                    <td><span class="badge-closed">Closed / Approved</span></td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px 0;">
+                                        Belum ada riwayat penutupan buku akuntansi yang tercatat.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
+    </div>
 </x-app-layout>
