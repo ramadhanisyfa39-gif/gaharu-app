@@ -28,13 +28,13 @@
     <div class="container-fluid py-4 mb-5">
         
         {{-- HEADER SECTION --}}
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h4 class="mb-1 fw-bold text-dark">Pengiriman Surat Jalan</h4>
                 <p class="text-muted mb-0 small">Manajemen pengiriman stok barang dan surat jalan</p>
             </div>
-            <div class="d-flex gap-2">
-                <form action="{{ route('pengiriman.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+            <div class="d-flex gap-2 flex-wrap mt-2 mt-md-0">
+                <form action="{{ route('pengiriman.index') }}" method="GET" class="d-flex gap-2 align-items-center flex-wrap">
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no pengiriman..." value="{{ request('search') }}" style="width: 200px; border-radius: 8px;">
                     <button type="submit" class="btn btn-sm text-white btn-custom-orange action-btn" style="border-radius: 8px; border: none; padding: 5px 15px; font-weight: 600;">Cari</button>
                     @if(request('search'))
@@ -57,22 +57,22 @@
             $totalApproved = $totalApproved ?? $pengirimans->where('status_pengiriman', 'Selesai')->count();
         @endphp
         <div class="row mb-4 g-3">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
-                    <span class="text-dark mb-1 d-block fw-medium small">Total Pengiriman</span>
-                    <h4 class="fw-bold text-dark mb-0">{{ $totalData }}</h4>
+                    <span class="text-secondary mb-1 d-block fw-medium small">Total Pengiriman</span>
+                    <h4 class="fw-bold text-dark mb-0">{{ $totalData }} Transaksi</h4>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
-                    <span class="text-dark mb-1 d-block fw-medium small">Draft</span>
-                    <h4 class="fw-bold text-warning mb-0">{{ $totalDraft }}</h4>
+                    <span class="text-secondary mb-1 d-block fw-medium small">Draft Surat Jalan</span>
+                    <h4 class="fw-bold text-warning mb-0">{{ $totalDraft }} Surat Jalan</h4>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
-                    <span class="text-dark mb-1 d-block fw-medium small">Approved</span>
-                    <h4 class="fw-bold text-success mb-0">{{ $totalApproved }}</h4>
+                    <span class="text-secondary mb-1 d-block fw-medium small">Terkirim & Approved</span>
+                    <h4 class="fw-bold text-success mb-0">{{ $totalApproved }} Pengiriman</h4>
                 </div>
             </div>
         </div>
@@ -128,7 +128,7 @@
                                     @endif
                                 </td>
                                 <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1">
+                                    <div class="d-flex justify-content-center gap-1 flex-wrap">
                                         
                                         {{-- Tombol Detail (Mata Cyan) --}}
                                         <a href="{{ route('pengiriman.show', $kirim->id) }}" class="btn action-btn btn-eye shadow-sm" title="Lihat Detail">

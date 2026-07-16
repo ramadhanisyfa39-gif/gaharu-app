@@ -230,14 +230,14 @@ class PembelianController extends Controller
     public function catatPembayaran(Request $request, Pembelian $pembelian)
     {
         $validated = $request->validate([
-            'metode_pembayaran'   => 'required|in:cod,termin,dp',
-            'tanggal_jatuh_tempo' => 'required_if:metode_pembayaran,termin|nullable|date',
+            'metode_pembayaran'   => 'required|in:cod,dp',
+            'tanggal_jatuh_tempo' => 'nullable|date',
             'persen_dp'           => 'nullable|integer|min:1|max:99',
             'nominal_dp'          => 'nullable|numeric|min:0',
-            'tanggal_pelunasan'   => 'required_if:metode_pembayaran,dp,termin|nullable|date',
+            'tanggal_pelunasan'   => 'required_if:metode_pembayaran,dp|nullable|date',
             'catatan_pembayaran'  => 'nullable|string|max:500',
         ], [
-            'tanggal_pelunasan.required_if' => 'Tanggal pelunasan wajib diisi untuk metode DP/Termin.'
+            'tanggal_pelunasan.required_if' => 'Tanggal pelunasan wajib diisi untuk metode DP.'
         ]);
 
         if ($validated['metode_pembayaran'] === 'dp') {

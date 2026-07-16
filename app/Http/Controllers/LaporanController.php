@@ -40,16 +40,25 @@ class LaporanController extends Controller
         // 2. AMBIL MUTASI LALU BULK (Transaksi sebelum bulan berjalan, mengecualikan 'opening')
         $mutasiLaluBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
             ->where(function ($q) use ($startOfMonth, $tableMapping) {
-                // Jurnal Manual (Umum & Penyesuaian)
+                // A. Jurnal Umum (Manual)
                 $q->where(function ($queryManual) use ($startOfMonth) {
-                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
+                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal'])
                         ->whereHas('journal', function ($j) use ($startOfMonth) {
                             $j->where('tanggal', '<', $startOfMonth)
-                                ->where('status', 'approved'); // DIBETULKAN dari 'posted' ke 'approved'
+                                ->where('status', 'approved');
                         });
                 });
 
-                // Jurnal Otomatis (Looping berdasarkan mapping tabel database)
+                // B. Jurnal Penyesuaian (Manual)
+                $q->orWhere(function ($queryAjp) use ($startOfMonth) {
+                    $queryAjp->whereIn('journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian'])
+                        ->whereHas('jurnalPenyesuaianHeader', function ($j) use ($startOfMonth) {
+                            $j->where('tanggal', '<', $startOfMonth)
+                                ->where('status', 'approved');
+                        });
+                });
+
+                // C. Jurnal Otomatis (Looping berdasarkan mapping tabel database)
                 foreach ($tableMapping as $type => $tableName) {
                     $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth) {
                         $queryOtomatis->where('journal_type', $type)
@@ -71,16 +80,25 @@ class LaporanController extends Controller
         // 3. AMBIL MUTASI PERIODE BULK (Bulan Berjalan)
         $mutasiBalances = \App\Models\JournalItem::where('journal_type', '!=', 'opening')
             ->where(function ($q) use ($startOfMonth, $endOfMonth, $tableMapping) {
-                // Jurnal Manual
+                // A. Jurnal Umum (Manual)
                 $q->where(function ($queryManual) use ($startOfMonth, $endOfMonth) {
-                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal_penyesuaian'])
+                    $queryManual->whereIn('journal_type', ['jurnal_umum', 'jurnal'])
                         ->whereHas('journal', function ($j) use ($startOfMonth, $endOfMonth) {
                             $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
-                                ->where('status', 'approved'); // DIBETULKAN dari 'posted' ke 'approved'
+                                ->where('status', 'approved');
                         });
                 });
 
-                // Jurnal Otomatis
+                // B. Jurnal Penyesuaian (Manual)
+                $q->orWhere(function ($queryAjp) use ($startOfMonth, $endOfMonth) {
+                    $queryAjp->whereIn('journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian'])
+                        ->whereHas('jurnalPenyesuaianHeader', function ($j) use ($startOfMonth, $endOfMonth) {
+                            $j->whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                                ->where('status', 'approved');
+                        });
+                });
+
+                // C. Jurnal Otomatis
                 foreach ($tableMapping as $type => $tableName) {
                     $q->orWhere(function ($queryOtomatis) use ($type, $tableName, $startOfMonth, $endOfMonth) {
                         $queryOtomatis->where('journal_type', $type)
@@ -150,6 +168,16 @@ class LaporanController extends Controller
                 return $coa;
             });
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper')->setPaper('a4', 'landscape');
+            $pdf->loadView('laporan.neraca-saldo.pdf', compact('neracaSaldo', 'bulan', 'tahun'));
+            return $pdf->download('laporan-neraca-saldo-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelNeracaSaldo($neracaSaldo, $bulan, $tahun);
+        }
+
         return view('laporan.neraca-saldo.index', compact('neracaSaldo', 'bulan', 'tahun'));
     }
 
@@ -167,7 +195,8 @@ class LaporanController extends Controller
 
                         // Filter untuk Jurnal Umum (Model Journal)
                         $q->whereHas('journal', function ($journalQuery) use ($bulan, $tahun) {
-                            $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
+                            $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+                                         ->where('status', 'approved');
                         })
 
                             // Filter untuk Jurnal Pembelian
@@ -187,7 +216,8 @@ class LaporanController extends Controller
 
                             // Filter untuk Jurnal Penyesuaian
                             ->orWhereHas('jurnalPenyesuaianHeader', function ($journalQuery) use ($bulan, $tahun) {
-                                $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
+                                $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+                                             ->where('status', 'approved');
                             });
                     });
             }], 'id') // Parameter kedua wajib diisi string nama kolom (kita gunakan 'id' sebagai placeholder karena SUM() sudah dicustom di dalam)
@@ -200,7 +230,8 @@ class LaporanController extends Controller
                 $query->select(DB::raw('SUM(debit - kredit)'))
                     ->where(function ($q) use ($bulan, $tahun) {
                         $q->whereHas('journal', function ($journalQuery) use ($bulan, $tahun) {
-                            $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
+                            $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+                                         ->where('status', 'approved');
                         })
                             ->orWhereHas('jurnalPembelianHeader', function ($journalQuery) use ($bulan, $tahun) {
                                 $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
@@ -212,7 +243,8 @@ class LaporanController extends Controller
                                 $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
                             })
                             ->orWhereHas('jurnalPenyesuaianHeader', function ($journalQuery) use ($bulan, $tahun) {
-                                $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun);
+                                $journalQuery->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)
+                                             ->where('status', 'approved');
                             });
                     });
             }], 'id') // Parameter kedua wajib diisi string nama kolom
@@ -221,6 +253,23 @@ class LaporanController extends Controller
 
         $totalPendapatan = $detailsPendapatan->sum('saldo');
         $totalBeban = $detailsBeban->sum('saldo');
+
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper')->setPaper('a4', 'landscape');
+            $pdf->loadView('laporan.laba-rugi.pdf', compact(
+                'detailsPendapatan',
+                'detailsBeban',
+                'totalPendapatan',
+                'totalBeban',
+                'bulan',
+                'tahun'
+            ));
+            return $pdf->download('laporan-laba-rugi-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelLabaRugi($detailsPendapatan, $detailsBeban, $totalPendapatan, $totalBeban, $bulan, $tahun);
+        }
 
         return view('laporan.laba-rugi.index', compact(
             'detailsPendapatan',
@@ -311,6 +360,16 @@ class LaporanController extends Controller
         $totalModalAwal = $passiva->where('tipe', 'Ekuitas')->sum('saldo');
         $modalAkhir = $totalModalAwal + $labaBerjalan - $totalPrive;
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper')->setPaper('a4', 'landscape');
+            $pdf->loadView('laporan.neraca.pdf', compact('aktiva', 'passiva', 'labaBerjalan', 'totalPrive', 'modalAkhir', 'bulan', 'tahun'));
+            return $pdf->download('laporan-neraca-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelNeraca($aktiva, $passiva, $labaBerjalan, $totalPrive, $modalAkhir, $bulan, $tahun);
+        }
+
         return view('laporan.neraca.index', compact('aktiva', 'passiva', 'labaBerjalan', 'totalPrive', 'modalAkhir', 'bulan', 'tahun'));
     }
 
@@ -324,8 +383,8 @@ class LaporanController extends Controller
             ->where(function ($query) use ($bulan, $tahun) {
                 // 1. Jika tipenya jurnal umum, cek tanggal di tabel 'journals'
                 $query->where(function ($q) use ($bulan, $tahun) {
-                    $q->where('journal_type', 'jurnal_umum') // sesuaikan string ini dengan isi DB Anda
-                        ->whereHas('journal', fn($j) => $j->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun));
+                    $q->whereIn('journal_type', ['jurnal_umum', 'jurnal']) // sesuaikan string ini dengan isi DB Anda
+                        ->whereHas('journal', fn($j) => $j->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->where('status', 'approved'));
                 })
                     // 2. Jika tipenya jurnal pembelian, cek tanggal di tabel 'jurnal_pembelian'
                     ->orWhere(function ($q) use ($bulan, $tahun) {
@@ -344,8 +403,8 @@ class LaporanController extends Controller
                     })
                     // 5. Jika tipenya jurnal penyesuaian, cek tanggal di tabel 'jurnal_penyesuaian'
                     ->orWhere(function ($q) use ($bulan, $tahun) {
-                        $q->where('journal_type', 'jurnal_penyesuaian') // sesuaikan string ini jika perlu
-                            ->whereHas('jurnalPenyesuaianHeader', fn($j) => $j->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun));
+                        $q->whereIn('journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']) // sesuaikan string ini jika perlu
+                            ->whereHas('jurnalPenyesuaianHeader', fn($j) => $j->whereMonth('tanggal', $bulan)->whereYear('tanggal', $tahun)->where('status', 'approved'));
                     });
             });
 
@@ -363,6 +422,16 @@ class LaporanController extends Controller
         $pendanaan = (clone $baseQuery)
             ->whereHas('coa', fn($q) => $q->whereIn('tipe', ['Kewajiban', 'Modal']))
             ->get();
+
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper')->setPaper('a4', 'landscape');
+            $pdf->loadView('laporan.arus-kas.pdf', compact('operasional', 'investasi', 'pendanaan', 'bulan', 'tahun'));
+            return $pdf->download('laporan-arus-kas-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelArusKas($operasional, $investasi, $pendanaan, $bulan, $tahun);
+        }
 
         return view('laporan.arus-kas.index', compact('operasional', 'investasi', 'pendanaan', 'bulan', 'tahun'));
     }
@@ -398,10 +467,12 @@ class LaporanController extends Controller
             ->selectRaw("COALESCE(journals.no_ref, jurnal_pembelian.no_ref, jurnal_penjualan_pos.no_ref, jurnal_penjualan_b2b.no_ref, jurnal_penyesuaian.no_ref) as no_ref")
             ->where(function ($query) {
                 $query->where(function ($q) {
-                    $q->where('journal_items.journal_type', 'LIKE', '%Journal%')->where('journals.status', 'approved');
+                    $q->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal'])
+                      ->where('journals.status', 'approved');
                 })
                     ->orWhere(function ($q) {
-                        $q->where('journal_items.journal_type', 'LIKE', '%Penyesuaian%')->where('jurnal_penyesuaian.status', 'approved');
+                        $q->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian'])
+                          ->where('jurnal_penyesuaian.status', 'approved');
                     })
                     ->orWhere('journal_items.journal_type', 'LIKE', '%Pembelian%')
                     ->orWhere('journal_items.journal_type', 'LIKE', '%Pos%')
@@ -439,6 +510,242 @@ class LaporanController extends Controller
                 return $coa->items->count() > 0 || $coa->beginning_balance != 0;
             });
 
+        if ($request->format === 'pdf') {
+            $pdf = app('dompdf.wrapper')->setPaper('a4', 'landscape');
+            $pdf->loadView('laporan.buku-besar.pdf', compact('accountsData', 'bulan', 'tahun'));
+            return $pdf->download('laporan-buku-besar-' . now()->format('Ymd') . '.pdf');
+        }
+
+        if ($request->format === 'excel') {
+            return $this->exportExcelBukuBesar($accountsData, $bulan, $tahun);
+        }
+
         return view('laporan.buku-besar.index', compact('accountsData', 'bulan', 'tahun'));
+    }
+
+    private function exportExcelNeracaSaldo($data, $bulan, $tahun)
+    {
+        $filename = 'laporan-neraca-saldo-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($data, $bulan, $tahun) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['CV GAHARU AGUNG SEJAHTERA']);
+            fputcsv($f, ['LAPORAN NERACA SALDO']);
+            fputcsv($f, ["Periode: " . date('F', mktime(0,0,0,$bulan,1)) . " " . $tahun]);
+            fputcsv($f, []);
+            fputcsv($f, ['Kode Akun', 'Nama Akun', 'Saldo Awal Debit', 'Saldo Awal Kredit', 'Mutasi Debit', 'Mutasi Kredit', 'Saldo Akhir Debit', 'Saldo Akhir Kredit']);
+            foreach ($data as $row) {
+                fputcsv($f, [
+                    $row->kode,
+                    $row->nama,
+                    $row->saldo_awal_debit,
+                    $row->saldo_awal_kredit,
+                    $row->mutasi_debit,
+                    $row->mutasi_kredit,
+                    $row->debet_akhir,
+                    $row->kredit_akhir,
+                ]);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function exportExcelLabaRugi($detailsPendapatan, $detailsBeban, $totalPendapatan, $totalBeban, $bulan, $tahun)
+    {
+        $filename = 'laporan-laba-rugi-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($detailsPendapatan, $detailsBeban, $totalPendapatan, $totalBeban, $bulan, $tahun) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['CV GAHARU AGUNG SEJAHTERA']);
+            fputcsv($f, ['LAPORAN LABA RUGI']);
+            fputcsv($f, ["Periode: " . date('F', mktime(0,0,0,$bulan,1)) . " " . $tahun]);
+            fputcsv($f, []);
+            
+            fputcsv($f, ['PENDAPATAN']);
+            foreach ($detailsPendapatan as $row) {
+                fputcsv($f, [$row->kode, $row->nama, $row->saldo]);
+            }
+            fputcsv($f, ['TOTAL PENDAPATAN', '', $totalPendapatan]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['BEBAN']);
+            foreach ($detailsBeban as $row) {
+                fputcsv($f, [$row->kode, $row->nama, $row->saldo]);
+            }
+            fputcsv($f, ['TOTAL BEBAN', '', $totalBeban]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['LABA / RUGI BERSIH', '', $totalPendapatan - $totalBeban]);
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function exportExcelNeraca($aktiva, $passiva, $labaBerjalan, $totalPrive, $modalAkhir, $bulan, $tahun)
+    {
+        $filename = 'laporan-neraca-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($aktiva, $passiva, $labaBerjalan, $totalPrive, $modalAkhir, $bulan, $tahun) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['CV GAHARU AGUNG SEJAHTERA']);
+            fputcsv($f, ['LAPORAN NERACA']);
+            fputcsv($f, ["Periode: " . date('F', mktime(0,0,0,$bulan,1)) . " " . $tahun]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['AKTIVA', '', '', 'PASSIVA']);
+            
+            fputcsv($f, ['--- AKTIVA ---']);
+            foreach ($aktiva as $row) {
+                fputcsv($f, [$row->kode, $row->nama, $row->saldo]);
+            }
+            fputcsv($f, ['TOTAL AKTIVA', '', $aktiva->sum('saldo')]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['--- PASSIVA ---']);
+            fputcsv($f, ['Kewajiban (Liabilitas)']);
+            $totalKewajiban = 0;
+            foreach ($passiva->where('tipe', 'Liabilitas') as $row) {
+                $totalKewajiban += $row->saldo;
+                fputcsv($f, [$row->kode, $row->nama, $row->saldo]);
+            }
+            fputcsv($f, ['Total Kewajiban', '', $totalKewajiban]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['Ekuitas (Modal)']);
+            $totalEkuitasTabel = 0;
+            foreach ($passiva->where('tipe', 'Ekuitas') as $row) {
+                $totalEkuitasTabel += $row->saldo;
+                fputcsv($f, [$row->kode, $row->nama, $row->saldo]);
+            }
+            fputcsv($f, ['Laba Tahun Berjalan', '', $labaBerjalan]);
+            if ($totalPrive != 0) {
+                fputcsv($f, ['Prive', '', -$totalPrive]);
+            }
+            fputcsv($f, ['Total Ekuitas', '', $modalAkhir]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['TOTAL PASSIVA', '', $totalKewajiban + $modalAkhir]);
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function exportExcelArusKas($operasional, $investasi, $pendanaan, $bulan, $tahun)
+    {
+        $filename = 'laporan-arus-kas-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($operasional, $investasi, $pendanaan, $bulan, $tahun) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['CV GAHARU AGUNG SEJAHTERA']);
+            fputcsv($f, ['LAPORAN ARUS KAS']);
+            fputcsv($f, ["Periode: " . date('F', mktime(0,0,0,$bulan,1)) . " " . $tahun]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['ARUS KAS DARI AKTIVITAS OPERASIONAL']);
+            $totalOps = 0;
+            foreach ($operasional as $item) {
+                $amt = $item->kredit - $item->debit;
+                $totalOps += $amt;
+                fputcsv($f, [$item->coa->kode, $item->coa->nama, $amt]);
+            }
+            fputcsv($f, ['Total Arus Kas Aktivitas Operasional', '', $totalOps]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['ARUS KAS DARI AKTIVITAS INVESTASI']);
+            $totalInv = 0;
+            foreach ($investasi as $item) {
+                $amt = $item->kredit - $item->debit;
+                $totalInv += $amt;
+                fputcsv($f, [$item->coa->kode, $item->coa->nama, $amt]);
+            }
+            fputcsv($f, ['Total Arus Kas Aktivitas Investasi', '', $totalInv]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['ARUS KAS DARI AKTIVITAS PENDANAAN']);
+            $totalPen = 0;
+            foreach ($pendanaan as $item) {
+                $amt = $item->kredit - $item->debit;
+                $totalPen += $amt;
+                fputcsv($f, [$item->coa->kode, $item->coa->nama, $amt]);
+            }
+            fputcsv($f, ['Total Arus Kas Aktivitas Pendanaan', '', $totalPen]);
+            fputcsv($f, []);
+
+            fputcsv($f, ['KENAIKAN / PENURUNAN KAS BERSIH', '', $totalOps + $totalInv + $totalPen]);
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function exportExcelBukuBesar($accountsData, $bulan, $tahun)
+    {
+        $filename = 'laporan-buku-besar-' . now()->format('Ymd') . '.csv';
+        $headers  = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($accountsData, $bulan, $tahun) {
+            $f = fopen('php://output', 'w');
+            fprintf($f, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($f, ['CV GAHARU AGUNG SEJAHTERA']);
+            fputcsv($f, ['LAPORAN BUKU BESAR']);
+            fputcsv($f, ["Periode: " . date('F', mktime(0,0,0,$bulan,1)) . " " . $tahun]);
+            fputcsv($f, []);
+
+            foreach ($accountsData as $coa) {
+                fputcsv($f, ['Akun:', $coa->kode . ' - ' . $coa->nama]);
+                fputcsv($f, ['Saldo Awal:', $coa->beginning_balance]);
+                fputcsv($f, ['Tanggal', 'Deskripsi / Keterangan', 'No. Ref', 'Debit', 'Kredit', 'Saldo']);
+                
+                $runningBalance = $coa->beginning_balance;
+                $saldoNormal = strtolower($coa->saldo_normal);
+
+                foreach ($coa->items as $item) {
+                    if ($saldoNormal === 'kredit') {
+                        $runningBalance += ($item->kredit - $item->debit);
+                    } else {
+                        $runningBalance += ($item->debit - $item->kredit);
+                    }
+                    fputcsv($f, [
+                        \Carbon\Carbon::parse($item->tanggal)->format('d-m-Y'),
+                        $item->deskripsi ?? '-',
+                        $item->no_ref ?? '-',
+                        $item->debit,
+                        $item->kredit,
+                        $runningBalance
+                    ]);
+                }
+                fputcsv($f, []);
+            }
+            fclose($f);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

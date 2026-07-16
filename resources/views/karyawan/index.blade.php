@@ -26,7 +26,7 @@
                             <th class="p-2 text-left">Nama Karyawan</th>
                             <th class="p-2 text-left">Jabatan</th>
                             <th class="p-2 text-left">Departemen</th>
-                            <th class="p-2 text-left">Tanggal Masuk</th>
+                            <th class="p-2 text-right">Gaji Pokok</th>
                             <th class="p-2 text-left">Aksi</th>
                         </tr>
                     </thead>
@@ -36,7 +36,7 @@
                             <td class="p-2 font-medium">{{ $k->nama_karyawan }}</td>
                             <td class="p-2">{{ $k->jabatan }}</td>
                             <td class="p-2">{{ $k->departemen }}</td>
-                            <td class="p-2">{{ $k->tanggal_masuk ? $k->tanggal_masuk->format('d M Y') : '-' }}</td>
+                            <td class="p-2 text-right">Rp {{ number_format($k->gaji_pokok, 0, ',', '.') }}</td>
                             <td class="p-2">
                                 <a href="{{ route('karyawan.show', $k->id) }}" class="text-green-600 mr-2">Detil</a>
                                 <a href="{{ route('karyawan.edit', $k->id) }}" class="text-blue-600">Edit</a>

@@ -176,12 +176,27 @@
                             return response.json();
                         })
                         .then(data => {
-                            // PERBAIKAN: Menggunakan data.harga_pos sesuai kolom database
-                            inputHarga.value = (data && data.harga_pos) ? data.harga_pos : 0;
+                            if (data && data.has_resep === false) {
+                                alert('Gagal! Produk "' + data.nama + '" belum memiliki resep bahan baku. Silakan atur resep terlebih dahulu.');
+                                selectElement.selectedIndex = 0;
+                                inputHarga.value = 0;
+                                hitungSubtotal(row);
+                                return;
+                            }
+                            if (!data || parseFloat(data.harga_pos) <= 0) {
+                                alert('Gagal! Produk "' + (data ? data.nama : '') + '" belum memiliki harga jual POS yang aktif. Silakan atur harga jual terlebih dahulu.');
+                                selectElement.selectedIndex = 0;
+                                inputHarga.value = 0;
+                                hitungSubtotal(row);
+                                return;
+                            }
+                            inputHarga.value = data.harga_pos;
                             hitungSubtotal(row);
                         })
                         .catch(error => {
                             console.error('Error fetching price:', error);
+                            alert('Gagal mengambil harga aktif: ' + error.message);
+                            selectElement.selectedIndex = 0;
                             inputHarga.value = 0;
                             hitungSubtotal(row);
                         });

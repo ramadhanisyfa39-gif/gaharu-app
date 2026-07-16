@@ -19,6 +19,7 @@ class UserSeeder extends Seeder
         $idKejingga   = Role::where('nama', 'Kepala Outlet Kejingga')->first()?->id;
         $idProduksi   = Role::where('nama', 'Bagian Produksi')->first()?->id;
         $idGudang     = Role::where('nama', 'Kepala Gudang')->first()?->id;
+        $idDirektur   = Role::where('nama', 'Direktur Keuangan')->first()?->id;
 
         // 2. Ambil ID dari MasterGudang (menyesuaikan nama persis dari MasterGudangSeeder Anda)
         $idGudangUtama    = MasterGudang::where('nama', 'Gudang Utama')->first()?->id;
@@ -93,6 +94,17 @@ class UserSeeder extends Seeder
                 'password'  => $passwordTesting,
                 'role_id'   => $idGudang,
                 'gudang_id' => $idGudangUtama, // Terikat ke Gudang Utama
+            ]
+        );
+
+        // Akun Direktur Keuangan
+        User::updateOrCreate(
+            ['username' => 'direktur'],
+            [
+                'nama'      => 'Direktur Keuangan CV Gaharu',
+                'password'  => $passwordTesting,
+                'role_id'   => $idDirektur,
+                'gudang_id' => null,
             ]
         );
     }

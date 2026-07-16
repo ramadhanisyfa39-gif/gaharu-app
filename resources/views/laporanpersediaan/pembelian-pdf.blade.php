@@ -148,7 +148,12 @@
                     <td>{{ $row->gudang->nama ?? '-' }}</td>
                     <td class="text-right fw-bold">Rp {{ number_format($row->total, 0, ',', '.') }}</td>
                     <td class="text-center"><span class="badge {{ $cls }}">{{ $label }}</span></td>
-                    <td class="text-center">{{ $row->tanggal_jatuh_tempo ? \Carbon\Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '—' }}</td>
+                    <td class="text-center">
+                        @php
+                            $jtDate = $row->tanggal_jatuh_tempo ?? $row->tanggal_pelunasan;
+                        @endphp
+                        {{ $jtDate ? \Carbon\Carbon::parse($jtDate)->format('d/m/Y') : '—' }}
+                    </td>
                     <td class="text-center">
                         @if($row->is_lunas)
                             <span class="badge bs">Lunas</span>

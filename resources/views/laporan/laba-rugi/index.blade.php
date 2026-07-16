@@ -20,14 +20,13 @@
             gap: 15px;
             align-items: flex-end;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
-
         .laporan-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-
         .kategori-header {
             background: #f4f4f4;
             padding: 12px;
@@ -35,18 +34,15 @@
             border-bottom: 2px solid #333;
             text-align: left;
         }
-
         .text-right {
             text-align: right;
             font-family: 'Courier New', monospace;
             font-weight: bold;
         }
-
         .row-total {
             background: #eee;
             font-weight: bold;
         }
-
         .footer-laba {
             margin-top: 30px;
             padding: 20px;
@@ -55,12 +51,10 @@
             justify-content: space-between;
             border-radius: 4px;
         }
-
         @media print {
             .no-print {
                 display: none;
             }
-
             .card {
                 box-shadow: none;
                 border: none;
@@ -91,6 +85,12 @@
                     <button type="submit" style="background: #1a56db; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                         Tampilkan
                     </button>
+                    <a href="{{ route('laporan.laba-rugi.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #198754; border: none; cursor: pointer;">
+                        📊 Export Excel
+                    </a>
+                    <a href="{{ route('laporan.laba-rugi.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #dc3545; border: none; cursor: pointer;">
+                        📕 Export PDF
+                    </a>
                     <button type="button" onclick="window.print()" style="background: #333; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer;">
                         Cetak
                     </button>

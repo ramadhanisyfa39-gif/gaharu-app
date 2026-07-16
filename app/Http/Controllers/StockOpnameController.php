@@ -307,7 +307,8 @@ public function detailJson(string $id)
                         $coaCode = $isOperational ? '1302' : '1301';
                         $idPersediaan = DB::table('chart_of_accounts')->where('kode', $coaCode)->value('id') ?? ($isOperational ? 20 : 19);
                         
-                        $idPendapatanLain = DB::table('chart_of_accounts')->where('kode', '8103')->value('id') 
+                        $idPendapatanLain = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
+                            ?? DB::table('chart_of_accounts')->where('kode', '8103')->value('id') 
                             ?? DB::table('chart_of_accounts')->where('kode', '8100')->value('id') 
                             ?? 13;
 
@@ -329,7 +330,7 @@ public function detailJson(string $id)
                             'journal_type' => \App\Models\JurnalPenyesuaian::class,
                         ]);
 
-                        // Kredit: Pendapatan Lain-lain
+                        // Kredit: Beban Selisih HPP (mengurangi beban)
                         $jp->details()->create([
                             'account_id'   => $idPendapatanLain,
                             'debit'        => 0,

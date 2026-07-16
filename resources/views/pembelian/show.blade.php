@@ -67,46 +67,40 @@
             </div>
         </div>
 
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Barang</th>
-                    <th>Qty</th>
-                    <th>Harga</th>
-                    <th>Subtotal</th>
-                    <th>Batch</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @foreach($pembelian->details as $detail)
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
                     <tr>
-                        <td>{{ $detail->barang->nama ?? '-' }}</td>
-                        <td>{{ $detail->qty }}</td>
-                        <td>
-    Rp {{ number_format(
-        $detail->harga_per_qty,
-        0,
-        ',',
-        '.'
-    ) }}
-</td>
-
-<td>
-    Rp {{ number_format(
-        $detail->harga,
-        0,
-        ',',
-        '.'
-    ) }}
-</td>
+                        <th>Barang</th>
+                        <th>Qty</th>
+                        <th>Harga</th>
+                        <th>Subtotal</th>
+                        <th>Batch</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <a href="{{ route('pembelian.index') }}" class="btn btn-light">
-            Kembali
-        </a>
+                </thead>
+    
+                <tbody>
+                    @foreach($pembelian->details as $detail)
+                        <tr>
+                            <td>{{ $detail->barang->nama ?? '-' }}</td>
+                            <td>{{ $detail->qty }}</td>
+                            <td>
+                                Rp {{ number_format($detail->harga_per_qty, 0, ',', '.') }}
+                            </td>
+                            <td>
+                                Rp {{ number_format($detail->harga, 0, ',', '.') }}
+                            </td>
+                            <td>{{ $detail->batch_number }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <a href="{{ route('pembelian.index') }}" class="btn btn-light border">
+                Kembali
+            </a>
+        </div>
     </div>
 </x-app-layout>

@@ -23,7 +23,7 @@
                 @csrf
 
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6 mb-3 mb-md-0">
                         <label class="form-label font-weight-bold">Tanggal Transaksi</label>
                         <input type="datetime-local"
                                name="tanggal"
@@ -33,12 +33,12 @@
                                required>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6 mb-3 mb-md-0">
                         <label class="form-label font-weight-bold">Gudang Operasional</label>
                         <select name="gudang_id" class="form-control" required>
                             <option value="">-- Pilih Gudang Operasional Cafe --</option>
                             @foreach($gudang as $g)
-                                <option value="{{ $g->id }}" {{ old('gudang_id') == $g->id ? 'selected' : '' }}>
+                                <option value="{{ $g->id }}" {{ (old('gudang_id') == $g->id || count($gudang) === 1 || (auth()->check() && auth()->user()->gudang_id == $g->id)) ? 'selected' : '' }}>
                                     {{ $g->nama }}
                                 </option>
                             @endforeach
@@ -49,62 +49,60 @@
                 <hr>
 
                 <h5 class="mb-3">Rincian Produk Terjual (Rekap Akhir Hari)</h5>
-                <table class="table table-bordered align-middle" id="table-item">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Produk</th>
-                            <th width="150">Qty</th>
-                            <th width="200">Harga Jual</th>
-                            <th width="200">Subtotal</th>
-                            <th width="50">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <select name="produk_id[]" class="form-control select-produk" required>
-                                    <option value="">-- Pilih Produk --</option>
-                                    @foreach($produk as $p)
-                                        <option value="{{ $p->id }}">
-                                            {{ $p->nama }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </td>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle" id="table-item">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Produk</th>
+                                <th width="150">Qty</th>
+                                <th width="200">Harga Jual</th>
+                                <th width="200">Subtotal</th>
+                                <th width="50">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <select name="produk_id[]" class="form-control select-produk" required>
+                                        <option value="">-- Pilih Produk --</option>
+                                        @foreach($produk as $p)
+                                            <option value="{{ $p->id }}" data-harga="{{ $p->harga_jual }}">
+                                                {{ $p->nama }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           step="0.01"
+                                           name="qty[]"
+                                           class="form-control qty"
+                                           placeholder="0.00"
+                                           required>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           step="0.01"
+                                           name="harga[]"
+                                           class="form-control harga"
+                                           readonly>
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           class="form-control subtotal"
+                                           readonly>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm btn-remove">
+                                        X
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                            <td>
-                                <input type="number"
-                                       step="0.01"
-                                       name="qty[]"
-                                       class="form-control qty"
-                                       placeholder="0.00"
-                                       required>
-                            </td>
-
-                            <td>
-                                <input type="number"
-                                       step="0.01"
-                                       name="harga[]"
-                                       class="form-control harga"
-                                       readonly>
-                            </td>
-
-                            <td>
-                                <input type="number"
-                                       class="form-control subtotal"
-                                       readonly>
-                            </td>
-
-                            <td>
-                                <button type="button" class="btn btn-danger btn-sm btn-remove">
-                                    X
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
                     <button type="button" class="btn btn-secondary" id="btn-add">
                         + Tambah Item Menu
                     </button>
@@ -114,12 +112,11 @@
 
                 <hr class="mt-4">
 
-                <div class="mt-3">
+                <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
                     <button type="submit" class="btn btn-primary px-4">
                         Simpan Data Rekap
                     </button>
-
-                    <a href="{{ route('penjualan_pos.index') }}" class="btn btn-light border px-4 ms-2">
+                    <a href="{{ route('penjualan_pos.index') }}" class="btn btn-light border px-4">
                         Kembali
                     </a>
                 </div>
@@ -193,13 +190,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     return response.json();
                 })
                 .then(data => {
-                    // PERBAIKAN: Menggunakan data.harga_pos sesuai kolom database
-                    inputHarga.value = (data && data.harga_pos) ? data.harga_pos : 0;
+                    if (data && data.has_resep === false) {
+                        alert('Gagal! Produk "' + data.nama + '" belum memiliki resep bahan baku. Silakan atur resep terlebih dahulu.');
+                        selectElement.selectedIndex = 0;
+                        inputHarga.value = 0;
+                        hitungSubtotal(row);
+                        return;
+                    }
+                    if (!data || parseFloat(data.harga_pos) <= 0) {
+                        alert('Gagal! Produk "' + (data ? data.nama : '') + '" belum memiliki harga jual POS yang aktif. Silakan atur harga jual terlebih dahulu.');
+                        selectElement.selectedIndex = 0;
+                        inputHarga.value = 0;
+                        hitungSubtotal(row);
+                        return;
+                    }
+                    inputHarga.value = data.harga_pos;
                     hitungSubtotal(row);
                 })
                 .catch(error => {
                     console.error('Error fetching price:', error);
                     alert('Gagal mengambil harga aktif: ' + error.message);
+                    selectElement.selectedIndex = 0;
                     inputHarga.value = 0;
                     hitungSubtotal(row);
                 });

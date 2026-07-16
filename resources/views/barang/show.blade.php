@@ -62,6 +62,15 @@
                         </p>
                     </div>
 
+                    @if($barang->is_barang_jadi)
+                        <div class="col-md-6 mb-3">
+                            <label class="fw-bold text-muted small uppercase">Tipe Penjualan</label>
+                            <p class="fs-6 text-dark fw-semibold">
+                                <span class="badge bg-info text-dark">{{ $barang->tipe_penjualan ?: 'Belum Diatur' }}</span>
+                            </p>
+                        </div>
+                    @endif
+
                     @if($barang->is_bahan_baku)
                         <div class="col-md-6 mb-3">
                             <label class="fw-bold text-muted small uppercase">Batas Minimum Stock (Batas Kritis)</label>

@@ -7,15 +7,15 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-body">
                 <form method="GET" action="{{ route('laporan.stock-opname') }}" class="row g-3 align-items-end">
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">DARI TANGGAL</label>
                         <input type="date" name="dari" class="form-control" value="{{ request('dari') }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">SAMPAI TANGGAL</label>
                         <input type="date" name="sampai" class="form-control" value="{{ request('sampai') }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">GUDANG</label>
                         <select name="gudang_id" class="form-select">
                             <option value="">Semua Gudang</option>
@@ -24,7 +24,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">STATUS</label>
                         <select name="status" class="form-select">
                             <option value="">Semua Status</option>
@@ -32,7 +32,7 @@
                             <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
                         </select>
                     </div>
-                    <div class="col-md-3 d-flex gap-2">
+                    <div class="col-12 col-md-3 d-flex gap-2">
                         <button type="submit" class="btn text-white px-4" style="background-color: #d88656; border: none;">
                             <i class="bi bi-search me-1"></i> Tampilkan
                         </button>
@@ -51,7 +51,7 @@
 
         {{-- ── SUMMARY CARDS ── --}}
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#d88656; color:white;">
                     <div class="card-body">
                         <div style="font-size:11px; opacity:.9; text-transform:uppercase; letter-spacing:1px;">Total Opname</div>
@@ -60,7 +60,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#d1e7dd;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#0a3622; text-transform:uppercase; letter-spacing:1px;">Sudah Approved</div>
@@ -69,7 +69,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#fff3cd;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#856404; text-transform:uppercase; letter-spacing:1px;">Total Selisih Qty</div>
@@ -78,7 +78,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#f8d7da;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#842029; text-transform:uppercase; letter-spacing:1px;">Nilai Selisih</div>

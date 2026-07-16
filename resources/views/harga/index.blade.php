@@ -1,30 +1,19 @@
 <x-app-layout>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
     <style>
-        .table-success-subtle {
-            background-color: #f0fdf4 !important;
-        }
-        .table-warning-subtle {
-            background-color: #fffdec !important;
-        }
-        .table-info-subtle {
-            background-color: #f0f9ff !important;
-        }
-        .text-gray-800 {
-            color: #1e293b;
-        }
-        .text-gray-700 {
-            color: #334155;
-        }
+        .text-gray-800 { color: #1e293b; }
+        .text-gray-700 { color: #334155; }
+        .text-gray-600 { color: #475569; }
+        .table-responsive { border-radius: 12px; }
+        .btn-primary-theme { background-color: #d88656; color: white; border: none; transition: all 0.2s; }
+        .btn-primary-theme:hover { background-color: #c77545; color: white; }
     </style>
 
     <div class="container py-4" style="font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; min-height: 100vh; margin-top: 5.5rem !important;">
         <div class="row">
-            {{-- Alert Notifikasi Global --}}
+            {{-- Alert Notifikasi --}}
             <div class="col-md-12 mb-3">
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-4 p-3 d-flex align-items-center" role="alert" style="background-color: #ecfdf5; border-left: 4px solid #10b981 !important;">
@@ -36,211 +25,95 @@
                         <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 @endif
-
-                @if($errors->has('error'))
-                    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-4 p-3 d-flex align-items-center" role="alert" style="background-color: #fef2f2; border-left: 4px solid #ef4444 !important;">
-                        <i class="bi bi-exclamation-triangle-fill me-3 fs-5 text-danger"></i>
-                        <div>
-                            <span class="fw-bold text-danger d-block">Gagal Proses</span>
-                            <span class="small text-secondary">{{ $errors->first('error') }}</span>
-                        </div>
-                        <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
             </div>
 
             {{-- Header Section --}}
             <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="fw-bold text-gray-800 m-0"><i class="bi bi-tags-fill text-primary me-2"></i>Manajemen Harga Jual (POS)</h3>
+                    <h3 class="fw-bold text-gray-800 m-0"><i class="bi bi-tags-fill me-2" style="color: #d88656;"></i>Manajemen Harga Jual (POS)</h3>
                     <p class="text-muted small m-0 mt-1">Kelola aturan masa berlaku rentang periode harga khusus untuk item kategori <strong>Barang Jadi</strong>.</p>
                 </div>
             </div>
 
-            {{-- Section 1: Pemilihan Barang (Selalu Tampil di Atas) --}}
-            <div class="col-md-12 mb-4">
+            {{-- Daftar Barang Jadi --}}
+            <div class="col-md-12">
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-body bg-white p-4">
-                        <label class="form-label fw-bold text-dark"><i class="bi bi-box-seam me-2 text-secondary"></i>Silakan Pilih Barang Jadi Terlebih Dahulu :</label>
-                        <select id="pilih-barang-jadi"
-                                class="form-select form-select-lg border-2 shadow-none rounded-3"
-                                style="border-color: #cbd5e1; font-size: 1rem;">
-                            <option value="">-- Cari Nama atau Kode Barang Jadi --</option>
-                            @foreach($listBarang as $b)
-                                <option value="{{ $b->id }}" {{ isset($barangTerpilih) && $barangTerpilih->id == $b->id ? 'selected' : '' }}>
-                                    [{{ $b->kode_barang }}] {{ $b->nama }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            @if($barangTerpilih)
-            {{-- KIRI: FORM ENTRI HARGA BARU --}}
-            <div class="col-md-4 mb-4">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-header bg-dark text-white py-3 border-0 rounded-top-4">
-                        <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle-fill me-2"></i>Atur Harga Baru</h6>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="p-3 bg-light rounded-3 mb-4 border">
-                            <span class="text-muted small d-block">Barang Terpilih:</span>
-                            <span class="fw-bold text-gray-800 fs-6 d-block mt-1">{{ $barangTerpilih->nama }}</span>
-                            <span class="badge bg-secondary mt-1">Kode: {{ $barangTerpilih->kode_barang }}</span>
-                        </div>
-
-                        <form action="{{ route('harga.store') }}" method="POST">
-                            @csrf
-                            <input type="hidden" name="barang_id" value="{{ $barangTerpilih->id }}">
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-secondary">Tanggal Mulai Berlaku</label>
-                                <input type="date" name="tgl_mulai" class="form-control rounded-3 shadow-none border @error('tgl_mulai') is-invalid @enderror" required value="{{ old('tgl_mulai', date('Y-m-d')) }}">
-                                @error('tgl_mulai')
-                                    <div class="invalid-feedback fw-bold small mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold text-secondary">Tanggal Selesai Berlaku</label>
-                                <input type="date" name="tgl_selesai" class="form-control rounded-3 shadow-none border @error('tgl_selesai') is-invalid @enderror" required value="{{ old('tgl_selesai') }}">
-                                @error('tgl_selesai')
-                                    <div class="invalid-feedback fw-bold small mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-secondary">Harga Jual (POS)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-secondary-subtle border fw-bold text-secondary">Rp</span>
-                                    <input type="number" name="harga_pos" class="form-control rounded-end-3 shadow-none border fw-bold text-primary fs-5" placeholder="0" min="0" value="{{ old('harga_pos') }}" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-secondary">Keterangan / Note (Opsional)</label>
-                                <textarea name="keterangan" class="form-control rounded-3 shadow-none border" rows="2" placeholder="Contoh: Promo Weekend, Harga Normal, dll">{{ old('keterangan') }}</textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100 py-2.5 rounded-3 fw-bold shadow-none">
-                                <i class="bi bi-check-circle-fill me-2"></i>Terapkan Harga Baru
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            {{-- KANAN: TABEL RIWAYAT & PERIODE HARGA --}}
-            <div class="col-md-8 mb-4">
-                <div class="card shadow-sm border-0 rounded-4 h-100">
-                    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold text-gray-800"><i class="bi bi-clock-history me-2 text-primary"></i>Riwayat Harga: {{ $barangTerpilih->nama }}</h6>
-                        <span class="badge bg-light text-dark border px-2 py-1.5 fw-normal small">
-                            Total: <strong class="text-primary">{{ $riwayatHarga->count() }} Data</strong>
-                        </span>
-                    </div>
-                    <div class="card-body p-0">
-                        {{-- Legenda Indikator Warna Status --}}
-                        <div class="px-4 py-2 bg-light border-bottom d-flex flex-wrap gap-3 align-items-center" style="font-size: 0.75rem;">
-                            <span class="fw-bold text-secondary text-uppercase" style="letter-spacing: 0.5px;">Indikator:</span>
-                            <span><i class="bi bi-circle-fill text-success me-1"></i> Aktif Sekarang</span>
-                            <span><i class="bi bi-circle-fill text-warning me-1"></i> Berakhir Hari Ini</span>
-                            <span><i class="bi bi-circle-fill text-info me-1"></i> Rencana (Masa Depan)</span>
-                            <span><i class="bi bi-circle-fill text-muted me-1"></i> Expired</span>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-gray-800 m-0"><i class="bi bi-list-stars me-2" style="color: #d88656;"></i>Daftar Barang Jadi</h5>
+                            <span class="badge bg-light text-dark border px-3 py-2 fw-semibold rounded-pill">
+                                Total: <span style="color: #d88656;">{{ $listBarang->count() }} Produk</span>
+                            </span>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle text-nowrap mb-0">
-                                <thead class="table-light text-uppercase font-weight-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead style="background-color: #f8fafc; color: #475569; font-weight: 700; border-bottom: 2px solid #e2e8f0;">
                                     <tr>
-                                        <th class="ps-4 py-3" width="160">Periode</th>
-                                        <th class="py-3 text-end" width="160">Nominal Harga</th>
-                                        <th class="text-center py-3" width="140">Status</th>
-                                        <th class="text-center py-3 pe-4" width="150">Aksi</th>
+                                        <th class="ps-4 py-3">Nama Barang</th>
+                                        <th class="py-3 text-end">Harga Jual</th>
+                                        <th class="py-3 text-end">HPP Referensi</th>
+                                        <th class="py-3 text-center">Periode</th>
+                                        <th class="py-3 text-center">Status</th>
+                                        <th class="py-3 text-center pe-4" width="120">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @php $today = date('Y-m-d'); @endphp
-
-                                    @forelse($riwayatHarga as $h)
+                                    @forelse($listBarang as $item)
                                         @php
-                                            $isAktif = ($today >= $h->tgl_mulai && $today <= $h->tgl_selesai);
-
-                                            if ($isAktif) {
-                                                if ($h->tgl_selesai == $today) {
-                                                    $rowClass = 'table-warning-subtle border-start border-warning border-3';
-                                                    $badgeHtml = '<span class="badge bg-warning text-dark px-2 py-1 text-uppercase rounded-2" style="font-size: 0.7rem;"><i class="bi bi-exclamation-circle-fill me-1"></i>Berakhir Hari Ini</span>';
-                                                } else {
-                                                    $rowClass = 'table-success-subtle border-start border-success border-3';
-                                                    $badgeHtml = '<span class="badge bg-success px-2 py-1 text-uppercase rounded-2" style="font-size: 0.7rem;"><i class="bi bi-check-circle-fill me-1"></i>Aktif Sekarang</span>';
-                                                }
-                                            } elseif ($today > $h->tgl_selesai) {
-                                                $rowClass = 'text-muted bg-light-subtle';
-                                                $badgeHtml = '<span class="badge bg-secondary text-white px-2 py-1 text-uppercase rounded-2" style="font-size: 0.7rem;">Expired</span>';
-                                            } else {
-                                                $rowClass = 'table-info-subtle border-start border-info border-3';
-                                                $badgeHtml = '<span class="badge bg-info text-dark px-2 py-1 text-uppercase rounded-2" style="font-size: 0.7rem;"><i class="bi bi-calendar-event-fill me-1"></i>Rencana</span>';
-                                            }
+                                            $hpp = $item->firstFifoLayer ? $item->firstFifoLayer->harga_per_unit : $item->hpp_referensi;
                                         @endphp
-
-                                        <tr class="{{ $rowClass }}">
+                                        <tr>
                                             <td class="ps-4">
-                                                <div class="fw-semibold text-dark" style="font-size: 0.85rem;">
-                                                    {{ date('d M Y', strtotime($h->tgl_mulai)) }}
-                                                </div>
-                                                <div class="small text-muted" style="font-size: 0.75rem;">
-                                                    s/d {{ date('d M Y', strtotime($h->tgl_selesai)) }}
-                                                </div>
+                                                <div class="fw-bold text-gray-800">{{ $item->nama }}</div>
+                                                <div class="small text-muted" style="font-size: 0.75rem;">Kode: {{ $item->kode_barang }}</div>
                                             </td>
-                                            <td class="text-end pe-3">
-                                                <div class="fw-bold fs-6 {{ $isAktif ? ($h->tgl_selesai == $today ? 'text-warning' : 'text-success') : 'text-dark' }}">
-                                                    Rp {{ number_format($h->harga_pos, 0, ',', '.') }}
-                                                </div>
-                                                @if($h->keterangan)
-                                                    <div class="small text-muted fst-italic text-wrap" style="max-width: 180px; font-size: 0.75rem;">
-                                                        "{{ $h->keterangan }}"
+                                            <td class="text-end fw-bold">
+                                                @if($item->hargaPosAktif)
+                                                    <div class="text-success">Rp {{ number_format($item->hargaPosAktif->harga_pos, 0, ',', '.') }}</div>
+                                                @else
+                                                    <div class="text-dark">Rp {{ number_format($item->harga_jual_pos, 0, ',', '.') }} <span class="text-muted small" style="font-size: 10px; font-weight: normal;">(Base)</span></div>
+                                                @endif
+                                            </td>
+                                            <td class="text-end text-gray-700 fw-semibold">
+                                                Rp {{ number_format($hpp, 0, ',', '.') }}
+                                            </td>
+                                            <td class="text-center">
+                                                @if($item->hargaPosAktif)
+                                                    <div class="text-gray-800 small fw-semibold">
+                                                        {{ date('d M Y', strtotime($item->hargaPosAktif->tgl_mulai)) }}
                                                     </div>
+                                                    <div class="text-muted small" style="font-size: 0.75rem;">
+                                                        s/d {{ date('d M Y', strtotime($item->hargaPosAktif->tgl_selesai)) }}
+                                                    </div>
+                                                @else
+                                                    <div class="text-muted small">—</div>
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                {!! $badgeHtml !!}
+                                                @if($item->hargaPosAktif)
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 rounded-pill text-uppercase" style="font-size: 0.65rem; font-weight: 700;">
+                                                        <i class="bi bi-check-circle-fill me-1"></i>Aktif
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2.5 py-1.5 rounded-pill text-uppercase" style="font-size: 0.65rem; font-weight: 700;">
+                                                        Standar
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td class="text-center pe-4">
-                                                @if($isAktif && $h->tgl_selesai > $today)
-                                                    <form action="{{ route('harga.update', $h->id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Yakin ingin mengakhiri periode harga ini sekarang?');">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <input type="hidden" name="tgl_selesai" value="{{ date('Y-m-d') }}">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1 shadow-none fw-semibold" style="font-size: 0.75rem;">
-                                                            <i class="bi bi-stop-circle me-1"></i>Akhiri
-                                                        </button>
-                                                    </form>
-                                                @elseif($isAktif && $h->tgl_selesai == $today)
-                                                    <span class="small text-muted fst-italic text-secondary"><i class="bi bi-check-all me-1"></i>Sudah Diakhiri</span>
-                                                @elseif($h->tgl_mulai > $today)
-                                                    <button type="button" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1 shadow-none me-1 fw-semibold" style="font-size: 0.75rem;" title="Edit Data" onclick="alert('Buka modal edit untuk ID: {{ $h->id }}')">
-                                                        <i class="bi bi-pencil-square"></i> Edit
-                                                    </button>
-                                                    <form action="{{ route('harga.destroy', $h->id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('Hapus rencana harga ini?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1 shadow-none fw-semibold" style="font-size: 0.75rem;" title="Hapus Data">
-                                                            <i class="bi bi-trash"></i> Hapus
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <span class="text-muted small">-</span>
-                                                @endif
+                                                <a href="{{ route('harga.show', $item->id) }}" class="btn btn-sm btn-primary-theme rounded-3 px-3 fw-bold shadow-none" style="font-size: 0.8rem;">
+                                                    <i class="bi bi-info-circle me-1"></i> Detail
+                                                </a>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="text-center py-5 text-muted">
-                                                <div class="py-3">
-                                                    <i class="bi bi-tags fs-1 text-secondary opacity-25 d-block mb-2"></i>
-                                                    <p class="mb-0 fw-semibold">Belum ada riwayat rentang harga untuk item ini.</p>
-                                                    <small class="text-muted">Isi form di sebelah kiri untuk mendaftarkan harga baru.</small>
+                                            <td colspan="6" class="text-center py-5 text-muted">
+                                                <div class="py-4">
+                                                    <i class="bi bi-box-seam fs-1 text-secondary opacity-25 d-block mb-3"></i>
+                                                    <h6 class="fw-bold text-gray-700">Belum ada barang jadi terdaftar.</h6>
+                                                    <p class="small text-secondary mb-0">Pastikan data barang jadi sudah terinput di menu Master Barang.</p>
                                                 </div>
                                             </td>
                                         </tr>
@@ -251,42 +124,6 @@
                     </div>
                 </div>
             </div>
-            @else
-            {{-- EMPTY STATE (BELUM PILIH BARANG) --}}
-            <div class="col-md-12">
-                <div class="text-center py-5 bg-white shadow-sm rounded-4 border d-flex flex-column align-items-center justify-content-center" style="min-height: 350px;">
-                    <div class="mb-4 d-flex align-items-center justify-content-center" style="width: 90px; height: 90px; background-color: #f1f5f9; border-radius: 50%;">
-                        <i class="bi bi-box-seam text-muted opacity-50" style="font-size: 2.5rem;"></i>
-                    </div>
-                    <h5 class="fw-bold text-gray-800 mb-2">Silakan Pilih Barang Jadi</h5>
-                    <p class="text-muted small px-3 text-center" style="max-width: 450px; line-height: 1.6;">
-                        Gunakan menu pilihan drop-down di atas untuk melihat riwayat atau mengatur jadwal periode harga khusus pada produk POS Anda.
-                    </p>
-                </div>
-            </div>
-            @endif
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const selectBarang = document.getElementById('pilih-barang-jadi');
-
-            new Choices(selectBarang, {
-                searchEnabled: true,
-                itemSelectText: '',
-                shouldSort: false, // sudah diurutkan dari controller
-                placeholder: true,
-                searchPlaceholderValue: 'Ketik nama atau kode barang...',
-            });
-
-            // Dipindah dari onchange inline -> addEventListener
-            // (lebih reliable dipicu setelah select dibungkus Choices.js)
-            selectBarang.addEventListener('change', function () {
-                if (this.value) {
-                    window.location.href = '/harga-barang-pos/' + this.value;
-                }
-            });
-        });
-    </script>
 </x-app-layout>

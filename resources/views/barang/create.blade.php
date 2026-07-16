@@ -64,6 +64,16 @@
                         <input type="number" name="minimum_stock" id="minimum_stock" class="form-control" placeholder="Contoh: 10" min="0">
                     </div>
 
+                    <div class="col-md-6 mb-3" id="group-tipe-penjualan">
+                        <label class="fw-semibold small text-muted">Tipe Penjualan</label>
+                        <select name="tipe_penjualan" id="tipe_penjualan" class="form-control">
+                            <option value="">-- Pilih Tipe Penjualan --</option>
+                            <option value="POS Gaharu">POS Gaharu</option>
+                            <option value="POS Kejingga">POS Kejingga</option>
+                            <option value="B2B">B2B</option>
+                        </select>
+                    </div>
+
                 </div>
 
                 <div class="mt-3">
@@ -86,6 +96,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const jenis = document.getElementById('jenis');
     const groupMinStock = document.getElementById('group-min-stock');
     const minStockInput = document.getElementById('minimum_stock');
+    const groupTipePenjualan = document.getElementById('group-tipe-penjualan');
+    const tipePenjualanSelect = document.getElementById('tipe_penjualan');
 
     function toggleForm() {
         if (jenis.value === "BAHAN_BAKU") {
@@ -93,6 +105,15 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             groupMinStock.style.display = "none";
             minStockInput.value = "";
+        }
+
+        if (jenis.value === "BARANG_JADI") {
+            groupTipePenjualan.style.display = "block";
+            tipePenjualanSelect.setAttribute('required', 'required');
+        } else {
+            groupTipePenjualan.style.display = "none";
+            tipePenjualanSelect.removeAttribute('required');
+            tipePenjualanSelect.value = "";
         }
     }
 

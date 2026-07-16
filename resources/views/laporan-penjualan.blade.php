@@ -1,12 +1,12 @@
 <x-app-layout>
 <div class="container py-4">
     {{-- JUDUL HALAMAN --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold text-dark mb-1">Laporan Penjualan B2B</h4>
             <p class="text-muted small mb-0">Pantau ringkasan omzet dan performa penjualan berkala.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('laporan.penjualan', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success">
                 📊 Export Excel
             </a>
@@ -19,15 +19,15 @@
     {{-- KARTU FILTER TANGGAL --}}
     <div class="card shadow-sm border-0 p-4 mb-4">
         <form action="{{ route('laporan.penjualan') }}" method="GET" class="row g-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <label class="form-label fw-bold text-dark small">Dari Tanggal</label>
                 <input type="date" name="tanggal_mulai" class="form-control" value="{{ $tanggal_mulai }}">
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <label class="form-label fw-bold text-dark small">Sampai Tanggal</label>
                 <input type="date" name="tanggal_selesai" class="form-control" value="{{ $tanggal_selesai }}">
             </div>
-            <div class="col-md-4 d-flex gap-2">
+            <div class="col-12 col-md-4 d-flex gap-2">
                 <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
                     <i class="bi bi-filter me-1"></i> Filter Data
                 </button>
@@ -40,19 +40,19 @@
 
     {{-- KOTAK STATISTIK / WIDGET RINGKASAN --}}
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
             <div class="card shadow-sm border-0 p-3 bg-primary text-white">
                 <div class="small opacity-75 fw-bold text-uppercase">Total Omzet Penjualan</div>
                 <div class="fs-3 fw-bold mt-1">Rp {{ number_format($total_omzet, 0, ',', '.') }}</div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
             <div class="card shadow-sm border-0 p-3 bg-white border-start border-success border-4">
                 <div class="small text-muted fw-bold text-uppercase">Pesanan Selesai</div>
                 <div class="fs-3 fw-bold text-success mt-1">{{ $pesanan_selesai }} <span class="fs-6 text-muted fw-normal">Transaksi</span></div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
             <div class="card shadow-sm border-0 p-3 bg-white border-start border-warning border-4">
                 <div class="small text-muted fw-bold text-uppercase">Pesanan Pending / Proses</div>
                 <div class="fs-3 fw-bold text-warning mt-1">{{ $pesanan_pending }} <span class="fs-6 text-muted fw-normal">Transaksi</span></div>

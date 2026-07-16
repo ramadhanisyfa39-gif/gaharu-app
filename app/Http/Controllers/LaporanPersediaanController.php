@@ -317,7 +317,7 @@ return view('laporanpersediaan.pengeluaran-bahan-baku', compact(
                     $row->gudang->nama ?? '-',
                     $row->total,
                     strtoupper($row->metode_pembayaran ?? 'Belum dicatat'),
-                    $row->tanggal_jatuh_tempo ? Carbon::parse($row->tanggal_jatuh_tempo)->format('d/m/Y') : '-',
+                    ($row->tanggal_jatuh_tempo ?? $row->tanggal_pelunasan) ? Carbon::parse($row->tanggal_jatuh_tempo ?? $row->tanggal_pelunasan)->format('d/m/Y') : '-',
                     $statusLunas,
                     $tglPelunasan,
                     $row->dicatat_pada ? Carbon::parse($row->dicatat_pada)->format('d/m/Y H:i:s') : '-',

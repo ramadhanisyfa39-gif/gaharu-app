@@ -60,10 +60,10 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
-                        <input type="date" name="tanggal_masuk"
-                            value="{{ old('tanggal_masuk', $karyawan->tanggal_masuk ? $karyawan->tanggal_masuk->format('Y-m-d') : '') }}"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <label class="block text-sm font-medium text-gray-700">Gaji Pokok</label>
+                        <input type="number" name="gaji_pokok"
+                            value="{{ old('gaji_pokok', $karyawan->gaji_pokok) }}"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required min="0" placeholder="0">
                     </div>
 
                     <div class="flex items-center justify-end mt-4">

@@ -7,15 +7,15 @@
         <div class="card mb-4">
             <div class="card-body">
                 <form method="GET" action="{{ route('laporan.pembelian') }}" class="row g-3 align-items-end">
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">DARI TANGGAL</label>
                         <input type="date" name="dari" class="form-control" value="{{ request('dari') }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">SAMPAI TANGGAL</label>
                         <input type="date" name="sampai" class="form-control" value="{{ request('sampai') }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">SUPPLIER</label>
                         <select name="supplier_id" class="form-select">
                             <option value="">Semua Supplier</option>
@@ -24,7 +24,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-2">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">METODE BAYAR</label>
                         <select name="metode_pembayaran" class="form-select">
                             <option value="">Semua Metode</option>
@@ -33,7 +33,7 @@
                             <option value="dp"     {{ request('metode_pembayaran') === 'dp'     ? 'selected' : '' }}>DP</option>
                         </select>
                     </div>
-                    <div class="col-md-3 d-flex gap-2">
+                    <div class="col-12 col-md-3 d-flex gap-2">
                         <button type="submit" class="btn text-white px-4" style="background-color: #d88656; border: none;">
                             <i class="bi bi-search me-1"></i> Tampilkan
                         </button>
@@ -52,7 +52,7 @@
 
         {{-- ── SUMMARY CARDS ── --}}
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#d88656; color:white;">
                     <div class="card-body">
                         <div style="font-size:11px; opacity:.9; text-transform:uppercase; letter-spacing:1px;">Total Nilai Pembelian</div>
@@ -61,7 +61,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#f8f9fa;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#6c757d; text-transform:uppercase; letter-spacing:1px;">COD / Tunai</div>
@@ -70,7 +70,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#f8f9fa;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#6c757d; text-transform:uppercase; letter-spacing:1px;">Termin & DP</div>
@@ -79,7 +79,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="card h-100 border-0 shadow-sm" style="background:#f8f9fa;">
                     <div class="card-body">
                         <div style="font-size:11px; color:#6c757d; text-transform:uppercase; letter-spacing:1px;">Belum Dicatat</div>
@@ -139,14 +139,17 @@
                                         <span class="badge {{ $metodeBadge[1] }}">{{ $metodeBadge[0] }}</span>
                                     </td>
                                     <td>
-                                        @if($row->tanggal_jatuh_tempo)
-                                            @php $jt = \Carbon\Carbon::parse($row->tanggal_jatuh_tempo); @endphp
+                                        @php
+                                            $jtDate = $row->tanggal_jatuh_tempo ?? $row->tanggal_pelunasan;
+                                        @endphp
+                                        @if($jtDate)
+                                            @php $jt = \Carbon\Carbon::parse($jtDate); @endphp
                                             <span class="{{ $jt->isPast() && !$row->is_lunas ? 'text-danger fw-semibold' : 'text-muted' }}">
-                                                {{ $jt->format('d M Y') }}
-                                                @if($jt->isPast() && !$row->is_lunas) <i class="bi bi-exclamation-circle"></i> @endif
+                                                 {{ $jt->format('d M Y') }}
+                                                 @if($jt->isPast() && !$row->is_lunas) <i class="bi bi-exclamation-circle"></i> @endif
                                             </span>
                                         @else
-                                            <span class="text-muted">—</span>
+                                             <span class="text-muted">—</span>
                                         @endif
                                     </td>
                                     <td class="text-center">

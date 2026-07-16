@@ -198,6 +198,29 @@
                                 <input type="number" name="minimum_stock" id="minimum_stock" class="form-control" placeholder="Contoh: 10" min="0">
                             </div>
 
+                            <div class="col-md-6 mb-3" id="group-tipe-penjualan">
+                                <label class="fw-semibold text-gray-700">Tipe Penjualan</label>
+                                <select name="tipe_penjualan" id="tipe_penjualan" class="form-control">
+                                    <option value="">-- Pilih Tipe Penjualan --</option>
+                                    @php
+                                        $userRole = auth()->user()->role->nama ?? '';
+                                        $options = [];
+                                        if (in_array($userRole, ['Super Admin', 'Administrator'])) {
+                                            $options = ['POS Gaharu', 'POS Kejingga', 'B2B'];
+                                        } elseif ($userRole === 'Kepala Outlet Gaharu') {
+                                            $options = ['POS Gaharu', 'B2B'];
+                                        } elseif ($userRole === 'Kepala Outlet Kejingga') {
+                                            $options = ['POS Kejingga'];
+                                        } elseif ($userRole === 'Kepala Gudang') {
+                                            $options = ['B2B'];
+                                        }
+                                    @endphp
+                                    @foreach($options as $opt)
+                                        <option value="{{ $opt }}">{{ $opt }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
                             <div class="col-md-6 mb-3">
                                 <label class="fw-semibold text-primary">Minimum Order (Batas Order)</label>
                                 <input type="number" name="minimum_order" id="minimum_order" class="form-control" placeholder="Default: 1" min="1" value="1" step="0.01">
@@ -220,6 +243,29 @@
         const jenis = document.getElementById('jenis');
         const groupMinStock = document.getElementById('group-min-stock');
         const minStockInput = document.getElementById('minimum_stock');
+        const groupTipePenjualan = document.getElementById('group-tipe-penjualan');
+        const tipePenjualanSelect = document.getElementById('tipe_penjualan');
+
+        function toggleForm() {
+            if (jenis.value === "BAHAN_BAKU") {
+                groupMinStock.style.display = "block";
+            } else {
+                groupMinStock.style.display = "none";
+                minStockInput.value = "";
+            }
+
+            if (jenis.value === "BARANG_JADI") {
+                groupTipePenjualan.style.display = "block";
+                tipePenjualanSelect.setAttribute('required', 'required');
+            } else {
+                groupTipePenjualan.style.display = "none";
+                tipePenjualanSelect.removeAttribute('required');
+                tipePenjualanSelect.value = "";
+            }
+        }
+
+        jenis.addEventListener('change', toggleForm);
+        toggleForm();
 
         // AUTO GENERATE KODE BARANG BERDASARKAN KATEGORI
         const kategori = document.getElementById('kategori_id');

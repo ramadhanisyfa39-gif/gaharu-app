@@ -28,184 +28,186 @@
             </form>
         </div>
 
-        <table class="table table-bordered align-middle" style="font-size:13px;">
-            <thead>
-                <tr>
-                    <th>Kode</th>
-                    <th>Tanggal</th>
-                    <th>Supplier</th>
-                    <th>Gudang</th>
-                    <th class="text-end">Total</th>
-                    <th class="text-end">Kekurangan</th>
-                    <th class="text-center">Pembayaran</th>
-                    <th class="text-center">Barang Diterima</th>
-                    <th class="text-center" style="min-width:160px;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($pembelian as $item)
-                    @php
-                        // Hitung sisa/kekurangan pembayaran
-                        $total      = (float) $item->total;
-                        if ($item->metode_pembayaran === 'dp') {
-                            if ($item->nominal_dp && $item->nominal_dp > 0) {
-                                $nominalDp = (float) $item->nominal_dp;
-                            } else {
-                                $persenDp   = (int) ($item->persen_dp ?? 0);
-                                $nominalDp  = $persenDp > 0 ? round($total * $persenDp / 100) : 0;
-                            }
-                        } else {
-                            $nominalDp = 0;
-                        }
-
-                        $kekurangan = match(true) {
-                            // COD atau sudah lunas → tidak ada kekurangan
-                            $item->metode_pembayaran === 'cod' => 0,
-                            $item->is_lunas                    => 0,
-                            // DP: sisa = total - nominal DP
-                            $item->metode_pembayaran === 'dp'  => $total - $nominalDp,
-                            // Termin: full amount belum dibayar
-                            $item->metode_pembayaran === 'termin' => $total,
-                            // Belum dicatat
-                            default => 0,
-                        };
-
-                        $adaKekurangan = $kekurangan > 0 && !$item->is_lunas;
-                    @endphp
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle" style="font-size:13px;">
+                <thead>
                     <tr>
-                        <td class="font-monospace" style="font-size:12px;">{{ $item->kode_pembelian }}</td>
-                        <td>{{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}</td>
-                        <td>{{ $item->supplier->nama ?? '-' }}</td>
-                        <td>{{ $item->gudang->nama ?? '-' }}</td>
-
-                        {{-- TOTAL --}}
-                        <td class="text-end fw-semibold">
-                            Rp {{ number_format($item->total, 0, ',', '.') }}
-                        </td>
-
-                        {{-- KEKURANGAN --}}
-                        <td class="text-end">
-                            @if(!$item->metode_pembayaran)
-                                <span class="text-muted" style="font-size:11px;">—</span>
-                            @elseif($item->metode_pembayaran === 'cod' || $item->is_lunas)
-                                <span class="badge bg-success" style="font-size:11px;">Lunas</span>
-                            @elseif($adaKekurangan)
-                                <span class="fw-semibold text-danger">
-                                    Rp {{ number_format($kekurangan, 0, ',', '.') }}
-                                </span>
-                            @else
-                                <span class="text-muted" style="font-size:11px;">—</span>
-                            @endif
-                        </td>
-
-                        {{-- PEMBAYARAN --}}
-                        <td class="text-center">
-                            @if($item->metode_pembayaran)
-                                @php
-                                    $labelMetode = [
-                                        'cod'    => ['text' => 'COD',   'class' => 'bg-success'],
-                                        'dp'     => ['text' => 'DP ' . $item->persen_dp . '%', 'class' => 'bg-info'],
-                                    ][$item->metode_pembayaran];
-                                @endphp
-                                <div class="d-flex flex-column align-items-center gap-1">
-                                    <span class="badge {{ $labelMetode['class'] }}"
-                                          style="cursor:pointer;"
-                                          onclick="lihatDetailPembayaran({{ $item->id }})">
-                                        {{ $labelMetode['text'] }} ℹ️
+                        <th>Kode</th>
+                        <th>Tanggal</th>
+                        <th>Supplier</th>
+                        <th>Gudang</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-end">Kekurangan</th>
+                        <th class="text-center">Pembayaran</th>
+                        <th class="text-center">Barang Diterima</th>
+                        <th class="text-center" style="min-width:160px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pembelian as $item)
+                        @php
+                            // Hitung sisa/kekurangan pembayaran
+                            $total      = (float) $item->total;
+                            if ($item->metode_pembayaran === 'dp') {
+                                if ($item->nominal_dp && $item->nominal_dp > 0) {
+                                    $nominalDp = (float) $item->nominal_dp;
+                                } else {
+                                    $persenDp   = (int) ($item->persen_dp ?? 0);
+                                    $nominalDp  = $persenDp > 0 ? round($total * $persenDp / 100) : 0;
+                                }
+                            } else {
+                                $nominalDp = 0;
+                            }
+    
+                            $kekurangan = match(true) {
+                                // COD atau sudah lunas → tidak ada kekurangan
+                                $item->metode_pembayaran === 'cod' => 0,
+                                $item->is_lunas                    => 0,
+                                // DP: sisa = total - nominal DP
+                                $item->metode_pembayaran === 'dp'  => $total - $nominalDp,
+                                // Termin: full amount belum dibayar
+                                $item->metode_pembayaran === 'termin' => $total,
+                                // Belum dicatat
+                                default => 0,
+                            };
+    
+                            $adaKekurangan = $kekurangan > 0 && !$item->is_lunas;
+                        @endphp
+                        <tr>
+                            <td class="font-monospace" style="font-size:12px;">{{ $item->kode_pembelian }}</td>
+                            <td>{{ \Carbon\Carbon::parse($item->tanggal)->format('d M Y') }}</td>
+                            <td>{{ $item->supplier->nama ?? '-' }}</td>
+                            <td>{{ $item->gudang->nama ?? '-' }}</td>
+    
+                            {{-- TOTAL --}}
+                            <td class="text-end fw-semibold">
+                                Rp {{ number_format($item->total, 0, ',', '.') }}
+                            </td>
+    
+                            {{-- KEKURANGAN --}}
+                            <td class="text-end">
+                                @if(!$item->metode_pembayaran)
+                                    <span class="text-muted" style="font-size:11px;">—</span>
+                                @elseif($item->metode_pembayaran === 'cod' || $item->is_lunas)
+                                    <span class="badge bg-success" style="font-size:11px;">Lunas</span>
+                                @elseif($adaKekurangan)
+                                    <span class="fw-semibold text-danger">
+                                        Rp {{ number_format($kekurangan, 0, ',', '.') }}
                                     </span>
-
-                                    {{-- Tombol Lunasi --}}
-                                    @if($adaKekurangan)
-                                        <button type="button"
-                                                class="btn btn-sm mt-1"
-                                                style="background:#dd7045; color:#fff; font-size:11px; padding:2px 10px; border-radius:6px;"
-                                                onclick="bukaModalLunasi(
-                                                    {{ $item->id }},
-                                                    '{{ $item->kode_pembelian }}',
-                                                    {{ $kekurangan }},
-                                                    '{{ $item->supplier->nama ?? '' }}'
-                                                )">
-                                            <i class="bi bi-cash me-1"></i>Lunasi
-                                        </button>
-                                    @elseif($item->is_lunas && $item->metode_pembayaran !== 'cod')
-                                        <span class="badge bg-success" style="font-size:10px;">✓ Lunas</span>
-                                    @endif
-                                </div>
-                            @else
-                                <button type="button"
-                                        class="btn btn-sm"
-                                        style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;"
-                                        onclick="bukaPembayaran({{ $item->id }}, '{{ $item->kode_pembelian }}', {{ $item->total }})">
-                                    + Catat
-                                </button>
-                            @endif
-                        </td>
-
-                        {{-- BARANG DITERIMA --}}
-                        <td class="text-center">
-                            @if($item->is_diterima)
-                                <div class="d-flex flex-column align-items-center">
-                                    <span class="badge bg-success">✓ Diterima</span>
-                                    <small class="text-muted mt-1" style="font-size:10px;">
-                                        {{ \Carbon\Carbon::parse($item->diterima_at)->format('d M Y') }}
-                                    </small>
-                                </div>
-                            @else
-                                <form action="{{ route('pembelian.terima', $item->id) }}"
-                                      method="POST" class="d-inline"
-                                      onsubmit="return confirm('Konfirmasi penerimaan barang {{ $item->kode_pembelian }}?\nStok akan langsung masuk ke gudang.')">
-                                    @csrf
-                                    <button type="submit"
+                                @else
+                                    <span class="text-muted" style="font-size:11px;">—</span>
+                                @endif
+                            </td>
+    
+                            {{-- PEMBAYARAN --}}
+                            <td class="text-center">
+                                @if($item->metode_pembayaran)
+                                    @php
+                                        $labelMetode = [
+                                            'cod'    => ['text' => 'COD',   'class' => 'bg-success'],
+                                            'dp'     => ['text' => 'DP ' . $item->persen_dp . '%', 'class' => 'bg-info'],
+                                        ][$item->metode_pembayaran];
+                                    @endphp
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        <span class="badge {{ $labelMetode['class'] }}"
+                                              style="cursor:pointer;"
+                                              onclick="lihatDetailPembayaran({{ $item->id }})">
+                                            {{ $labelMetode['text'] }} ℹ️
+                                        </span>
+    
+                                        {{-- Tombol Lunasi --}}
+                                        @if($adaKekurangan)
+                                            <button type="button"
+                                                    class="btn btn-sm mt-1"
+                                                    style="background:#dd7045; color:#fff; font-size:11px; padding:2px 10px; border-radius:6px;"
+                                                    onclick="bukaModalLunasi(
+                                                        {{ $item->id }},
+                                                        '{{ $item->kode_pembelian }}',
+                                                        {{ $kekurangan }},
+                                                        '{{ $item->supplier->nama ?? '' }}'
+                                                    )">
+                                                <i class="bi bi-cash me-1"></i>Lunasi
+                                            </button>
+                                        @elseif($item->is_lunas && $item->metode_pembayaran !== 'cod')
+                                            <span class="badge bg-success" style="font-size:10px;">✓ Lunas</span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <button type="button"
                                             class="btn btn-sm"
-                                            style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;">
-                                        Terima Barang
+                                            style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;"
+                                            onclick="bukaPembayaran({{ $item->id }}, '{{ $item->kode_pembelian }}', {{ $item->total }})">
+                                        + Catat
                                     </button>
-                                </form>
-                            @endif
-                        </td>
-
-                        {{-- AKSI --}}
-                        <td>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <a href="{{ route('pembelian.show', $item->id) }}"
-                                   class="btn btn-sm"
-                                   style="background:#606060; color:#fff; font-size:11px;">
-                                    Detail
-                                </a>
-
-                                @if(!$item->isTerkunci())
-                                    <a href="{{ route('pembelian.edit', $item->id) }}"
-                                       class="btn btn-sm"
-                                       style="background:#606060; color:#fff; font-size:11px;">
-                                        Edit
-                                    </a>
-                                    <form action="{{ route('pembelian.destroy', $item->id) }}"
+                                @endif
+                            </td>
+    
+                            {{-- BARANG DITERIMA --}}
+                            <td class="text-center">
+                                @if($item->is_diterima)
+                                    <div class="d-flex flex-column align-items-center">
+                                        <span class="badge bg-success">✓ Diterima</span>
+                                        <small class="text-muted mt-1" style="font-size:10px;">
+                                            {{ \Carbon\Carbon::parse($item->diterima_at)->format('d M Y') }}
+                                        </small>
+                                    </div>
+                                @else
+                                    <form action="{{ route('pembelian.terima', $item->id) }}"
                                           method="POST" class="d-inline"
-                                          onsubmit="return confirm('Yakin ingin menghapus {{ $item->kode_pembelian }}?')">
+                                          onsubmit="return confirm('Konfirmasi penerimaan barang {{ $item->kode_pembelian }}?\nStok akan langsung masuk ke gudang.')">
                                         @csrf
-                                        @method('DELETE')
                                         <button type="submit"
                                                 class="btn btn-sm"
-                                                style="background:#606060; color:#fff; font-size:11px;">
-                                            Hapus
+                                                style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;">
+                                            Terima Barang
                                         </button>
                                     </form>
-                                @else
-                                    <button class="btn btn-sm" disabled
-                                            style="background:#d0d0d0; color:#888; font-size:11px;">Edit</button>
-                                    <button class="btn btn-sm" disabled
-                                            style="background:#d0d0d0; color:#888; font-size:11px;">Hapus</button>
                                 @endif
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">Belum ada data pembelian.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                            </td>
+    
+                            {{-- AKSI --}}
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap justify-content-center">
+                                    <a href="{{ route('pembelian.show', $item->id) }}"
+                                       class="btn btn-sm"
+                                       style="background:#606060; color:#fff; font-size:11px;">
+                                        Detail
+                                    </a>
+    
+                                    @if(!$item->isTerkunci())
+                                        <a href="{{ route('pembelian.edit', $item->id) }}"
+                                           class="btn btn-sm"
+                                           style="background:#606060; color:#fff; font-size:11px;">
+                                            Edit
+                                        </a>
+                                        <form action="{{ route('pembelian.destroy', $item->id) }}"
+                                              method="POST" class="d-inline"
+                                              onsubmit="return confirm('Yakin ingin menghapus {{ $item->kode_pembelian }}?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="btn btn-sm"
+                                                    style="background:#606060; color:#fff; font-size:11px;">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @else
+                                        <button class="btn btn-sm" disabled
+                                                style="background:#d0d0d0; color:#888; font-size:11px;">Edit</button>
+                                        <button class="btn btn-sm" disabled
+                                                style="background:#d0d0d0; color:#888; font-size:11px;">Hapus</button>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">Belum ada data pembelian.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
         <div class="mt-3">{{ $pembelian->links() }}</div>
 
@@ -256,19 +258,8 @@
                             <div class="d-flex gap-2">
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_cod" value="cod" onchange="toggleFieldPembayaran('cod')">
                                 <label class="btn btn-outline-success" for="opt_cod">COD</label>
-                                <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_termin" value="termin" onchange="toggleFieldPembayaran('termin')">
-                                <label class="btn btn-outline-warning" for="opt_termin">Termin</label>
                                 <input type="radio" class="btn-check" name="metode_pembayaran" id="opt_dp" value="dp" onchange="toggleFieldPembayaran('dp')">
                                 <label class="btn btn-outline-info" for="opt_dp">DP</label>
-                            </div>
-                        </div>
-                        <div id="field_termin" class="d-none mb-3">
-                            <label class="form-label">Jatuh Tempo</label>
-                            <input type="date" name="tanggal_jatuh_tempo" class="form-control">
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="isiJatuhTempo(14)">+14 hari</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="isiJatuhTempo(30)">+30 hari</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="isiJatuhTempo(60)">+60 hari</button>
                             </div>
                         </div>
                         <div id="field_dp" class="d-none">
@@ -380,46 +371,30 @@
             document.getElementById('formPembayaran').action = '/pembelian/' + id + '/catat-pembayaran';
             document.getElementById('infoPembelian').textContent = kode + ' · Total: Rp ' + Number(total).toLocaleString('id-ID');
             document.querySelectorAll('input[name=metode_pembayaran]').forEach(r => r.checked = false);
-            document.getElementById('field_termin').classList.add('d-none');
-            document.getElementById('field_dp').classList.add('d-none');
+            
+            const fieldDp = document.getElementById('field_dp');
+            if (fieldDp) fieldDp.classList.add('d-none');
+            
             document.getElementById('inputPersenDP').value = '';
             document.getElementById('inputNominalDP').value = '';
             document.getElementById('keteranganDP').textContent = '';
             // Reset required
             const tglPelunasan = document.querySelector('#formPembayaran input[name=tanggal_pelunasan]');
-            const tglJatuhTempo = document.querySelector('#formPembayaran input[name=tanggal_jatuh_tempo]');
             if (tglPelunasan) tglPelunasan.removeAttribute('required');
-            if (tglJatuhTempo) tglJatuhTempo.removeAttribute('required');
             new bootstrap.Modal(document.getElementById('modalPembayaran')).show();
         }
 
         function toggleFieldPembayaran(metode) {
-            document.getElementById('field_termin').classList.toggle('d-none', metode !== 'termin');
             document.getElementById('field_dp').classList.toggle('d-none', metode !== 'dp');
 
             const tglPelunasan = document.querySelector('#formPembayaran input[name=tanggal_pelunasan]');
             if (tglPelunasan) {
-                if (metode === 'dp' || metode === 'termin') {
+                if (metode === 'dp') {
                     tglPelunasan.setAttribute('required', 'required');
                 } else {
                     tglPelunasan.removeAttribute('required');
                 }
             }
-
-            const tglJatuhTempo = document.querySelector('#formPembayaran input[name=tanggal_jatuh_tempo]');
-            if (tglJatuhTempo) {
-                if (metode === 'termin') {
-                    tglJatuhTempo.setAttribute('required', 'required');
-                } else {
-                    tglJatuhTempo.removeAttribute('required');
-                }
-            }
-        }
-
-        function isiJatuhTempo(hari) {
-            const tgl = new Date();
-            tgl.setDate(tgl.getDate() + hari);
-            document.querySelector('input[name=tanggal_jatuh_tempo]').value = tgl.toISOString().split('T')[0];
         }
 
         function updateDariPersen() {

@@ -27,6 +27,12 @@
                         </select>
                     </div>
                     <button type="submit" class="bg-indigo-600 text-black px-6 py-2 rounded-md hover:bg-indigo-700 font-medium shadow-sm transition">Tampilkan Laporan</button>
+                    <a href="{{ route('laporan.buku-besar.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium shadow-sm transition no-underline">
+                        📊 Export Excel
+                    </a>
+                    <a href="{{ route('laporan.buku-besar.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md font-medium shadow-sm transition no-underline">
+                        📕 Export PDF
+                    </a>
                     <button type="button" onclick="window.print()" class="bg-gray-100 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-200 transition">Cetak PDF</button>
                 </form>
             </div>

@@ -56,7 +56,7 @@ class KaryawanController extends Controller
             'jabatan'            => 'required|string',
             'jenis_tenaga_kerja' => 'required|string', // Contoh: Tetap, Kontrak, Freelance
             'departemen'         => 'required|string', // Contoh: Produksi, Akuntansi, Penjualan
-            'tanggal_masuk'      => 'nullable|date',
+            'gaji_pokok'         => 'required|numeric|min:0',
         ]);
 
         Karyawan::create($validated);
@@ -82,7 +82,7 @@ class KaryawanController extends Controller
             'jabatan'            => 'required|string',
             'jenis_tenaga_kerja' => 'required|string', // Contoh: Tetap, Kontrak, Freelance
             'departemen'         => 'required|string', // Contoh: Produksi, Akuntansi, Penjualan
-            'tanggal_masuk'      => 'nullable|date',
+            'gaji_pokok'         => 'required|numeric|min:0',
         ]);
 
         $karyawan->update($validated);

@@ -18,7 +18,7 @@
             <div class="row mb-3">
 
                 {{-- SUPPLIER --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
                     <label>Supplier</label>
 
                     <select
@@ -45,7 +45,7 @@
                 </div>
 
                 {{-- GUDANG --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
 
                     <label>Gudang Tujuan</label>
 
@@ -67,7 +67,7 @@
                 </div>
 
                 {{-- TANGGAL --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
                     <label>Tanggal</label>
 
                     <input
@@ -84,125 +84,119 @@
 
             <h5>Detail Barang</h5>
 
-            <table class="table table-bordered" id="table-items">
-
-                <thead>
-                    <tr>
-                        <th>Nama Barang</th>
-                        <th width="120">Qty</th>
-                        <th width="180">Total Harga</th>
-                        <th width="180">Harga / Qty</th>
-                        <th width="220">Batch Number</th>
-                        <th width="80">Aksi</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    <tr class="item-row">
-
-                        {{-- BARANG --}}
-                        <td>
-                            <select
-                                name="items[0][barang_id]"
-                                class="form-control barang-select"
-                                required>
-
-                                <option value="">
-                                    -- Pilih Barang --
-                                </option>
-
-                                @foreach($barangs as $barang)
-                                    <option
-                                        value="{{ $barang->id }}"
-                                        data-kode="{{ $barang->kode_barang }}">
-
-                                        {{ $barang->kode_barang }}
-                                        -
-                                        {{ $barang->nama }}
-
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="table-items">
+    
+                    <thead>
+                        <tr>
+                            <th>Nama Barang</th>
+                            <th width="120">Qty</th>
+                            <th width="180">Total Harga</th>
+                            <th width="180">Harga / Qty</th>
+                            <th width="220">Batch Number</th>
+                            <th width="80">Aksi</th>
+                        </tr>
+                    </thead>
+    
+                    <tbody>
+    
+                        <tr class="item-row">
+    
+                            {{-- BARANG --}}
+                            <td>
+                                <select
+                                    name="items[0][barang_id]"
+                                    class="form-control barang-select"
+                                    required>
+    
+                                    <option value="">
+                                        -- Pilih Barang --
                                     </option>
-                                @endforeach
+    
+                                    @foreach($barangs as $barang)
+                                        <option
+                                            value="{{ $barang->id }}"
+                                            data-kode="{{ $barang->kode_barang }}">
+    
+                                            {{ $barang->kode_barang }} - {{ $barang->nama }}
+    
+                                        </option>
+                                    @endforeach
+    
+                                </select>
+                            </td>
+    
+                            {{-- QTY --}}
+                            <td>
+                                <input
+                                    type="text"
+                                    name="items[0][qty]"
+                                    class="form-control qty-input mask-number"
+                                    required>
+                            </td>
+    
+                            {{-- TOTAL HARGA --}}
+                            <td>
+                                <input
+                                    type="text"
+                                    name="items[0][harga]"
+                                    class="form-control harga-input mask-number"
+                                    required>
+                            </td>
+    
+                            {{-- HARGA PER QTY (display only, tidak dikirim ke server) --}}
+                            <td>
+                                <input
+                                    type="text"
+                                    class="form-control harga-per-qty"
+                                    readonly
+                                    tabindex="-1">
+                            </td>
+    
+                            {{-- BATCH (display only, digenerate ulang di controller) --}}
+                            <td>
+                                <input
+                                    type="text"
+                                    class="form-control batch-number"
+                                    readonly
+                                    tabindex="-1">
+                            </td>
+    
+                            {{-- AKSI --}}
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn btn-danger btn-sm btn-remove">
+    
+                                    X
+    
+                                </button>
+                            </td>
+    
+                        </tr>
+    
+                    </tbody>
+                </table>
+            </div>
 
-                            </select>
-                        </td>
-
-                        {{-- QTY --}}
-                        <td>
-                            <input
-                                type="text"
-                                name="items[0][qty]"
-                                class="form-control qty-input mask-number"
-                                required>
-                        </td>
-
-                        {{-- TOTAL HARGA --}}
-                        <td>
-                            <input
-                                type="text"
-                                name="items[0][harga]"
-                                class="form-control harga-input mask-number"
-                                required>
-                        </td>
-
-                        {{-- HARGA PER QTY (display only, tidak dikirim ke server) --}}
-                        <td>
-                            <input
-                                type="text"
-                                class="form-control harga-per-qty"
-                                readonly
-                                tabindex="-1">
-                        </td>
-
-                        {{-- BATCH (display only, digenerate ulang di controller) --}}
-                        <td>
-                            <input
-                                type="text"
-                                class="form-control batch-number"
-                                readonly
-                                tabindex="-1">
-                        </td>
-
-                        {{-- AKSI --}}
-                        <td>
-                            <button
-                                type="button"
-                                class="btn btn-danger btn-sm btn-remove">
-
-                                X
-
-                            </button>
-                        </td>
-
-                    </tr>
-
-                </tbody>
-            </table>
-
-            <button
-                type="button"
-                class="btn btn-secondary"
-                id="btn-add">
-
-                Tambah Baris
-
-            </button>
-
-            <button
-                type="submit"
-                class="btn btn-primary">
-
-                Simpan Pembelian
-
-            </button>
-
-            <a
-                href="{{ route('pembelian.index') }}"
-                class="btn btn-light">
-
-                Kembali
-
-            </a>
+            <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    id="btn-add">
+                    Tambah Baris
+                </button>
+                <button
+                    type="submit"
+                    class="btn btn-primary">
+                    Simpan Pembelian
+                </button>
+                <a
+                    href="{{ route('pembelian.index') }}"
+                    class="btn btn-light border">
+                    Kembali
+                </a>
+            </div>
         </form>
     </div>
 

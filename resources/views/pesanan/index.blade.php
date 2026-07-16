@@ -19,7 +19,7 @@
         .badge-status-batal { background-color: #fee2e2; color: #b91c1c; }
         
         /* Action Buttons Group Styling */
-        .action-btn-group { display: flex; justify-content: center; align-items: center; gap: 6px; }
+        .action-btn-group { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; }
         .btn-action-base { border-radius: 8px; width: 32px; height: 32px; font-size: 0.85rem; border: none; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.2s; background-color: transparent; }
         
         .btn-action-eye { background-color: #f0f9ff; color: #0369a1 !important; border: 1px solid #e0f2fe; }
@@ -30,6 +30,9 @@
         
         .btn-action-delete { background-color: #fef2f2; color: #b91c1c !important; border: 1px solid #fee2e2; cursor: pointer; }
         .btn-action-delete:hover { background-color: #b91c1c; color: white !important; }
+
+        .btn-action-print { background-color: #f0fdf4; color: #15803d !important; border: 1px solid #dcfce7; }
+        .btn-action-print:hover { background-color: #15803d; color: white !important; }
 
         /* Tombol Bayar Soft Orange */
         .btn-pay-small { 
@@ -62,8 +65,8 @@
                 <h4 class="mb-1 fw-bold text-dark" style="font-weight: 800; letter-spacing: -0.5px;">Data Pesanan & Transaksi</h4>
                 <p class="text-muted mb-0 small"><i class="bi bi-info-circle me-1"></i> Validasi otomatis tombol aksi berdasarkan status alur kerja produksi (Work Order).</p>
             </div>
-            <div class="d-flex gap-2">
-                <form action="{{ route('pesanan.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+            <div class="d-flex gap-2 flex-wrap mt-2 mt-md-0">
+                <form action="{{ route('pesanan.index') }}" method="GET" class="d-flex gap-2 align-items-center flex-wrap">
                     <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no pesanan/customer..." value="{{ request('search') }}" style="width: 220px; border-radius: 8px; border: 1px solid #eaeaea; padding: 7px 12px;">
                     <button type="submit" class="btn btn-sm text-white" style="background-color: #db7946; border-radius: 8px; border: none; padding: 7px 15px; font-weight: 600;">Cari</button>
                     @if(request('search'))
@@ -87,19 +90,19 @@
 
         {{-- SUMMARY CARDS --}}
         <div class="row mb-4 g-3">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
                     <span class="text-secondary mb-1 d-block fw-medium small">Total Order Masuk</span>
                     <h4 class="fw-bold text-dark mb-0">{{ $totalPesanan }} Pesanan</h4>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
                     <span class="text-secondary mb-1 d-block fw-medium small">Dalam Pengerjaan / Pengiriman</span>
                     <h4 class="fw-bold text-warning mb-0">{{ $totalProses }} Transaksi</h4>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="summary-card">
                     <span class="text-secondary mb-1 d-block fw-medium small">Selesai & Lunas</span>
                     <h4 class="fw-bold text-success mb-0">{{ $totalSelesai }} Selesai</h4>
@@ -202,6 +205,11 @@
                                         {{-- 1. TOMBOL DETAIL (Selalu Ada) --}}
                                         <a href="{{ route('pesanan.show', $item->id) }}" class="btn-action-base btn-action-eye" data-bs-toggle="tooltip" title="Lihat Detail">
                                             <i class="bi bi-eye-fill"></i>
+                                        </a>
+
+                                        {{-- TOMBOL PRINT KWITANSI --}}
+                                        <a href="{{ route('pesanan.kwitansi', $item->id) }}" class="btn-action-base btn-action-print" data-bs-toggle="tooltip" title="Cetak Kwitansi" target="_blank">
+                                            <i class="bi bi-printer-fill"></i>
                                         </a>
 
                                         {{-- 2. TOMBOL EDIT (Hanya Muncul Jika Belum Masuk WO) --}}

@@ -7,7 +7,7 @@
         <div class="card mb-4 shadow-sm">
             <div class="card-body">
                 <form method="GET" action="{{ route('laporan.stok-gudang') }}" class="row g-3 align-items-end">
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">GUDANG</label>
                         <select name="gudang_id" class="form-select">
                             <option value="">Semua Gudang</option>
@@ -18,7 +18,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">KATEGORI</label>
                         <select name="kategori_id" class="form-select">
                             <option value="">Semua Kategori</option>
@@ -29,7 +29,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-3">
                         <label class="form-label fw-semibold text-muted" style="font-size:12px;">JENIS BARANG</label>
                         <select name="jenis_utama" class="form-select">
                             <option value="">Semua Jenis</option>
@@ -38,7 +38,7 @@
                             <option value="operational" {{ request('jenis_utama') === 'operational' ? 'selected' : '' }}>Operational</option>
                         </select>
                     </div>
-                    <div class="col-md-3 d-flex gap-2 align-items-end">
+                    <div class="col-12 col-md-3 d-flex gap-2 align-items-end">
                         <button type="submit" class="btn text-white px-3" style="background-color: #d88656; border: none;">
                             <i class="bi bi-search me-1"></i> Tampilkan
                         </button>
@@ -57,7 +57,7 @@
 
         {{-- ── SUMMARY CARDS ── --}}
         <div class="row g-3 mb-4 align-items-stretch">
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
                 <div class="card h-100 border-0 shadow-sm" style="background:#d88656; color:white;">
                     <div class="card-body d-flex flex-column justify-content-center">
                         <div style="font-size:11px; opacity:.9; text-transform:uppercase; letter-spacing:1px;">Total Item Barang</div>
@@ -66,7 +66,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-8">
+            <div class="col-12 col-md-8">
                 <div class="card border-danger h-100 shadow-sm">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3" style="border-bottom: 1px solid #f5c2c7;">
                         <div class="text-danger fw-bold d-flex align-items-center">
@@ -77,27 +77,29 @@
                         </a>
                     </div>
                     <div class="card-body p-0">
-                        <table class="table table-hover align-middle mb-0" style="font-size:13px;">
-                            <tbody>
-                                @forelse($stokKritis as $kritis)
-                                <tr>
-                                    <td class="ps-4 fw-medium">{{ $kritis->nama_barang }}</td>
-                                    <td class="text-end pe-4">
-                                        <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
-                                            {{ number_format($kritis->jumlah, 2) }} {{ $kritis->satuan }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="2" class="text-center py-4 text-muted">
-                                        <i class="bi bi-check-circle text-success fs-4 d-block mb-1"></i>
-                                        Semua stok dalam kondisi aman
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                                <tbody>
+                                    @forelse($stokKritis as $kritis)
+                                    <tr>
+                                        <td class="ps-4 fw-medium">{{ $kritis->nama_barang }}</td>
+                                        <td class="text-end pe-4">
+                                            <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger-subtle">
+                                                {{ number_format($kritis->jumlah, 2) }} {{ $kritis->satuan }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="2" class="text-center py-4 text-muted">
+                                            <i class="bi bi-check-circle text-success fs-4 d-block mb-1"></i>
+                                            Semua stok dalam kondisi aman
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

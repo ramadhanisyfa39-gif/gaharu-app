@@ -564,7 +564,8 @@ class PengeluaranBahanBakuController extends Controller
                             $coaCode = $isOperational ? '1302' : '1301';
                             $idPersediaan = DB::table('chart_of_accounts')->where('kode', $coaCode)->value('id') ?? ($isOperational ? 20 : 19);
                             
-                            $idBebanSelisih = DB::table('chart_of_accounts')->where('kode', '5104')->value('id') 
+                            $idBebanSelisih = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
+                                ?? DB::table('chart_of_accounts')->where('kode', '5104')->value('id') 
                                 ?? DB::table('chart_of_accounts')->where('kode', '5103')->value('id') 
                                 ?? 44;
 

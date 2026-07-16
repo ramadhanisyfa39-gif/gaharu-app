@@ -5,25 +5,31 @@
                 <h4 class="fw-bold m-0" style="color:#9c4f18; font-size: 1.25rem;">Dashboard Operasional</h4>
                 <small class="text-muted" style="font-size: 0.7rem;">Ringkasan aktivitas ERP Gaharu</small>
             </div>
+            @if(in_array(auth()->user()->role->nama ?? '', ['Kepala Outlet Gaharu', 'Direktur Keuangan', 'Super Admin', 'Administrator']))
+                <a href="{{ route('dashboard.keuangan') }}" class="btn text-white fw-bold d-flex align-items-center gap-1.5 transition" style="background-color: #9c4f18; border-radius: 6px; font-size: 0.75rem; padding: 6px 12px;">
+                    <i class="bi bi-wallet2"></i> Buka Dashboard Keuangan
+                </a>
+            @endif
         </div>
     </x-slot>
 
     <div class="container-fluid px-3 py-2">
 
-        {{-- BARIS 1: MINI SUMMARY FINANSIAL --}}
-        <div class="row gx-3 mb-2">
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm" style="border-left: 3px solid #9c4f18 !important; background: #fff;">
+        {{-- BARIS 1: DYNAMIC MINI SUMMARY CARDS --}}
+        <div class="row gx-3 mb-3">
+            <div class="col-md-3 mb-2 mb-md-0">
+                <div class="card border-0 shadow-sm" style="border-left: 3px solid #9c4f18 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Nilai Inventory Saat Ini</div>
                         <h4 class="fw-bold m-0" style="color:#9c4f18; font-size: 1.2rem;">Rp {{ number_format($inventoryValue, 0, ',', '.') }}</h4>
-                        <small class="text-muted opacity-75" style="font-size: 0.65rem;">Berdasarkan FIFO Batch</small>
+                        <small class="text-muted opacity-75" style="font-size: 0.65rem;">Berdasarkan FIFO Gudang</small>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
-                <div class="card border-0 shadow-sm" style="border-left: 3px solid #d88656 !important; background: #fff;">
+            @if($hasPurchaseAccess)
+            <div class="col-md-3 mb-2 mb-md-0">
+                <div class="card border-0 shadow-sm" style="border-left: 3px solid #d88656 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Pembelian Bulan Ini</div>
                         <h4 class="fw-bold m-0" style="color:#d88656; font-size: 1.2rem;">Rp {{ number_format($pembelianBulanIni, 0, ',', '.') }}</h4>
@@ -31,27 +37,100 @@
                     </div>
                 </div>
             </div>
-        </div>
+            @endif
 
-        {{-- BARIS 2: UTAMA (GRAFIK & TABEL DI KIRI, STOK KRITIS DI KANAN) --}}
-        <div class="row gx-3">
-            
-            {{-- SEKTOR KIRI: GRAFIK & DATA INSIGHT (COL-LG-8) --}}
-            <div class="col-lg-8 d-flex flex-column gap-2">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-2.5">
-                        <h6 class="fw-bold mb-1" style="color:#9c4f18; font-size: 0.8rem;">Tren Pembelian 7 Hari Terakhir</h6>
-                        <div style="position: relative; height: 135px; width:100%;">
-                            <canvas id="grafikPembelian"></canvas>
-                        </div>
+            @if($hasB2bAccess)
+            <div class="col-md-3 mb-2 mb-md-0">
+                <div class="card border-0 shadow-sm" style="border-left: 3px solid #28a745 !important; background: #fff; height: 100%;">
+                    <div class="card-body p-2 px-3">
+                        <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Total Pesanan B2B</div>
+                        <h4 class="fw-bold m-0" style="color:#28a745; font-size: 1.2rem;">{{ number_format($totalPesanan, 0) }} Pesanan</h4>
+                        <small class="text-muted" style="font-size: 0.65rem;">Pesanan terdaftar di sistem</small>
                     </div>
                 </div>
+            </div>
+            @endif
 
-                <div class="row gx-2">
-                    <div class="col-sm-6">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm" style="border-left: 3px solid #17a2b8 !important; background: #fff; height: 100%;">
+                    <div class="card-body p-2 px-3">
+                        <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Total Varian Barang</div>
+                        <h4 class="fw-bold m-0" style="color:#17a2b8; font-size: 1.2rem;">{{ number_format($totalProduk, 0) }} Item</h4>
+                        <small class="text-muted" style="font-size: 0.65rem;">Katalog barang aktif</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- BARIS 2: DATA CHARTS & STATS --}}
+        <div class="row gx-3">
+            
+            {{-- SEKTOR KIRI: CHART GRID --}}
+            <div class="col-lg-8 d-flex flex-column gap-3">
+                
+                {{-- ROW CHARTS 1: POS & B2B --}}
+                <div class="row gx-3">
+                    <div class="col-md-6 mb-3 mb-md-0">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-2.5">
-                                <h6 class="fw-bold mb-1.5 text-dark" style="font-size: 0.8rem;">📦 Kuantitas Bahan Terbanyak (Top 3)</h6>
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-1" style="color:#9c4f18; font-size: 0.8rem;">📈 Tren Penjualan POS (7 Hari Terakhir)</h6>
+                                <div style="position: relative; height: 160px; width:100%;">
+                                    <canvas id="grafikPos"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($hasB2bAccess)
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-1" style="color:#28a745; font-size: 0.8rem;">💼 Tren Penjualan B2B (7 Hari Terakhir)</h6>
+                                <div style="position: relative; height: 160px; width:100%;">
+                                    <canvas id="grafikB2b"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- ROW CHARTS 2: PEMBELIAN & PRODUKSI --}}
+                <div class="row gx-3">
+                    @if($hasPurchaseAccess)
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-1" style="color:#d88656; font-size: 0.8rem;">🛒 Tren Pembelian Bahan (7 Hari Terakhir)</h6>
+                                <div style="position: relative; height: 160px; width:100%;">
+                                    <canvas id="grafikPembelian"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($hasProductionAccess)
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-1" style="color:#17a2b8; font-size: 0.8rem;">⚙ Status Produksi (Work Order)</h6>
+                                <div style="position: relative; height: 160px; width:100%;" class="d-flex align-items-center justify-content-center">
+                                    <canvas id="grafikProduksi" style="max-height: 150px; max-width: 150px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- STATS SUMMARY (BAHAN & SUPPLIERS) --}}
+                @if($hasPurchaseAccess)
+                <div class="row gx-3">
+                    <div class="col-sm-6 mb-3 mb-sm-0">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-2 text-dark" style="font-size: 0.8rem;">📦 Kuantitas Bahan Terbanyak (Top 3)</h6>
                                 <div class="table-responsive rounded border">
                                     <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.72rem;">
                                         <thead style="background-color: #f8f9fa !important; border-bottom: 1px solid #dee2e6;">
@@ -61,7 +140,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse((($bahanSeringDibeli ?? [])->take(3)) as $bahan)
+                                            @forelse($bahanSeringDibeli as $bahan)
                                                 <tr>
                                                     <td class="ps-2 py-1 fw-medium text-dark text-truncate" style="max-width: 130px;">{{ $bahan->nama }}</td>
                                                     <td class="pe-2 py-1 text-end fw-bold text-dark">
@@ -82,8 +161,8 @@
 
                     <div class="col-sm-6">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body p-2.5">
-                                <h6 class="fw-bold mb-1.5 text-dark" style="font-size: 0.8rem;">🏆 Supplier Teratas (Top 3)</h6>
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-2 text-dark" style="font-size: 0.8rem;">🏆 Supplier Teratas (Top 3)</h6>
                                 <div class="table-responsive rounded border">
                                     <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.72rem;">
                                         <thead style="background-color: #f8f9fa !important; border-bottom: 1px solid #dee2e6;">
@@ -93,7 +172,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse((($supplierTeratas ?? [])->take(3)) as $supplier)
+                                            @forelse($supplierTeratas as $supplier)
                                                 <tr>
                                                     <td class="ps-2 py-1 fw-medium text-dark text-truncate" style="max-width: 120px;">{{ $supplier->nama }}</td>
                                                     <td class="pe-2 py-1 text-end fw-bold text-success">
@@ -112,13 +191,14 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
 
-            {{-- SEKTOR KANAN: BARANG HAMPIR HABIS VERTIKAL (COL-LG-4) --}}
-            <div class="col-lg-4">
+            {{-- SEKTOR KANAN: BARANG HAMPIR HABIS --}}
+            <div class="col-lg-4 mt-3 mt-lg-0">
                 <div class="card border-0 shadow-sm h-100 d-flex flex-column justify-content-between">
-                    <div class="card-body p-2.5">
-                        <div class="d-flex justify-content-between align-items-center mb-1.5">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold m-0" style="color:#dc3545; font-size: 0.8rem;">
                                 ⚠ Stok Kritis (Maksimal 5)
                             </h6>
@@ -126,7 +206,7 @@
                         </div>
 
                         <div class="list-group list-group-flush border rounded border-bottom-0">
-                            @forelse(($barangHampirHabis ?? []) as $item)
+                            @forelse($barangHampirHabis as $item)
                                 <div class="d-flex justify-content-between align-items-center p-2 border-bottom bg-white">
                                     <span class="text-dark fw-medium text-truncate small" style="max-width: 170px;" title="{{ $item->nama }}">
                                         {{ $item->nama }}
@@ -143,11 +223,13 @@
                         </div>
                     </div>
                     
-                    <div class="card-footer bg-transparent border-0 p-2.5 pt-0">
+                    @if($hasPurchaseAccess)
+                    <div class="card-footer bg-transparent border-0 p-3 pt-0">
                         <a href="{{ url('/pembelian') }}" class="btn w-100 text-white fw-semibold py-1.5 transition shadow-sm d-flex align-items-center justify-content-center gap-1" style="background-color: #9c4f18; border-radius: 6px; font-size: 0.75rem;">
                             <i class="bi bi-cart-plus"></i> Buat Pesanan Pembelian (Restock)
                         </a>
                     </div>
+                    @endif
                 </div>
             </div>
 
@@ -157,8 +239,78 @@
     {{-- SCRIPTS GRAPH --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const ctx = document.getElementById('grafikPembelian');
-        new Chart(ctx, {
+        // Chart Penjualan POS
+        const ctxPos = document.getElementById('grafikPos');
+        new Chart(ctxPos, {
+            type: 'line',
+            data: {
+                labels: @json($labelsPos),
+                datasets: [{
+                    data: @json($dataPos),
+                    borderColor: '#9c4f18',
+                    backgroundColor: 'rgba(156,79,24,0.05)',
+                    tension: 0.3,
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 2.5,
+                    pointBackgroundColor: '#9c4f18'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 9.5 } },
+                        grid: { color: 'rgba(0, 0, 0, 0.03)' }
+                    },
+                    x: {
+                        ticks: { font: { size: 9.5 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Chart Penjualan B2B
+        @if($hasB2bAccess)
+        const ctxB2b = document.getElementById('grafikB2b');
+        new Chart(ctxB2b, {
+            type: 'bar',
+            data: {
+                labels: @json($labelsB2b),
+                datasets: [{
+                    data: @json($dataB2b),
+                    backgroundColor: '#28a745',
+                    borderRadius: 4,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 9.5 } },
+                        grid: { color: 'rgba(0, 0, 0, 0.03)' }
+                    },
+                    x: {
+                        ticks: { font: { size: 9.5 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+        @endif
+
+        // Chart Pembelian
+        @if($hasPurchaseAccess)
+        const ctxPembelian = document.getElementById('grafikPembelian');
+        new Chart(ctxPembelian, {
             type: 'line',
             data: {
                 labels: @json($labelsPembelian),
@@ -190,5 +342,32 @@
                 }
             }
         });
+        @endif
+
+        // Chart Produksi (Pie/Doughnut)
+        @if($hasProductionAccess)
+        const ctxProduksi = document.getElementById('grafikProduksi');
+        new Chart(ctxProduksi, {
+            type: 'doughnut',
+            data: {
+                labels: {!! json_encode(array_keys($productionStatus)) !!},
+                datasets: [{
+                    data: {!! json_encode(array_values($productionStatus)) !!},
+                    backgroundColor: ['#6c757d', '#ffc107', '#28a745', '#dc3545'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 8.5 } }
+                    }
+                }
+            }
+        });
+        @endif
     </script>
 </x-app-layout>

@@ -57,12 +57,18 @@
     </div>
 
     <h6 class="border-bottom pb-2 font-weight-bold">Ringkasan Pesanan</h6>
-    <div class="d-flex justify-content-between mb-4">
-        <span>Total Nilai Pesanan:</span>
-        <strong class="fs-5">Rp {{ number_format($pesanan->total_pesanan, 0, ',', '.') }}</strong>
+    <div class="row mb-4">
+        <div class="col-6 text-secondary">Dasar Pengenaan Pajak (DPP):</div>
+        <div class="col-6 text-end">Rp {{ number_format($pesanan->total_pesanan, 0, ',', '.') }}</div>
+        
+        <div class="col-6 text-secondary">PPN (10%):</div>
+        <div class="col-6 text-end">Rp {{ number_format($pesanan->total_pesanan * 0.10, 0, ',', '.') }}</div>
+        
+        <div class="col-6 fw-bold border-top pt-2">Grand Total (Termasuk PPN):</div>
+        <div class="col-6 text-end fw-bold border-top pt-2 fs-5 text-primary">Rp {{ number_format($pesanan->total_pesanan * 1.10, 0, ',', '.') }}</div>
     </div>
 
-    <h6 class="border-bottom pb-2 font-weight-bold">Riwayat Pembayaran</h6>
+    <h6 class="border-bottom pb-2 font-weight-bold">Riwayat Pembayaran (Termasuk PPN)</h6>
     <table class="table table-sm mb-4">
         <thead class="table-light">
             <tr>
@@ -80,7 +86,7 @@
                     <td>{{ date('d M Y', strtotime($bayar->tanggal_bayar)) }}</td>
                     <td>{{ $bayar->metode_pembayaran }}</td>
                     <td>{{ $bayar->catatan ?? '-' }}</td>
-                    <td class="text-end text-success fw-bold">Rp {{ number_format($bayar->jumlah_bayar, 0, ',', '.') }}</td>
+                    <td class="text-end text-success fw-bold">Rp {{ number_format($bayar->jumlah_bayar * 1.10, 0, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
@@ -91,10 +97,12 @@
         <tfoot>
             <tr>
                 <td colspan="3" class="text-end fw-bold">Total Telah Dibayar:</td>
-                <td class="text-end fw-bold text-success border-top">Rp {{ number_format($totalTelahDibayar, 0, ',', '.') }}</td>
+                <td class="text-end fw-bold text-success border-top">Rp {{ number_format($totalTelahDibayar * 1.10, 0, ',', '.') }}</td>
             </tr>
             @php 
-                $sisaTagihan = $pesanan->total_pesanan - $totalTelahDibayar; 
+                $grandTotal = $pesanan->total_pesanan * 1.10;
+                $totalTelahDibayarPpn = $totalTelahDibayar * 1.10;
+                $sisaTagihan = $grandTotal - $totalTelahDibayarPpn; 
             @endphp
             <tr>
                 <td colspan="3" class="text-end fw-bold">Sisa Tagihan:</td>

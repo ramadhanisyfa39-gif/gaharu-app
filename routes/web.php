@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // AKSES UMUM (Bisa diakses oleh semua user yang sudah login)
     // =========================================================================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard-keuangan', [DashboardController::class, 'keuangan'])->name('dashboard.keuangan');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -71,7 +72,7 @@ Route::middleware('auth')->group(function () {
 
     // =========================================================================
     // 2. GROUP GAHARU & KEJINGGA
-    // Hak Akses: Resep, Harga POS, Transaksi POS, dan Laporan B2B/Penjualan
+    // Hak Akses: Resep, Harga POS, Transaksi POS
     // =========================================================================
     Route::middleware(['role:Kepala Outlet Gaharu,Kepala Outlet Kejingga'])->group(function () {
         Route::resource('resep', ResepBtklBopController::class);
@@ -81,7 +82,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/resep-bahan/{id}', [ResepBahanBakuController::class, 'destroy'])->name('resep.bahan.destroy');
 
         // Harga Barang POS
-        Route::get('/harga-barang-pos/{id?}', [HargaBarangPosController::class, 'index'])->name('harga.index');
+        Route::get('/harga-barang-pos', [HargaBarangPosController::class, 'index'])->name('harga.index');
+        Route::get('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'show'])->name('harga.show');
         Route::post('/harga-barang-pos/store', [HargaBarangPosController::class, 'store'])->name('harga.store');
         Route::put('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'update'])->name('harga.update');
         Route::delete('/harga-barang-pos/{id}', [HargaBarangPosController::class, 'destroy'])->name('harga.destroy');
@@ -91,20 +93,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/penjualan_pos/get-harga/{produk_id}', [PenjualanPosController::class, 'getHargaAktif'])->name('penjualan_pos.get-harga');
         Route::resource('penjualan_pos', PenjualanPosController::class);
         Route::resource('penjualanpos-detail', PenjualanPosDetailController::class);
+    });
 
-        // Laporan B2B Sales (dipakai bersama oleh Gaharu & Kejingga)
+    // Laporan B2B Sales (diakses oleh Gaharu, Kejingga, dan Direktur Keuangan)
+    Route::middleware(['role:Kepala Outlet Gaharu,Kepala Outlet Kejingga,Direktur Keuangan'])->group(function () {
         Route::get('/laporan-penjualan', [LaporanPenjualanController::class, 'index'])->name('laporan.penjualan');
     });
 
 
     // =========================================================================
-    // 3. GROUP GAHARU EKSKLUSIF (MANAJEMEN & FINANCE)
-    // Hak Akses: Pelanggan, Supplier, COA, B2B, Finance/Jurnal, Laporan Keuangan
+    // 3. GROUP GAHARU EKSKLUSIF (MANAJEMEN & B2B)
+    // Hak Akses: Pelanggan, B2B
     // =========================================================================
     Route::middleware(['role:Kepala Outlet Gaharu'])->group(function () {
         Route::resource('customer', CustomerController::class)->names('customer');
-        Route::resource('suppliers', SupplierController::class)->names('suppliers');
-        Route::resource('coa', CoaController::class)->names('coa');
 
         // Pesanan B2B
         Route::resource('pesanan', PesananController::class)->names('pesanan');
@@ -112,21 +114,31 @@ Route::middleware('auth')->group(function () {
         Route::post('/pesanan/{id}/pembayaran', [PesananController::class, 'simpanPembayaran'])->name('pesanan.bayar');
         Route::get('/pesanan/{id}/kwitansi', [PesananController::class, 'kwitansi'])->name('pesanan.kwitansi');
         Route::post('/pesanan/{id}/batal', [PesananController::class, 'batal'])->name('pesanan.batal');
+    });
 
-        // Laporan Sales eksklusif Gaharu
+    // Supplier (diakses oleh Gaharu & Kepala Gudang)
+    Route::middleware(['role:Kepala Outlet Gaharu,Kepala Gudang'])->group(function () {
+        Route::resource('suppliers', SupplierController::class)->names('suppliers');
+    });
+
+
+    // =========================================================================
+    // 3C. GROUP FINANCE & REPORTS (GAHARU & DIREKTUR KEUANGAN)
+    // =========================================================================
+    Route::middleware(['role:Kepala Outlet Gaharu,Direktur Keuangan'])->group(function () {
+        Route::resource('coa', CoaController::class)->names('coa');
+
+        // Laporan Sales & HPP
         Route::get('/laporan-penjualan-pos', [LaporanPenjualanPosController::class, 'index'])->name('penjualan_pos.laporan');
         Route::get('/laporan-produksi/hpp', [LaporanProduksiController::class, 'hpp'])->name('laporan.hpp');
 
         // Jurnal / Finance
         Route::get('/coa/get-name/{id}', [JurnalController::class, 'getCoaName'])->name('coa.getName');
         Route::resource('jurnal', JurnalController::class);
-
         Route::post('/jurnal/approve-batch', [JurnalController::class, 'approveBatch'])->name('jurnal.approve_batch');
-
 
         // Closing & Adjustment
         Route::get('closing', [JurnalController::class, 'closingPage'])->name('closing.index');
-        // Route::post('closing', [JurnalController::class, 'closePeriod'])->name('closing.create');
         Route::post('/jurnal-closing', [JurnalController::class, 'closePeriod'])->name('closing.store');
         Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
         Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
@@ -147,7 +159,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-penggajian/show/{id}', [JurnalController::class, 'penggajianShow'])->name('jurnal-penggajian.show');
 
         Route::get('/penggajian/periode', [PenggajianController::class, 'periodeDetail'])->name('penggajian.show-periode');
-
         Route::post('/penggajian/ajukan-approval', [PenggajianController::class, 'ajukanApproval'])->name('penggajian.ajukanApproval');
         Route::post('/penggajian/approve', [PenggajianController::class, 'approve'])->name('penggajian.approve');
         Route::post('/penggajian/kirim-jurnal', [PenggajianController::class, 'kirimJurnalUmum'])->name('penggajian.kirimJurnalUmum');
@@ -157,12 +168,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-produksi/create/{id}', [JurnalController::class, 'produksiCreate'])->name('jurnal-produksi.create');
         Route::post('/jurnal-produksi/store/{id}', [JurnalController::class, 'produksiStore'])->name('jurnal-produksi.store');
         Route::get('/jurnal-produksi/show/{id}', [JurnalController::class, 'produksiShow'])->name('jurnal-produksi.show');
-
-        // Jurnal Penjualan POS
-        Route::get('/jurnal-penjualanpos', [JurnalController::class, 'penjualanposIndex'])->name('jurnal-penjualanpos.index');
-        Route::get('/jurnal-penjualanpos/create/{id}', [JurnalController::class, 'penjualanposCreate'])->name('jurnal-penjualanpos.create');
-        Route::post('/jurnal-penjualanpos/store/{id}', [JurnalController::class, 'penjualanposStore'])->name('jurnal-penjualanpos.store');
-        Route::get('/jurnal-penjualanpos/show/{id}', [JurnalController::class, 'penjualanposShow'])->name('jurnal-penjualanpos.show');
 
         // Jurnal Penjualan B2B
         Route::get('/jurnal-penjualanb2b', [JurnalController::class, 'penjualanb2bIndex'])->name('jurnal-penjualanb2b.index');
@@ -185,10 +190,18 @@ Route::middleware('auth')->group(function () {
         });
     });
 
+    // Jurnal Penjualan POS (Gaharu, Kejingga, Direktur Keuangan)
+    Route::middleware(['role:Kepala Outlet Gaharu,Kepala Outlet Kejingga,Direktur Keuangan'])->group(function () {
+        Route::get('/jurnal-penjualanpos', [JurnalController::class, 'penjualanposIndex'])->name('jurnal-penjualanpos.index');
+        Route::get('/jurnal-penjualanpos/create/{id}', [JurnalController::class, 'penjualanposCreate'])->name('jurnal-penjualanpos.create');
+        Route::post('/jurnal-penjualanpos/store/{id}', [JurnalController::class, 'penjualanposStore'])->name('jurnal-penjualanpos.store');
+        Route::get('/jurnal-penjualanpos/show/{id}', [JurnalController::class, 'penjualanposShow'])->name('jurnal-penjualanpos.show');
+    });
+
 
     // =========================================================================
     // 4. GROUP PRODUKSI
-    // Hak Akses: Work Order, Pengeluaran Bahan, Barang Jadi, Pengiriman,  Lap. Produksi
+    // Hak Akses: Work Order, Pengeluaran Bahan, Barang Jadi
     // =========================================================================
     Route::middleware(['role:Bagian Produksi'])->group(function () {
         Route::prefix('work-order')->name('wo.')->group(function () {
@@ -204,36 +217,39 @@ Route::middleware('auth')->group(function () {
             Route::post('/{id}/kirim-produksi', [WorkOrderController::class, 'kirimKeProduksi'])->name('kirim_produksi');
         });
 
-        Route::get('/laporan-produksi/dashboard', [LaporanProduksiController::class, 'dashboard'])->name('laporan.produksi.dashboard');
         Route::get('/produksi', [ProduksiController::class, 'index'])->name('produksi.index');
         Route::get('/produksi/create', [ProduksiController::class, 'create'])->name('produksi.create');
         Route::post('/produksi', [ProduksiController::class, 'store'])->name('produksi.store');
         Route::get('/produksi/get-wo-detail/{id}', [ProduksiController::class, 'getWoDetail'])->name('produksi.getWoDetail');
         Route::resource('produksi', ProduksiController::class);
         Route::post('/produksi/{id}/approve', [ProduksiController::class, 'approve'])->name('produksi.approve');
-         
-        // Pengiriman
-         Route::get('/pengiriman', [PengirimanController::class, 'index'])->name('pengiriman.index');
-         Route::get('/pengiriman/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
-         Route::post('/pengiriman/store', [PengirimanController::class, 'store'])->name('pengiriman.store');
-         Route::get('/pengiriman/pesanan-detail/{id}', [PengirimanController::class, 'getPesananDetail'])->name('pengiriman.pesanan-detail');
-         Route::resource('pengiriman', PengirimanController::class);
-         Route::post('pengiriman/{id}/approve', [PengirimanController::class, 'approve'])->name('pengiriman.approve');
-        
+    });
 
+    // Pengiriman / Delivery (diakses oleh Produksi & Kepala Outlet Gaharu)
+    Route::middleware(['role:Bagian Produksi,Kepala Outlet Gaharu'])->group(function () {
+        Route::get('/pengiriman', [PengirimanController::class, 'index'])->name('pengiriman.index');
+        Route::get('/pengiriman/create', [PengirimanController::class, 'create'])->name('pengiriman.create');
+        Route::post('/pengiriman/store', [PengirimanController::class, 'store'])->name('pengiriman.store');
+        Route::get('/pengiriman/pesanan-detail/{id}', [PengirimanController::class, 'getPesananDetail'])->name('pengiriman.pesanan-detail');
+        Route::resource('pengiriman', PengirimanController::class);
+        Route::post('pengiriman/{id}/approve', [PengirimanController::class, 'approve'])->name('pengiriman.approve');
+    });
+
+    // Laporan Produksi Dashboard & Rekapitulasi (Produksi, Gaharu, Direktur Keuangan)
+    Route::middleware(['role:Bagian Produksi,Kepala Outlet Gaharu,Direktur Keuangan'])->group(function () {
+        Route::get('/laporan-produksi/dashboard', [LaporanProduksiController::class, 'dashboard'])->name('laporan.produksi.dashboard');
         Route::get('/laporan-produksi/rekapitulasi', [LaporanProduksiController::class, 'rekapitulasi'])->name('laporan.rekapitulasi');
     });
 
 
     // =========================================================================
-    // 5. GROUP KEPALA GUDANG
-    // Hak Akses: Master Gudang, Pembelian, Stok Gudang, Stock Opname,
-    // Lap. Persediaan / Inventory
+    // 5. GROUP KEPALA GUDANG & KEPALA OUTLET GAHARU
+    // Hak Akses: Master Gudang, Pembelian, Stok Gudang, Stock Opname
     // =========================================================================
-    Route::middleware(['role:Kepala Gudang'])->group(function () {
+    Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu'])->group(function () {
         Route::resource('gudangs', GudangController::class)->names('gudangs');
 
-        Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve'); //post jadi get baruu
+        Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
         Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
 
         Route::post('pembelian/{pembelian}/terima', [PembelianController::class, 'terima'])->name('pembelian.terima');
@@ -254,8 +270,10 @@ Route::middleware('auth')->group(function () {
         Route::resource('stock-opname', StockOpnameController::class);
         Route::get('stock-opname/{id}/approve', [StockOpnameController::class, 'approve'])->name('stock-opname.approve');
         Route::get('stock-opname/{id}/detail-json', [StockOpnameController::class, 'detailJson'])->name('stock-opname.detail-json');
+    });
 
-        // Laporan Persediaan / Inventory
+    // Laporan Persediaan / Inventory (Kepala Gudang, Kepala Outlet Gaharu, Direktur Keuangan)
+    Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu,Direktur Keuangan'])->group(function () {
         Route::get('/reports/inventory', [ReportInventoryController::class, 'index'])->name('reports.inventory');
         Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/pembelian', [LaporanPersediaanController::class, 'pembelian'])->name('pembelian');
@@ -268,13 +286,16 @@ Route::middleware('auth')->group(function () {
 
     // =========================================================================
     // 6. GROUP HRD
-    // Hak Akses: Master Data Karyawan, User, Role, Penggajian
+    // Hak Akses: Master Data Karyawan, User, Role
     // =========================================================================
     Route::middleware(['role:HRD'])->group(function () {
         Route::resource('roles', RoleController::class);
         Route::resource('users', UserController::class);
         Route::resource('karyawan', KaryawanController::class)->names('karyawan');
+    });
 
+    // Payroll (HRD & Direktur Keuangan)
+    Route::middleware(['role:HRD,Direktur Keuangan'])->group(function () {
         Route::resource('penggajian', PenggajianController::class);
         Route::get('/penggajian/create', [PenggajianController::class, 'create'])->name('penggajian.create');
         Route::get('/penggajian/periode/{periode}', [PenggajianController::class, 'showPeriode'])->name('penggajian.periode');
@@ -284,8 +305,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/penggajian/periode/{periode}/journal', [PenggajianController::class, 'sendToJournal'])->name('penggajian.journal');
         Route::delete('/penggajian/{penggajian}', [PenggajianController::class, 'destroy'])->name('penggajian.destroy');
     });
-
-    Route::resource('penggajian', PenggajianController::class);
     });
 
 

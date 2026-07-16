@@ -43,7 +43,7 @@
 
             <div class="row g-3 mb-4">
                 {{-- DROPDOWN PILIH PESANAN --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="form-label fw-bold text-dark small">Pilih Nomor Pesanan (B2B)</label>
                     <select name="pesanan_id" id="pesanan_select" class="form-select" required>
                         <option value="">-- Pilih Nomor Pesanan --</option>
@@ -57,18 +57,18 @@
                 </div>
                 
                 {{-- DIISI OTOMATIS OLEH JAVASCRIPT --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="form-label fw-bold text-muted small">Nama Customer</label>
                     <input type="text" id="customer_nama" class="form-control bg-light" placeholder="Pilih pesanan terlebih dahulu" readonly>
                 </div>
             </div>
 
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="form-label fw-bold text-dark small">Tanggal Pengiriman</label>
                     <input type="date" name="tanggal_pengiriman" class="form-control" value="{{ date('Y-m-d') }}" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="form-label fw-bold text-dark small">Kurir / Sopir Ekspedisi</label>
                     <input type="text" name="kurir" class="form-control" placeholder="Contoh: Budi - Mobil Box" required>
                 </div>
@@ -94,7 +94,7 @@
                 </table>
             </div>
 
-            <div class="text-end mt-4">
+            <div class="d-flex flex-column flex-sm-row justify-content-sm-end gap-2 mt-4">
                 <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm" onclick="return confirm('Konfirmasi rilis surat jalan?')">
                     <i class="bi bi-file-earmark-check me-2"></i>Rilis & Cetak Surat Jalan
                 </button>

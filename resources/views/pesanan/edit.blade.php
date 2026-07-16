@@ -95,17 +95,17 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 col-md-4 mb-3">
                         <label class="form-label">Tanggal Transaksi</label>
                         <input type="datetime-local" name="tanggal" class="form-control" value="{{ date('Y-m-d\TH:i', strtotime($pesanan->tanggal)) }}" required>
                     </div>
 
-                    <div class="col-md-4 mb-3">
+                    <div class="col-12 col-md-4 mb-3">
                         <label class="form-label">Estimasi Tanggal Produksi</label>
                         <input type="date" name="estimasi_produksi" class="form-control" value="{{ $pesanan->estimasi_produksi }}">
                     </div>
 
-                    <div class="col-md-4 mb-4">
+                    <div class="col-12 col-md-4 mb-4">
                         <label class="form-label">Estimasi Kirim</label>
                         <input type="datetime-local" name="estimasi_kirim" class="form-control" value="{{ date('Y-m-d\TH:i', strtotime($pesanan->estimasi_kirim)) }}" required>
                     </div>
@@ -214,12 +214,11 @@
 
                 </div>
 
-                <button type="submit"
-                        class="btn btn-primary rounded-3">
-
-                    Update Pesanan
-
-                </button>
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <button type="submit" class="btn btn-primary rounded-3">
+                        Update Pesanan
+                    </button>
+                </div>
 
             </form>
 

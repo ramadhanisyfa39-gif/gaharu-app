@@ -105,6 +105,12 @@
                     <button type="submit" style="background: #2563eb; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                         Tampilkan
                     </button>
+                    <a href="{{ route('laporan.arus-kas.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #198754; border: none; cursor: pointer;">
+                        📊 Export Excel
+                    </a>
+                    <a href="{{ route('laporan.arus-kas.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #dc3545; border: none; cursor: pointer;">
+                        📕 Export PDF
+                    </a>
                     <button type="button" onclick="window.print()" style="background: #475569; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer;">
                         Cetak
                     </button>

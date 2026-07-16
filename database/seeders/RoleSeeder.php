@@ -15,6 +15,7 @@ class RoleSeeder extends Seeder
         Role::updateOrCreate(['nama' => 'Kepala Outlet Kejingga']);
         Role::updateOrCreate(['nama' => 'Bagian Produksi']);
         Role::updateOrCreate(['nama' => 'Kepala Gudang']);
+        Role::updateOrCreate(['nama' => 'Direktur Keuangan']);
         Role::updateOrCreate(['nama' => 'Super Admin']);
 
     }

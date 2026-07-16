@@ -111,6 +111,32 @@
 
     </div>
 
+    <div class="col-md-6 mb-3" id="group-tipe-penjualan">
+
+        <label>Tipe Penjualan</label>
+
+        <select name="tipe_penjualan" id="tipe_penjualan" class="form-control">
+            <option value="">-- Pilih Tipe Penjualan --</option>
+            @php
+                $userRole = auth()->user()->role->nama ?? '';
+                $options = [];
+                if (in_array($userRole, ['Super Admin', 'Administrator'])) {
+                    $options = ['POS Gaharu', 'POS Kejingga', 'B2B'];
+                } elseif ($userRole === 'Kepala Outlet Gaharu') {
+                    $options = ['POS Gaharu', 'B2B'];
+                } elseif ($userRole === 'Kepala Outlet Kejingga') {
+                    $options = ['POS Kejingga'];
+                } elseif ($userRole === 'Kepala Gudang') {
+                    $options = ['B2B'];
+                }
+            @endphp
+            @foreach($options as $opt)
+                <option value="{{ $opt }}" {{ old('tipe_penjualan', $data->tipe_penjualan) == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+            @endforeach
+        </select>
+
+    </div>
+
     <div class="col-md-6 mb-3">
 
         <label>Minimum Order (Batas Order)</label>
@@ -154,6 +180,8 @@ document.addEventListener("DOMContentLoaded",function(){
     const jenis=document.getElementById("jenis");
     const group=document.getElementById("group-min-stock");
     const minimum=document.getElementById("minimum_stock");
+    const groupTipePenjualan=document.getElementById("group-tipe-penjualan");
+    const tipePenjualanSelect=document.getElementById("tipe_penjualan");
 
     function toggle(){
 
@@ -166,6 +194,15 @@ document.addEventListener("DOMContentLoaded",function(){
             group.style.display="none";
             minimum.value="";
 
+        }
+
+        if(jenis.value==="BARANG_JADI"){
+            groupTipePenjualan.style.display="block";
+            tipePenjualanSelect.setAttribute('required', 'required');
+        }else{
+            groupTipePenjualan.style.display="none";
+            tipePenjualanSelect.removeAttribute('required');
+            tipePenjualanSelect.value="";
         }
 
     }

@@ -73,6 +73,16 @@
             {{ isset($payroll) ? 'Ubah Data Penggajian Karyawan' : 'Input Penggajian Karyawan' }}
         </h2>
 
+        @if ($errors->any())
+            <div class="alert alert-danger" style="margin-bottom: 20px; border-radius: 5px; background-color: #fde8e8; border-color: #f8b4b4; color: #9b1c1c; padding: 15px;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <form action="{{ isset($payroll) ? route('penggajian.update', $payroll->id) : route('penggajian.store') }}" method="POST">
             @csrf
 
@@ -88,7 +98,7 @@
                     <select name="karyawan_id" class="input-group input" required {{ isset($payroll) ? 'disabled' : '' }}>
                         <option value="">-- Pilih Karyawan --</option>
                         @foreach($karyawans as $k)
-                        <option value="{{ $k->id }}" {{ (isset($payroll) && $payroll->karyawan_id == $k->id) ? 'selected' : '' }}>
+                        <option value="{{ $k->id }}" data-gaji="{{ $k->gaji_pokok }}" {{ (isset($payroll) && $payroll->karyawan_id == $k->id) ? 'selected' : '' }}>
                             {{ $k->nama_karyawan }}
                         </option>
                         @endforeach
@@ -218,14 +228,32 @@
 
             // Bersihkan format masker rupiah sebelum dikirim ke backend controller
             const form = document.querySelector('form[action*="penggajian"]');
-            form.addEventListener('submit', function() {
-                inputs.forEach(input => {
-                    input.value = input.value.replace(/[^0-9]/g, '');
-                    if (input.value === '') {
-                        input.value = '0';
+            if (form) {
+                form.addEventListener('submit', function() {
+                    inputs.forEach(input => {
+                        input.value = input.value.replace(/[^0-9]/g, '');
+                        if (input.value === '') {
+                            input.value = '0';
+                        }
+                    });
+                });
+            }
+
+            const selectKaryawan = document.querySelector('select[name="karyawan_id"]');
+            const inputGajiPokok = document.querySelector('input[name="gaji_pokok"]');
+            
+            if (selectKaryawan && inputGajiPokok) {
+                selectKaryawan.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const gajiPokokVal = selectedOption.getAttribute('data-gaji');
+                    
+                    if (gajiPokokVal) {
+                        inputGajiPokok.value = formatRupiah(gajiPokokVal, 'Rp. ');
+                    } else {
+                        inputGajiPokok.value = 'Rp. 0';
                     }
                 });
-            });
+            }
         });
     </script>
 </x-app-layout>

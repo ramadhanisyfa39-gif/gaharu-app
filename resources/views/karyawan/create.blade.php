@@ -38,8 +38,8 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
-                        <input type="date" name="tanggal_masuk" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <label class="block text-sm font-medium text-gray-700">Gaji Pokok</label>
+                        <input type="number" name="gaji_pokok" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required min="0" placeholder="0" value="{{ old('gaji_pokok', 0) }}">
                     </div>
 
                     <div class="flex items-center gap-4">

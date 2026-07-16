@@ -39,13 +39,13 @@ class PenjualanPosController extends Controller
         $queryGudang = MasterGudang::query();
 
         if ($user->gudang_id) {
-            // Tampilkan semua produk yang terdaftar di tabel stok_gudang untuk gudang ini
-            $queryProduk->whereExists(function ($query) use ($user) {
-                $query->select(DB::raw(1))
-                    ->from('stok_gudang')
-                    ->whereColumn('stok_gudang.barang_id', 'master_barang.id')
-                    ->where('stok_gudang.gudang_id', $user->gudang_id);
-            });
+            if ($user->gudang_id == 2) {
+                $queryProduk->where('tipe_penjualan', 'POS Gaharu');
+            } elseif ($user->gudang_id == 4) {
+                $queryProduk->where('tipe_penjualan', 'POS Kejingga');
+            } else {
+                $queryProduk->where('tipe_penjualan', 'POS Gaharu');
+            }
             $queryGudang->where('id', $user->gudang_id);
         }
 
@@ -78,6 +78,31 @@ class PenjualanPosController extends Controller
         $user = auth()->user();
         if ($user->gudang_id && $request->gudang_id != $user->gudang_id) {
             return back()->with('error', 'Anda tidak diizinkan membuat transaksi untuk gudang lain.')->withInput();
+        }
+
+        // Validasi Resep & Harga Jual
+        foreach ($request->produk_id as $key => $produkId) {
+            $barang = MasterBarang::find($produkId);
+            if (!$barang) continue;
+
+            if (is_null($barang->resep_id)) {
+                return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki resep.")
+                    ->withInput();
+            }
+
+            $tanggal = $request->tanggal ? date('Y-m-d', strtotime($request->tanggal)) : now()->toDateString();
+            $hargaAktif = HargaPeriode::where('barang_id', $produkId)
+                ->whereDate('tgl_mulai', '<=', $tanggal) 
+                ->where(function($query) use ($tanggal) {
+                    $query->whereNull('tgl_selesai')->orWhereDate('tgl_selesai', '>=', $tanggal);
+                })
+                ->orderBy('tgl_mulai', 'desc')
+                ->first();
+            $harga = $hargaAktif ? (float) $hargaAktif->harga_pos : (float) $barang->harga_jual_pos;
+            if ($harga <= 0) {
+                return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki harga jual POS yang aktif.")
+                    ->withInput();
+            }
         }
     
         DB::beginTransaction();
@@ -151,13 +176,13 @@ class PenjualanPosController extends Controller
         $queryGudang = MasterGudang::query();
 
         if ($user->gudang_id) {
-            // Tampilkan semua produk yang terdaftar di tabel stok_gudang untuk gudang ini
-            $queryProduk->whereExists(function ($query) use ($user) {
-                $query->select(DB::raw(1))
-                    ->from('stok_gudang')
-                    ->whereColumn('stok_gudang.barang_id', 'master_barang.id')
-                    ->where('stok_gudang.gudang_id', $user->gudang_id);
-            });
+            if ($user->gudang_id == 2) {
+                $queryProduk->where('tipe_penjualan', 'POS Gaharu');
+            } elseif ($user->gudang_id == 4) {
+                $queryProduk->where('tipe_penjualan', 'POS Kejingga');
+            } else {
+                $queryProduk->where('tipe_penjualan', 'POS Gaharu');
+            }
             $queryGudang->where('id', $user->gudang_id);
         }
 
@@ -192,6 +217,31 @@ class PenjualanPosController extends Controller
             return back()->with('error', 'Anda tidak diizinkan mengubah transaksi ke gudang lain.')->withInput();
         }
 
+        // Validasi Resep & Harga Jual
+        foreach ($request->produk_id as $key => $produkId) {
+            $barang = MasterBarang::find($produkId);
+            if (!$barang) continue;
+
+            if (is_null($barang->resep_id)) {
+                return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki resep.")
+                    ->withInput();
+            }
+
+            $tanggal = $request->tanggal ? date('Y-m-d', strtotime($request->tanggal)) : now()->toDateString();
+            $hargaAktif = HargaPeriode::where('barang_id', $produkId)
+                ->whereDate('tgl_mulai', '<=', $tanggal) 
+                ->where(function($query) use ($tanggal) {
+                    $query->whereNull('tgl_selesai')->orWhereDate('tgl_selesai', '>=', $tanggal);
+                })
+                ->orderBy('tgl_mulai', 'desc')
+                ->first();
+            $harga = $hargaAktif ? (float) $hargaAktif->harga_pos : (float) $barang->harga_jual_pos;
+            if ($harga <= 0) {
+                return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki harga jual POS yang aktif.")
+                    ->withInput();
+            }
+        }
+    
         DB::beginTransaction();
 
         try {
@@ -505,6 +555,8 @@ class PenjualanPosController extends Controller
     public function getHargaAktif(Request $request, $produk_id)
     {
         $tanggal = $request->tanggal ? date('Y-m-d', strtotime($request->tanggal)) : now()->toDateString();
+        $barang = MasterBarang::findOrFail($produk_id);
+        
         $hargaAktif = HargaPeriode::where('barang_id', $produk_id)
             ->whereDate('tgl_mulai', '<=', $tanggal) 
             ->where(function($query) use ($tanggal) {
@@ -513,10 +565,17 @@ class PenjualanPosController extends Controller
             ->orderBy('tgl_mulai', 'desc')
             ->first();
 
-        if (!$hargaAktif) {
-            $hargaAktif = HargaPeriode::where('barang_id', $produk_id)->orderBy('tgl_mulai', 'desc')->first();
+        $harga = 0;
+        if ($hargaAktif) {
+            $harga = (float) $hargaAktif->harga_pos;
+        } else {
+            $harga = (float) $barang->harga_jual_pos;
         }
 
-        return response()->json($hargaAktif);
+        return response()->json([
+            'harga_pos' => $harga,
+            'has_resep' => !is_null($barang->resep_id),
+            'nama'      => $barang->nama,
+        ]);
     }
 }

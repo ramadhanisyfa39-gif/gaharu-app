@@ -17,7 +17,7 @@
             @method('PUT')
 
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
                     <label>Supplier</label>
                     <select name="supplier_id" class="form-control" required>
                         <option value="">-- Pilih Supplier --</option>
@@ -30,7 +30,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
                     <label>Gudang Tujuan</label>
                     <select name="gudang_id" class="form-control" required>
                         <option value="">-- Pilih Gudang --</option>
@@ -43,7 +43,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-12 col-md-4 mb-3 mb-md-0">
                     <label>Tanggal</label>
                     <input 
                         type="date" 
@@ -59,82 +59,83 @@
 
             <h5>Detail Barang</h5>
 
-            <table class="table table-bordered" id="table-items">
-                <thead>
-                    <tr>
-                        <th>Barang</th>
-                        <th width="120">Qty</th>
-                        <th width="160">Harga</th>
-                        <th width="160">Batch Number</th>
-                        <th width="80">Aksi</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @foreach($pembelian->details as $index => $detail)
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="table-items">
+                    <thead>
                         <tr>
-                            <td>
-                                <select name="items[{{ $index }}][barang_id]" class="form-control" required>
-                                    <option value="">-- Pilih Barang --</option>
-                                    @foreach($barangs as $barang)
-                                        <option value="{{ $barang->id }}"
-                                            {{ $detail->barang_id == $barang->id ? 'selected' : '' }}>
-                                            {{ $barang->kode_barang }} - {{ $barang->nama }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </td>
-
-                            <td>
-                                <input 
-                                    type="text" 
-                                    name="items[{{ $index }}][qty]" 
-                                    class="form-control qty-input mask-number" 
-                                    value="{{ number_format($detail->qty, 2, ',', '.') }}"
-                                    required
-                                >
-                            </td>
-
-                            <td>
-                                <input 
-                                    type="text" 
-                                    name="items[{{ $index }}][harga]" 
-                                    class="form-control harga-input mask-number" 
-                                    value="{{ number_format($detail->harga, 2, ',', '.') }}"
-                                    required
-                                >
-                            </td>
-
-                            <td>
-                                <input 
-                                    type="text" 
-                                    name="items[{{ $index }}][batch_number]" 
-                                    class="form-control"
-                                    value="{{ $detail->batch_number }}"
-                                >
-                            </td>
-
-                            <td>
-                                <button type="button" class="btn btn-danger btn-sm btn-remove">
-                                    X
-                                </button>
-                            </td>
+                            <th>Barang</th>
+                            <th width="120">Qty</th>
+                            <th width="160">Harga</th>
+                            <th width="160">Batch Number</th>
+                            <th width="80">Aksi</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach($pembelian->details as $index => $detail)
+                            <tr>
+                                <td>
+                                    <select name="items[{{ $index }}][barang_id]" class="form-control" required>
+                                        <option value="">-- Pilih Barang --</option>
+                                        @foreach($barangs as $barang)
+                                            <option value="{{ $barang->id }}"
+                                                {{ $detail->barang_id == $barang->id ? 'selected' : '' }}>
+                                                {{ $barang->kode_barang }} - {{ $barang->nama }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
 
-            <button type="button" class="btn btn-secondary" id="btn-add">
-                Tambah Baris
-            </button>
+                                <td>
+                                    <input 
+                                        type="text" 
+                                        name="items[{{ $index }}][qty]" 
+                                        class="form-control qty-input mask-number" 
+                                        value="{{ number_format($detail->qty, 2, ',', '.') }}"
+                                        required
+                                    >
+                                </td>
 
-            <button type="submit" class="btn btn-primary">
-                Update Pembelian
-            </button>
+                                <td>
+                                    <input 
+                                        type="text" 
+                                        name="items[{{ $index }}][harga]" 
+                                        class="form-control harga-input mask-number" 
+                                        value="{{ number_format($detail->harga, 2, ',', '.') }}"
+                                        required
+                                    >
+                                </td>
 
-            <a href="{{ route('pembelian.index') }}" class="btn btn-light">
-                Kembali
-            </a>
+                                <td>
+                                    <input 
+                                        type="text" 
+                                        name="items[{{ $index }}][batch_number]" 
+                                        class="form-control"
+                                        value="{{ $detail->batch_number }}"
+                                    >
+                                </td>
+
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm btn-remove">
+                                        X
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
+                <button type="button" class="btn btn-secondary" id="btn-add">
+                    Tambah Baris
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    Update Pembelian
+                </button>
+                <a href="{{ route('pembelian.index') }}" class="btn btn-light border">
+                    Kembali
+                </a>
+            </div>
         </form>
     </div>
 

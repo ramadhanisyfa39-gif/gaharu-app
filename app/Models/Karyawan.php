@@ -14,11 +14,11 @@ class Karyawan extends Model
         'jabatan',
         'jenis_tenaga_kerja',
         'departemen',
-        'tanggal_masuk',
+        'gaji_pokok',
     ];
 
     protected $casts = [
-        'tanggal_masuk' => 'date',
+        'gaji_pokok' => 'float',
     ];
 
 

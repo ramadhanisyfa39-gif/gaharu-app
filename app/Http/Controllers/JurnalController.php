@@ -34,7 +34,9 @@ class JurnalController extends Controller
     public function create()
     {
         $coas = ChartOfAccount::all();
-        return view('jurnal.create', compact('coas'));
+        $latestClosing = Journal::where('source_type', 'closing')->orderBy('tanggal', 'desc')->first();
+        $latestClosingDate = $latestClosing ? $latestClosing->tanggal : null;
+        return view('jurnal.create', compact('coas', 'latestClosingDate'));
     }
 
     public function store(Request $request)
@@ -48,13 +50,23 @@ class JurnalController extends Controller
             'details.*.kredit' => 'required|numeric|min:0',
         ]);
 
-        $isClosed = Journal::where('deskripsi', 'like', '%Jurnal Penutup%')
-            ->whereMonth('tanggal', date('m', strtotime($request->tanggal)))
-            ->whereYear('tanggal', date('Y', strtotime($request->tanggal)))
-            ->exists();
+        $tanggalJurnal = $request->tanggal;
+        $alertMessage = null;
 
-        if ($isClosed) {
-            return back()->with('error', 'Transaksi ditolak! Periode ini sudah ditutup (Closing).')->withInput();
+        $latestClosing = Journal::where('source_type', 'closing')
+            ->orderBy('tanggal', 'desc')
+            ->first();
+
+        if ($latestClosing) {
+            $closingDate = \Carbon\Carbon::parse($latestClosing->tanggal)->endOfMonth();
+            $targetDate = \Carbon\Carbon::parse($request->tanggal);
+            
+            if ($targetDate->lte($closingDate)) {
+                // Periode ini atau bulan sebelumnya sudah ditutup.
+                // Geser ke 1 bulan setelah closing terbaru.
+                $tanggalJurnal = $closingDate->addMonth()->startOfMonth()->toDateString();
+                $alertMessage = "Karena periode akuntansi s/d " . \Carbon\Carbon::parse($latestClosing->tanggal)->translatedFormat('F Y') . " sudah ditutup, jurnal ini otomatis dicatat pada awal periode berjalan selanjutnya tanggal " . \Carbon\Carbon::parse($tanggalJurnal)->translatedFormat('d M Y') . ".";
+            }
         }
 
         try {
@@ -62,7 +74,7 @@ class JurnalController extends Controller
 
             // Simpan Header dengan source_type menjadi 'jurnal_umum'
             $jurnal = Journal::create([
-                'tanggal' => $request->tanggal,
+                'tanggal' => $tanggalJurnal,
                 'deskripsi' => $request->deskripsi,
                 'no_ref' => $request->no_ref ?? 'JR-' . time(),
                 'source_type' => 'jurnal_umum',
@@ -92,7 +104,12 @@ class JurnalController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil disimpan!');
+            
+            $successMsg = 'Jurnal berhasil disimpan!';
+            if ($alertMessage) {
+                $successMsg .= ' ' . $alertMessage;
+            }
+            return redirect()->route('jurnal.index')->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
@@ -329,9 +346,11 @@ class JurnalController extends Controller
     public function adjustmentPage()
     {
         $coas = ChartOfAccount::orderBy('kode', 'asc')->get();
+        $latestClosing = Journal::where('source_type', 'closing')->orderBy('tanggal', 'desc')->first();
+        $latestClosingDate = $latestClosing ? $latestClosing->tanggal : null;
 
         // Mengarah ke resources/views/adjustment/create.blade.php
-        return view('adjustment.create', compact('coas'));
+        return view('adjustment.create', compact('coas', 'latestClosingDate'));
     }
 
     /**
@@ -351,14 +370,23 @@ class JurnalController extends Controller
             'action' => 'required|in:draft,post',
         ]);
 
-        // Cek Periode Closing (Tetap mengecek ke tabel utama Journal)
-        $isClosed = Journal::where('source_type', 'closing')
-            ->whereMonth('tanggal', date('m', strtotime($request->tanggal)))
-            ->whereYear('tanggal', date('Y', strtotime($request->tanggal)))
-            ->exists();
+        $tanggalJurnal = $request->tanggal;
+        $alertMessage = null;
 
-        if ($isClosed) {
-            return back()->with('error', 'Gagal! Periode ini sudah dikunci (Closing).')->withInput();
+        $latestClosing = Journal::where('source_type', 'closing')
+            ->orderBy('tanggal', 'desc')
+            ->first();
+
+        if ($latestClosing) {
+            $closingDate = \Carbon\Carbon::parse($latestClosing->tanggal)->endOfMonth();
+            $targetDate = \Carbon\Carbon::parse($request->tanggal);
+            
+            if ($targetDate->lte($closingDate)) {
+                // Periode ini atau bulan sebelumnya sudah ditutup.
+                // Geser ke 1 bulan setelah closing terbaru.
+                $tanggalJurnal = $closingDate->addMonth()->startOfMonth()->toDateString();
+                $alertMessage = "Karena periode akuntansi s/d " . \Carbon\Carbon::parse($latestClosing->tanggal)->translatedFormat('F Y') . " sudah ditutup, jurnal penyesuaian ini otomatis dicatat pada awal periode berjalan selanjutnya tanggal " . \Carbon\Carbon::parse($tanggalJurnal)->translatedFormat('d M Y') . ".";
+            }
         }
 
         try {
@@ -366,7 +394,7 @@ class JurnalController extends Controller
 
             // 1. Simpan Header ke tabel: jurnal_penyesuaian dengan penambahan kolom status
             $jurnal = JurnalPenyesuaian::create([
-                'tanggal'     => $request->tanggal,
+                'tanggal'     => $tanggalJurnal,
                 'deskripsi'   => "[AJP] " . $request->deskripsi,
                 'no_ref'      => $request->no_ref,
                 'source_type' => 'adjustment',
@@ -403,6 +431,10 @@ class JurnalController extends Controller
             $pesan = $jurnal->status === 'approved'
                 ? 'Jurnal Penyesuaian berhasil disimpan dan diposting ke Buku Besar!'
                 : 'Jurnal Penyesuaian berhasil disimpan sebagai Draft!';
+
+            if ($alertMessage) {
+                $pesan .= ' ' . $alertMessage;
+            }
 
             return redirect()->route('adjustment.index')->with('success', $pesan);
         } catch (\Exception $e) {
@@ -741,6 +773,8 @@ class JurnalController extends Controller
 
     public function penjualanposIndex()
     {
+        $user = auth()->user();
+
         // 1. Ambil semua ID transaksi POS yang sudah pernah dijurnal
         $sudahDijurnal = DB::table('jurnal_penjualan_pos')
             ->where('source_type', 'penjualan_pos')
@@ -748,31 +782,39 @@ class JurnalController extends Controller
             ->toArray();
 
         // 2. Antrean Atas: Tarik data transaksi POS harian yang BELUM dijurnal dan sudah disetujui (status = 'SUKSES')
-        $penjualanPosBelum = DB::table('penjualan_pos')
-            ->whereNotIn('id', $sudahDijurnal)
-            ->where('status', 'SUKSES')
-            ->select(
-                'id',
-                'tanggal',
-                'kode_transaksi',
-                'total',
-                DB::raw("'Gudang' as nama_outlet")
+        $queryBelum = DB::table('penjualan_pos')
+            ->leftJoin('master_gudang', 'penjualan_pos.gudang_id', '=', 'master_gudang.id')
+            ->whereNotIn('penjualan_pos.id', $sudahDijurnal)
+            ->where('penjualan_pos.status', 'SUKSES');
+
+        if ($user && $user->gudang_id) {
+            $queryBelum->where('penjualan_pos.gudang_id', $user->gudang_id);
+        }
+
+        $penjualanPosBelum = $queryBelum->select(
+                'penjualan_pos.id',
+                'penjualan_pos.tanggal',
+                'penjualan_pos.kode_transaksi',
+                'penjualan_pos.total',
+                DB::raw("COALESCE(master_gudang.nama, 'Gudang') as nama_outlet")
             )
-            ->orderBy('tanggal', 'desc')
+            ->orderBy('penjualan_pos.tanggal', 'desc')
             ->get();
 
         // 3. Riwayat Bawah: Ringkas menjadi satu baris per dokumen (Group By No. Ref)
-        // [OPSI A] Join ke journal_items kini memakai closure agar bisa menyaring
-        // journal_type sekaligus di kondisi ON, sehingga baris journal_items milik
-        // modul lain (mis. jurnal_pembelian) yang journal_id-nya kebetulan sama
-        // TIDAK ikut tertarik dan tidak ikut ter-SUM ke total debit/kredit di sini.
-        $jurnalsSudah = DB::table('jurnal_penjualan_pos')
+        $querySudah = DB::table('jurnal_penjualan_pos')
             ->join('journal_items', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
-                    ->where('journal_items.journal_type', '=', 'jurnal_penjualan_pos'); // [OPSI A]
+                    ->where('journal_items.journal_type', '=', 'jurnal_penjualan_pos');
             })
-            ->where('jurnal_penjualan_pos.source_type', 'penjualan_pos')
-            ->select(
+            ->leftJoin('penjualan_pos', 'jurnal_penjualan_pos.source_id', '=', 'penjualan_pos.id')
+            ->where('jurnal_penjualan_pos.source_type', 'penjualan_pos');
+
+        if ($user && $user->gudang_id) {
+            $querySudah->where('penjualan_pos.gudang_id', $user->gudang_id);
+        }
+
+        $jurnalsSudah = $querySudah->select(
                 'jurnal_penjualan_pos.id',
                 'jurnal_penjualan_pos.tanggal',
                 'jurnal_penjualan_pos.no_ref',
@@ -803,6 +845,12 @@ class JurnalController extends Controller
 
         if (!$penjualan) {
             return back()->with('error', 'Data induk penjualan POS tidak ditemukan.');
+        }
+
+        // --- VALIDASI ROLE / OUTLET AKSES ---
+        $user = auth()->user();
+        if ($user && $user->gudang_id && $penjualan->gudang_id != $user->gudang_id) {
+            abort(403, 'Anda tidak memiliki akses ke data penjualan outlet lain.');
         }
 
         if (($penjualan->status ?? 'Draft') !== 'SUKSES') {
@@ -884,6 +932,12 @@ class JurnalController extends Controller
             return redirect()->route('jurnal-penjualanpos.index')->with('error', 'Transaksi POS ini belum di-approve.');
         }
 
+        // --- VALIDASI ROLE / OUTLET AKSES ---
+        $user = auth()->user();
+        if ($user && $user->gudang_id && $penjualan->gudang_id != $user->gudang_id) {
+            abort(403, 'Anda tidak memiliki akses ke data penjualan outlet lain.');
+        }
+
         $request->validate([
             'tanggal'              => 'required|date',
             'no_ref'               => 'required|string',
@@ -959,6 +1013,15 @@ class JurnalController extends Controller
             return redirect()
                 ->route('jurnal-penjualanpos.index')
                 ->with('error', 'Data riwayat jurnal Penjualan POS tidak ditemukan.');
+        }
+
+        // --- VALIDASI ROLE / OUTLET AKSES ---
+        $user = auth()->user();
+        if ($user && $user->gudang_id) {
+            $penjualan = DB::table('penjualan_pos')->where('id', $jurnal->source_id)->first();
+            if ($penjualan && $penjualan->gudang_id != $user->gudang_id) {
+                abort(403, 'Anda tidak memiliki akses ke data jurnal penjualan outlet lain.');
+            }
         }
 
         // 2. Ambil rincian item debit/kredit yang terikat dengan ID jurnal POS ini

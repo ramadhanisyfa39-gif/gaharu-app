@@ -5,8 +5,8 @@
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h3 class="fw-bold mb-0">Penjualan POS</h3>
 
-        <div class="d-flex align-items-center gap-2">
-            <form action="{{ route('penjualan_pos.index') }}" method="GET" class="d-flex gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form action="{{ route('penjualan_pos.index') }}" method="GET" class="d-flex gap-2 flex-wrap">
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari no transaksi..." value="{{ request('search') }}" style="width: 200px; border-radius: 6px;">
                 <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 6px;">Cari</button>
                 @if(request('search'))
@@ -76,7 +76,7 @@
                             </td>
 
                             <td class="text-center">
-                                <div class="d-flex justify-content-center gap-1">
+                                <div class="d-flex justify-content-center gap-1 flex-wrap">
                                     {{-- Tombol Detail selalu muncul --}}
                                     <a href="{{ route('penjualan_pos.show', $item->id) }}"
                                        class="btn btn-info btn-sm text-white shadow-sm" title="Lihat Detail">

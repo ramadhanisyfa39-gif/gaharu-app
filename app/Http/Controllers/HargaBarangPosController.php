@@ -9,21 +9,49 @@ use Carbon\Carbon; // Wajib ditambahkan untuk memanipulasi dan mengecek tanggal
 
 class HargaBarangPosController extends Controller
 {
-    // Menampilkan halaman (GET)
-    public function index($id = null)
+    // Menampilkan halaman daftar barang (GET)
+    public function index()
     {
-        $listBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->orderBy('nama')->get();
-        $barangTerpilih = null;
-        $riwayatHarga = collect([]);
-    
-        if ($id) {
-            $barangTerpilih = \App\Models\MasterBarang::findOrFail($id);
-            $riwayatHarga = \App\Models\HargaPeriode::where('barang_id', $id)
-                ->orderBy('tgl_mulai', 'desc')
-                ->get();
+        $user = auth()->user();
+        $queryBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->orderBy('nama');
+
+        if ($user && $user->gudang_id) {
+            if ($user->gudang_id == 2) {
+                $queryBarang->where('tipe_penjualan', 'POS Gaharu');
+            } elseif ($user->gudang_id == 4) {
+                $queryBarang->where('tipe_penjualan', 'POS Kejingga');
+            } else {
+                $queryBarang->where('tipe_penjualan', 'POS Gaharu');
+            }
         }
+        $listBarang = $queryBarang->with(['hargaPosAktif', 'firstFifoLayer'])->get();
     
-        return view('harga.index', compact('listBarang', 'barangTerpilih', 'riwayatHarga'));
+        return view('harga.index', compact('listBarang'));
+    }
+
+    // Menampilkan detail barang, pengaturan harga baru, dan histori harga (GET)
+    public function show($id)
+    {
+        $user = auth()->user();
+        $barangTerpilih = \App\Models\MasterBarang::findOrFail($id);
+
+        if ($user && $user->gudang_id) {
+            $allowedType = null;
+            if ($user->gudang_id == 2) {
+                $allowedType = 'POS Gaharu';
+            } elseif ($user->gudang_id == 4) {
+                $allowedType = 'POS Kejingga';
+            }
+            if ($allowedType && $barangTerpilih->tipe_penjualan !== $allowedType) {
+                abort(403, 'Anda tidak memiliki akses ke produk ini.');
+            }
+        }
+
+        $riwayatHarga = \App\Models\HargaPeriode::where('barang_id', $id)
+            ->orderBy('tgl_mulai', 'desc')
+            ->get();
+    
+        return view('harga.show', compact('barangTerpilih', 'riwayatHarga'));
     }
 
     // Memproses simpan (POST)

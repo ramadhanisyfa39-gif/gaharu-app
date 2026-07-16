@@ -8,7 +8,7 @@
                         <p class="text-sm text-gray-500">Monitoring integritas, mutasi, dan saldo akhir akun periode ini.</p>
                     </div>
 
-                    <form action="{{ route('laporan.neraca-saldo.index') }}" method="GET" class="flex items-center gap-2">
+                    <form action="{{ route('laporan.neraca-saldo.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
                         <select name="bulan" class="rounded-lg border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500">
                             @foreach(range(1, 12) as $m)
                             <option value="{{ sprintf('%02d', $m) }}" {{ $bulan == sprintf('%02d', $m) ? 'selected' : '' }}>
@@ -24,6 +24,12 @@
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm">
                             Tampilkan
                         </button>
+                        <a href="{{ route('laporan.neraca-saldo.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm no-underline">
+                            📊 Export Excel
+                        </a>
+                        <a href="{{ route('laporan.neraca-saldo.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm no-underline">
+                            📕 Export PDF
+                        </a>
                     </form>
                 </div>
             </div>

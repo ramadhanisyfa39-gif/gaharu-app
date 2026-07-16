@@ -41,17 +41,17 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-12 col-md-4 mb-3">
                             <label class="form-label">Tanggal Transaksi</label>
                             <input type="datetime-local" name="tanggal" class="form-control" required>
                         </div>
 
-                        <div class="col-md-4 mb-3">
+                        <div class="col-12 col-md-4 mb-3">
                             <label class="form-label">Estimasi Tanggal Produksi</label>
                             <input type="date" name="estimasi_produksi" class="form-control">
                         </div>
 
-                        <div class="col-md-4 mb-4">
+                        <div class="col-12 col-md-4 mb-4">
                             <label class="form-label">Estimasi Kirim</label>
                             <input type="datetime-local" name="estimasi_kirim" class="form-control" required>
                         </div>
@@ -109,15 +109,17 @@
                     </button>
 
                     <div class="row justify-content-end mb-4">
-                        <div class="col-md-4">
+                        <div class="col-12 col-md-4">
                             <label class="form-label fw-semibold">Total Pesanan</label>
                             <input type="number" name="total_pesanan" id="total_pesanan" class="form-control fw-bold text-primary" readonly>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary rounded-3 px-5 py-2">
-                        Simpan Pesanan
-                    </button>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <button type="submit" class="btn btn-primary rounded-3 px-5 py-2">
+                            Simpan Pesanan
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

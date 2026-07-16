@@ -17,7 +17,7 @@
 
         <div class="card-body p-4">
             <div class="row mb-4 bg-light p-3 rounded border">
-                <div class="col-md-6">
+                <div class="col-12 col-md-6">
                     <table class="table table-borderless table-sm mb-0">
                         <tr>
                             <td width="150" class="text-muted">No Surat Jalan</td>
@@ -33,7 +33,7 @@
                         </tr>
                     </table>
                 </div>
-                <div class="col-md-6 border-start">
+                <div class="col-12 col-md-6 border-start-0 border-md-start mt-3 mt-md-0">
                     <table class="table table-borderless table-sm mb-0">
                         <tr>
                             <td width="150" class="text-muted">Kode Pesanan</td>
@@ -72,12 +72,12 @@
             </div>
 
             <hr class="text-muted my-4">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <a href="{{ route('pengiriman.index') }}" class="btn btn-secondary px-4">
                     <i class="bi bi-arrow-left"></i> Kembali
                 </a>
-
-                <div class="d-flex gap-2">
+    
+                <div class="d-flex gap-2 flex-wrap">
                     @if($pengiriman->status_pengiriman === 'Draft')
                         <a href="{{ route('pengiriman.edit', $pengiriman->id) }}" class="btn btn-warning text-dark fw-bold">
                             <i class="bi bi-pencil-square"></i> Edit Draft

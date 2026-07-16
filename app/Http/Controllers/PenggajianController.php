@@ -41,7 +41,14 @@ class PenggajianController extends Controller
     {
         // Menangkap parameter target_periode dari URL agar form input tahu ini untuk periode mana
         $target_periode = $request->query('target_periode');
-        $karyawans = Karyawan::all();
+        
+        // Ambil ID karyawan yang sudah diinput gajinya pada periode ini
+        $alreadyPaidIds = Penggajian::where('periode_bulan_tahun', $target_periode)
+            ->pluck('karyawan_id')
+            ->toArray();
+            
+        // Filter karyawan yang belum diinput
+        $karyawans = Karyawan::whereNotIn('id', $alreadyPaidIds)->get();
 
         return view('penggajian.create', compact('karyawans', 'target_periode'));
     }
@@ -65,6 +72,14 @@ class PenggajianController extends Controller
             'potongan_inventaris'  => 'nullable|string',
             'potongan_terlambat'   => 'nullable|string',
         ]);
+
+        $exists = Penggajian::where('karyawan_id', $request->karyawan_id)
+            ->where('periode_bulan_tahun', $request->periode)
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['karyawan_id' => 'Gaji karyawan ini untuk periode tersebut sudah diinput sebelumnya.'])->withInput();
+        }
 
         $cleanRupiah = function ($value) {
             if (is_null($value)) return 0;

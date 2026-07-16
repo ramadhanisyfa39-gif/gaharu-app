@@ -23,8 +23,55 @@ class MasterBarang extends Model
         'hpp_referensi',
         'is_active',
         'minimum_stock',
-        'minimum_order'
+        'minimum_order',
+        'tipe_penjualan'
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('role_barang_filter', function (\Illuminate\Database\Eloquent\Builder $builder) {
+            // Bypass filter di luar konteks request (CLI, seeder, migrate)
+            if (app()->runningInConsole()) {
+                if (!app()->runningUnitTests() && !defined('TEST_RUNNING')) {
+                    return;
+                }
+            }
+
+            $user = auth()->user();
+            if ($user && $user->role) {
+                $roleName = $user->role->nama;
+                if ($roleName === 'Super Admin' || $roleName === 'Administrator' || $roleName === 'HRD' || $roleName === 'Direktur Keuangan' || $roleName === 'Bagian Produksi') {
+                    return;
+                }
+
+                if ($roleName === 'Kepala Outlet Gaharu') {
+                    $builder->where(function ($q) {
+                        $q->where('is_bahan_baku', 1)
+                          ->orWhere(function ($q2) {
+                              $q2->where('is_barang_jadi', 1)
+                                 ->whereIn('tipe_penjualan', ['POS Gaharu', 'B2B']);
+                          });
+                    });
+                } elseif ($roleName === 'Kepala Outlet Kejingga') {
+                    $builder->where(function ($q) {
+                        $q->where('is_bahan_baku', 1)
+                          ->orWhere(function ($q2) {
+                              $q2->where('is_barang_jadi', 1)
+                                 ->where('tipe_penjualan', 'POS Kejingga');
+                          });
+                    });
+                } elseif ($roleName === 'Kepala Gudang') {
+                    $builder->where(function ($q) {
+                        $q->where('is_bahan_baku', 1)
+                          ->orWhere(function ($q2) {
+                              $q2->where('is_barang_jadi', 1)
+                                 ->where('tipe_penjualan', 'B2B');
+                          });
+                    });
+                }
+            }
+        });
+    }
 
     public function kategori()
     {
@@ -47,6 +94,11 @@ public function hargaPosAktif()
                 ->whereDate('tgl_mulai', '<=', now())
                 ->whereDate('tgl_selesai', '>=', now())
                 ->latest();
+}
+
+public function firstFifoLayer()
+{
+    return $this->hasOne(FifoLayer::class, 'barang_id')->orderBy('tanggal_masuk', 'asc');
 }
     public function resep()
     {

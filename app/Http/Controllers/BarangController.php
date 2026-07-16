@@ -94,7 +94,26 @@ class BarangController extends Controller
             'kode_barang' => 'required|unique:master_barang,kode_barang',
             'nama'        => 'required',
             'jenis_utama' => 'required',
+            'tipe_penjualan' => 'required_if:jenis_utama,BARANG_JADI|nullable|in:POS Kejingga,POS Gaharu,B2B',
         ]);
+
+        $user = auth()->user();
+        if ($user && $user->role) {
+            $roleName = $user->role->nama;
+            if ($roleName === 'Kepala Outlet Gaharu') {
+                $allowed = ['POS Gaharu', 'B2B'];
+            } elseif ($roleName === 'Kepala Outlet Kejingga') {
+                $allowed = ['POS Kejingga'];
+            } elseif ($roleName === 'Kepala Gudang') {
+                $allowed = ['B2B'];
+            } else {
+                $allowed = ['POS Kejingga', 'POS Gaharu', 'B2B'];
+            }
+            
+            if ($request->jenis_utama === 'BARANG_JADI' && !in_array($request->tipe_penjualan, $allowed)) {
+                return back()->withErrors(['tipe_penjualan' => 'Tipe penjualan tidak valid untuk role Anda.'])->withInput();
+            }
+        }
     
         try {
             $harga_b2b = str_replace('.', '', $request->harga_jual_b2b ?? 0);
@@ -121,6 +140,7 @@ class BarangController extends Controller
                 'harga_jual_pos'        => $harga_pos,
                 'minimum_stock'         => $request->minimum_stock,
                 'minimum_order'         => $request->minimum_order ?? 1.00,
+                'tipe_penjualan'        => $request->jenis_utama == 'BARANG_JADI' ? $request->tipe_penjualan : null,
             ]);
     
             return redirect()->route('barang.index')->with('success', 'Data berhasil ditambah');
@@ -144,6 +164,32 @@ class BarangController extends Controller
 
     public function update(Request $request, $id)
     {
+        $request->validate([
+            'kategori_id' => 'required',
+            'kode_barang' => 'required|unique:master_barang,kode_barang,' . $id,
+            'nama'        => 'required',
+            'jenis_utama' => 'required',
+            'tipe_penjualan' => 'required_if:jenis_utama,BARANG_JADI|nullable|in:POS Kejingga,POS Gaharu,B2B',
+        ]);
+
+        $user = auth()->user();
+        if ($user && $user->role) {
+            $roleName = $user->role->nama;
+            if ($roleName === 'Kepala Outlet Gaharu') {
+                $allowed = ['POS Gaharu', 'B2B'];
+            } elseif ($roleName === 'Kepala Outlet Kejingga') {
+                $allowed = ['POS Kejingga'];
+            } elseif ($roleName === 'Kepala Gudang') {
+                $allowed = ['B2B'];
+            } else {
+                $allowed = ['POS Kejingga', 'POS Gaharu', 'B2B'];
+            }
+            
+            if ($request->jenis_utama === 'BARANG_JADI' && !in_array($request->tipe_penjualan, $allowed)) {
+                return back()->withErrors(['tipe_penjualan' => 'Tipe penjualan tidak valid untuk role Anda.'])->withInput();
+            }
+        }
+
         $data = MasterBarang::findOrFail($id);
     
         $harga_b2b = str_replace('.', '', $request->harga_jual_b2b ?? 0);
@@ -172,6 +218,7 @@ class BarangController extends Controller
             'harga_jual_pos' => $harga_pos,
             'minimum_stock'  => $request->minimum_stock,
             'minimum_order'  => $request->minimum_order ?? 1.00,
+            'tipe_penjualan' => $request->jenis_utama == 'BARANG_JADI' ? $request->tipe_penjualan : null,
         ]);
     
         return redirect()->route('barang.index')->with('success', 'Data berhasil diupdate');

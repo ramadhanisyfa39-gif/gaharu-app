@@ -24,7 +24,11 @@
                     <div class="row mb-4">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Tanggal</label>
-                            <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <input type="date" name="tanggal" id="input-tanggal" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <div id="alert-closing" class="alert alert-warning mt-2 py-2 px-3 small" style="display: none; border-left: 4px solid #ffc107;">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Periode akuntansi bulan ini atau sebelumnya sudah ditutup. Jurnal ini akan otomatis dicatat pada awal periode berjalan selanjutnya tanggal <strong id="next-open-date"></strong>.
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">No. Referensi</label>
@@ -180,6 +184,41 @@
         // Jalankan event listener saat pertama kali halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
             attachEvents();
+
+            const latestClosingDateStr = "{{ $latestClosingDate }}";
+            if (latestClosingDateStr) {
+                const latestClosingDate = new Date(latestClosingDateStr);
+                const inputTanggal = document.getElementById('input-tanggal');
+                const alertClosing = document.getElementById('alert-closing');
+                const nextOpenDateSpan = document.getElementById('next-open-date');
+                
+                // Hitung tanggal 1 bulan berikutnya (latestClosingDate + 1 hari)
+                const nextOpenDate = new Date(latestClosingDate);
+                nextOpenDate.setDate(nextOpenDate.getDate() + 1);
+                const nextOpenDateStr = nextOpenDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+                function checkClosingDate() {
+                    const inputVal = inputTanggal.value;
+                    if (!inputVal) return;
+                    
+                    const selectedDate = new Date(inputVal);
+                    const selectedYear = selectedDate.getFullYear();
+                    const selectedMonth = selectedDate.getMonth();
+                    
+                    const closingYear = latestClosingDate.getFullYear();
+                    const closingMonth = latestClosingDate.getMonth();
+                    
+                    if (selectedYear < closingYear || (selectedYear === closingYear && selectedMonth <= closingMonth)) {
+                        nextOpenDateSpan.innerText = nextOpenDateStr;
+                        alertClosing.style.display = 'block';
+                    } else {
+                        alertClosing.style.display = 'none';
+                    }
+                }
+                
+                inputTanggal.addEventListener('change', checkClosingDate);
+                checkClosingDate();
+            }
         });
     </script>
 </x-app-layout>

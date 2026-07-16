@@ -15,29 +15,35 @@
                 <h2 class="fw-bold mb-0">Detail Pesanan</h2>
                 <small class="text-muted">Informasi lengkap transaksi pesanan</small>
             </div>
-            <a href="{{ route('pesanan.index') }}" class="btn btn-secondary btn-sm shadow-sm">
-            <i class="bi bi-arrow-left"></i> Kembali</a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('pesanan.kwitansi', $pesanan->id) }}" class="btn btn-primary btn-sm shadow-sm" target="_blank">
+                    <i class="bi bi-printer"></i> Cetak Kwitansi
+                </a>
+                <a href="{{ route('pesanan.index') }}" class="btn btn-secondary btn-sm shadow-sm">
+                    <i class="bi bi-arrow-left"></i> Kembali
+                </a>
+            </div>
         </div>
 
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-3 mb-3">
+                    <div class="col-6 col-md-3 mb-3">
                         <label class="text-muted">Kode Pesanan</label>
                         <h5>{{ $pesanan->kode_pesanan }}</h5>
                     </div>
 
-                    <div class="col-md-3 mb-3">
+                    <div class="col-6 col-md-3 mb-3">
                         <label class="text-muted">Customer</label>
                         <h5>{{ $pesanan->customer->nama ?? '-' }}</h5>
                     </div>
 
-                    <div class="col-md-3 mb-3">
+                    <div class="col-6 col-md-3 mb-3">
                         <label class="text-muted">Tanggal</label>
                         <h5>{{ date('d M Y H:i', strtotime($pesanan->tanggal)) }}</h5>
                     </div>
 
-                    <div class="col-md-3 mb-3">
+                    <div class="col-6 col-md-3 mb-3">
                         <label class="text-muted">Status</label>
                         <br>
                         {{-- PERBAIKAN LOGIKA STATUS DI SINI --}}
@@ -62,12 +68,12 @@
                 <hr class="my-3">
 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
+                    <div class="col-12 col-md-6 mb-3">
                         <label class="text-muted fw-bold">Estimasi Tanggal Kirim</label>
                         <h6 class="text-dark fw-semibold">{{ date('d M Y H:i', strtotime($pesanan->estimasi_kirim)) }}</h6>
                     </div>
 
-                    <div class="col-md-6 mb-3">
+                    <div class="col-12 col-md-6 mb-3">
                         <label class="text-muted fw-bold">Estimasi Tanggal Produksi</label>
                         <h6 class="text-primary fw-bold">{{ $pesanan->estimasi_produksi ? date('d M Y', strtotime($pesanan->estimasi_produksi)) : '— (Tidak Perlu Produksi / Sudah Siap)' }}</h6>
                     </div>
