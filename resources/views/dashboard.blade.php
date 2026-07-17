@@ -13,11 +13,27 @@
         </div>
     </x-slot>
 
+    @php
+        $activeCardsCount = 2;
+        if ($hasPurchaseAccess) $activeCardsCount++;
+        if ($hasB2bAccess) $activeCardsCount++;
+
+        $cardColClass = match($activeCardsCount) {
+            4 => 'col-md-3',
+            3 => 'col-md-4',
+            2 => 'col-md-6',
+            default => 'col-md-12'
+        };
+
+        $row1ChartColClass = $hasB2bAccess ? 'col-md-6' : 'col-md-12';
+        $row2ChartColClass = ($hasPurchaseAccess && $hasProductionAccess) ? 'col-md-6' : 'col-md-12';
+    @endphp
+
     <div class="container-fluid px-3 py-2">
 
         {{-- BARIS 1: DYNAMIC MINI SUMMARY CARDS --}}
         <div class="row gx-3 mb-3">
-            <div class="col-md-3 mb-2 mb-md-0">
+            <div class="{{ $cardColClass }} mb-2 mb-md-0">
                 <div class="card border-0 shadow-sm" style="border-left: 3px solid #9c4f18 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Nilai Inventory Saat Ini</div>
@@ -28,7 +44,7 @@
             </div>
 
             @if($hasPurchaseAccess)
-            <div class="col-md-3 mb-2 mb-md-0">
+            <div class="{{ $cardColClass }} mb-2 mb-md-0">
                 <div class="card border-0 shadow-sm" style="border-left: 3px solid #d88656 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Pembelian Bulan Ini</div>
@@ -40,7 +56,7 @@
             @endif
 
             @if($hasB2bAccess)
-            <div class="col-md-3 mb-2 mb-md-0">
+            <div class="{{ $cardColClass }} mb-2 mb-md-0">
                 <div class="card border-0 shadow-sm" style="border-left: 3px solid #28a745 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Total Pesanan B2B</div>
@@ -51,7 +67,7 @@
             </div>
             @endif
 
-            <div class="col-md-3">
+            <div class="{{ $cardColClass }}">
                 <div class="card border-0 shadow-sm" style="border-left: 3px solid #17a2b8 !important; background: #fff; height: 100%;">
                     <div class="card-body p-2 px-3">
                         <div class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.5px;">Total Varian Barang</div>
@@ -70,7 +86,7 @@
                 
                 {{-- ROW CHARTS 1: POS & B2B --}}
                 <div class="row gx-3">
-                    <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="{{ $row1ChartColClass }} mb-3 mb-md-0">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold mb-1" style="color:#9c4f18; font-size: 0.8rem;">📈 Tren Penjualan POS (7 Hari Terakhir)</h6>
@@ -82,7 +98,7 @@
                     </div>
 
                     @if($hasB2bAccess)
-                    <div class="col-md-6">
+                    <div class="{{ $row1ChartColClass }}">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold mb-1" style="color:#28a745; font-size: 0.8rem;">💼 Tren Penjualan B2B (7 Hari Terakhir)</h6>
@@ -96,9 +112,10 @@
                 </div>
 
                 {{-- ROW CHARTS 2: PEMBELIAN & PRODUKSI --}}
+                @if($hasPurchaseAccess || $hasProductionAccess)
                 <div class="row gx-3">
                     @if($hasPurchaseAccess)
-                    <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="{{ $row2ChartColClass }} mb-3 mb-md-0">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold mb-1" style="color:#d88656; font-size: 0.8rem;">🛒 Tren Pembelian Bahan (7 Hari Terakhir)</h6>
@@ -111,7 +128,7 @@
                     @endif
 
                     @if($hasProductionAccess)
-                    <div class="col-md-6">
+                    <div class="{{ $row2ChartColClass }}">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold mb-1" style="color:#17a2b8; font-size: 0.8rem;">⚙ Status Produksi (Work Order)</h6>
@@ -123,6 +140,7 @@
                     </div>
                     @endif
                 </div>
+                @endif
 
                 {{-- STATS SUMMARY (BAHAN & SUPPLIERS) --}}
                 @if($hasPurchaseAccess)
