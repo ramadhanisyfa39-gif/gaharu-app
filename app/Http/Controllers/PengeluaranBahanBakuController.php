@@ -520,6 +520,12 @@ class PengeluaranBahanBakuController extends Controller
                     */
 
                     $gudangOpname = $data->gudang_id;
+                    $shortageCredits = [];
+                    $totalShortageDebit = 0;
+                    $idBebanSelisih = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
+                        ?? DB::table('chart_of_accounts')->where('kode', '5104')->value('id') 
+                        ?? DB::table('chart_of_accounts')->where('kode', '5103')->value('id') 
+                        ?? 44;
 
                     foreach ($data->details as $detail) {
 
@@ -555,45 +561,21 @@ class PengeluaranBahanBakuController extends Controller
                             }
                         }
 
+                        $hppTotal = round($hppTotal, 2);
                         $detail->update(['hpp_total' => $hppTotal]);
 
-                        // Kirim otomatis ke Jurnal Penyesuaian (Shortage / Kurang)
+                        // Akumulasi jurnal penyesuaian
                         if ($hppTotal > 0) {
                             $barang = \App\Models\MasterBarang::find($detail->barang_id);
                             $isOperational = $barang && ($barang->is_operational || !$barang->is_bahan_baku);
                             $coaCode = $isOperational ? '1302' : '1301';
                             $idPersediaan = DB::table('chart_of_accounts')->where('kode', $coaCode)->value('id') ?? ($isOperational ? 20 : 19);
                             
-                            $idBebanSelisih = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
-                                ?? DB::table('chart_of_accounts')->where('kode', '5104')->value('id') 
-                                ?? DB::table('chart_of_accounts')->where('kode', '5103')->value('id') 
-                                ?? 44;
-
-                            $jp = \App\Models\JurnalPenyesuaian::create([
-                                'tanggal'     => now(),
-                                'deskripsi'   => "[AJP] Penyesuaian Kurang (Shortage) Stock Opname: " . ($barang->nama ?? 'Barang'),
-                                'no_ref'      => 'AJP-SO-SHORTAGE-' . $data->kode_pengeluaran . '-' . rand(100, 999),
-                                'source_type' => 'pengeluaran_bahan_baku',
-                                'source_id'   => $data->id,
-                                'created_by'  => auth()->id(),
-                                'status'      => 'approved',
-                            ]);
-
-                            // Debit: Beban Selisih HPP
-                            $jp->details()->create([
-                                'account_id'   => $idBebanSelisih,
-                                'debit'        => $hppTotal,
-                                'kredit'       => 0,
-                                'journal_type' => \App\Models\JurnalPenyesuaian::class,
-                            ]);
-
-                            // Kredit: Persediaan (1301 / 1302)
-                            $jp->details()->create([
-                                'account_id'   => $idPersediaan,
-                                'debit'        => 0,
-                                'kredit'       => $hppTotal,
-                                'journal_type' => \App\Models\JurnalPenyesuaian::class,
-                            ]);
+                            if (!isset($shortageCredits[$idPersediaan])) {
+                                $shortageCredits[$idPersediaan] = 0;
+                            }
+                            $shortageCredits[$idPersediaan] += $hppTotal;
+                            $totalShortageDebit += $hppTotal;
                         }
 
                         /*

@@ -314,13 +314,13 @@
                         <div class="submenu-divider">SALES</div>
 
                         @if($canRole(['Kepala Outlet Gaharu', 'Direktur Keuangan']))
-                            <a href="{{ route('penjualan_pos.laporan') }}" class="{{ request()->routeIs('penjualan_pos.laporan') ? 'active' : '' }}">
-                                <i class="bi bi-receipt me-2" style="font-size:12px;"></i>Rekap POS Sales Report
+                            <a href="{{ route('laporan.penjualan') }}" class="{{ request()->routeIs('laporan.penjualan') ? 'active' : '' }}">
+                                <i class="bi bi-building me-2" style="font-size:12px;"></i>B2B Sales Report
                             </a>
                         @endif
 
-                        <a href="{{ route('laporan.penjualan') }}" class="{{ request()->routeIs('laporan.penjualan') ? 'active' : '' }}">
-                            <i class="bi bi-building me-2" style="font-size:12px;"></i>B2B Sales Report
+                        <a href="{{ route('penjualan_pos.laporan') }}" class="{{ request()->routeIs('penjualan_pos.laporan') ? 'active' : '' }}">
+                            <i class="bi bi-receipt me-2" style="font-size:12px;"></i>Rekap POS Sales Report
                         </a>
 
                         @if($canRole(['Kepala Outlet Gaharu', 'Direktur Keuangan']))
@@ -330,7 +330,7 @@
                         @endif
                     @endif
 
-                    @if($canRole(['Bagian Produksi', 'Kepala Outlet Gaharu', 'Direktur Keuangan']))
+                    @if($canRole(['Bagian Produksi', 'Direktur Keuangan']))
                         <div class="submenu-divider">PRODUCTION</div>
                         <a href="{{ route('laporan.produksi.dashboard') }}" class="{{ request()->routeIs('laporan.produksi.dashboard') ? 'active' : '' }}">
                             <i class="bi bi-speedometer2 me-2" style="font-size:12px;"></i>Dashboard Produksi

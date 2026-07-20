@@ -414,11 +414,14 @@ class ProduksiController extends Controller
 
                 $totalBbbProduk = 0;
 
+                $biayaTambahan = DB::table('resep_btkl_bop')->where('produk_id', $produkId)->first();
+                $outputQty = ($biayaTambahan && floatval($biayaTambahan->output_qty) > 0) ? floatval($biayaTambahan->output_qty) : 1;
+
                 // A. FIFO BAHAN BAKU
                 $resepItems = ResepBahanBaku::where('resep_id', $produk->resep_id)->get();
 
                 foreach ($resepItems as $item) {
-                    $qtyButuh = $item->qty_bahan * $qtyHasil;
+                    $qtyButuh = (floatval($item->qty_bahan) / $outputQty) * $qtyHasil;
 
                     $fifoResult = $fifoService->consumeFIFO(
                         $item->bahan_id,

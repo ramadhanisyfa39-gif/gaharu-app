@@ -97,7 +97,9 @@ Route::middleware('auth')->group(function () {
 
     // Laporan B2B Sales (diakses oleh Gaharu, Kejingga, dan Direktur Keuangan)
     Route::middleware(['role:Kepala Outlet Gaharu,Kepala Outlet Kejingga,Direktur Keuangan'])->group(function () {
-        Route::get('/laporan-penjualan', [LaporanPenjualanController::class, 'index'])->name('laporan.penjualan');
+        // Laporan Sales & HPP
+        Route::get('/laporan-penjualan-pos', [LaporanPenjualanPosController::class, 'index'])->name('penjualan_pos.laporan');
+        Route::get('/laporan-produksi/hpp', [LaporanProduksiController::class, 'hpp'])->name('laporan.hpp');
     });
 
 
@@ -128,9 +130,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:Kepala Outlet Gaharu,Direktur Keuangan'])->group(function () {
         Route::resource('coa', CoaController::class)->names('coa');
 
-        // Laporan Sales & HPP
-        Route::get('/laporan-penjualan-pos', [LaporanPenjualanPosController::class, 'index'])->name('penjualan_pos.laporan');
-        Route::get('/laporan-produksi/hpp', [LaporanProduksiController::class, 'hpp'])->name('laporan.hpp');
+        // Laporan Penjualan B2B
+        Route::get('/laporan-penjualan', [LaporanPenjualanController::class, 'index'])->name('laporan.penjualan');
 
         // Jurnal / Finance
         Route::get('/coa/get-name/{id}', [JurnalController::class, 'getCoaName'])->name('coa.getName');
@@ -236,7 +237,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Laporan Produksi Dashboard & Rekapitulasi (Produksi, Gaharu, Direktur Keuangan)
-    Route::middleware(['role:Bagian Produksi,Kepala Outlet Gaharu,Direktur Keuangan'])->group(function () {
+    Route::middleware(['role:Bagian Produksi,Direktur Keuangan'])->group(function () {
         Route::get('/laporan-produksi/dashboard', [LaporanProduksiController::class, 'dashboard'])->name('laporan.produksi.dashboard');
         Route::get('/laporan-produksi/rekapitulasi', [LaporanProduksiController::class, 'rekapitulasi'])->name('laporan.rekapitulasi');
     });

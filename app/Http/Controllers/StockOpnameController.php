@@ -250,6 +250,12 @@ public function detailJson(string $id)
 
             // ── Kumpulkan item yang selisihnya negatif & proses yang positif ──
             $itemSelisihNegatif = [];
+            $surplusDebits = [];
+            $totalSurplusKredit = 0;
+            $idPendapatanLain = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
+                ?? DB::table('chart_of_accounts')->where('kode', '8103')->value('id') 
+                ?? DB::table('chart_of_accounts')->where('kode', '8100')->value('id') 
+                ?? 13;
 
             foreach ($opname->details as $detail) {
 
@@ -301,44 +307,47 @@ public function detailJson(string $id)
                     ]);
 
                     // 3. Kirim otomatis ke Jurnal Penyesuaian (Surplus)
-                    $totalHargaSO = $detail->selisih * $hargaUnit;
+                    $totalHargaSO = round($detail->selisih * $hargaUnit, 2);
                     if ($totalHargaSO > 0) {
                         $isOperational = $detail->barang && ($detail->barang->is_operational || !$detail->barang->is_bahan_baku);
                         $coaCode = $isOperational ? '1302' : '1301';
                         $idPersediaan = DB::table('chart_of_accounts')->where('kode', $coaCode)->value('id') ?? ($isOperational ? 20 : 19);
                         
-                        $idPendapatanLain = DB::table('chart_of_accounts')->where('kode', '6401')->value('id')
-                            ?? DB::table('chart_of_accounts')->where('kode', '8103')->value('id') 
-                            ?? DB::table('chart_of_accounts')->where('kode', '8100')->value('id') 
-                            ?? 13;
-
-                        $jp = \App\Models\JurnalPenyesuaian::create([
-                            'tanggal'     => now(),
-                            'deskripsi'   => "[AJP] Penyesuaian Lebih (Surplus) Stock Opname: " . ($detail->barang->nama ?? 'Barang'),
-                            'no_ref'      => 'AJP-SO-SURPLUS-' . $opname->kode_opname . '-' . rand(100, 999),
-                            'source_type' => 'stock_opname',
-                            'source_id'   => $opname->id,
-                            'created_by'  => Auth::id() ?? 1,
-                            'status'      => 'approved',
-                        ]);
-
-                        // Debit: Persediaan (1301 / 1302)
-                        $jp->details()->create([
-                            'account_id'   => $idPersediaan,
-                            'debit'        => $totalHargaSO,
-                            'kredit'       => 0,
-                            'journal_type' => \App\Models\JurnalPenyesuaian::class,
-                        ]);
-
-                        // Kredit: Beban Selisih HPP (mengurangi beban)
-                        $jp->details()->create([
-                            'account_id'   => $idPendapatanLain,
-                            'debit'        => 0,
-                            'kredit'       => $totalHargaSO,
-                            'journal_type' => \App\Models\JurnalPenyesuaian::class,
-                        ]);
+                        if (!isset($surplusDebits[$idPersediaan])) {
+                            $surplusDebits[$idPersediaan] = 0;
+                        }
+                        $surplusDebits[$idPersediaan] += $totalHargaSO;
+                        $totalSurplusKredit += $totalHargaSO;
                     }
                 }
+            }
+
+            if ($totalSurplusKredit > 0) {
+                $jp = \App\Models\JurnalPenyesuaian::create([
+                    'tanggal'     => now(),
+                    'deskripsi'   => "[AJP] Penyesuaian Lebih (Surplus) Stock Opname: " . $opname->kode_opname,
+                    'no_ref'      => 'AJP-SO-SURPLUS-' . $opname->kode_opname . '-' . rand(100, 999),
+                    'source_type' => 'stock_opname',
+                    'source_id'   => $opname->id,
+                    'created_by'  => Auth::id() ?? 1,
+                    'status'      => 'approved',
+                ]);
+
+                foreach ($surplusDebits as $accId => $debitAmount) {
+                    $jp->details()->create([
+                        'account_id'   => $accId,
+                        'debit'        => round($debitAmount, 2),
+                        'kredit'       => 0,
+                        'journal_type' => \App\Models\JurnalPenyesuaian::class,
+                    ]);
+                }
+
+                $jp->details()->create([
+                    'account_id'   => $idPendapatanLain,
+                    'debit'        => 0,
+                    'kredit'       => round($totalSurplusKredit, 2),
+                    'journal_type' => \App\Models\JurnalPenyesuaian::class,
+                ]);
             }
 
 
