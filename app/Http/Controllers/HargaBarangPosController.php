@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\MasterBarang;
 use App\Models\HargaPeriode;
-use Carbon\Carbon; // Wajib ditambahkan untuk memanipulasi dan mengecek tanggal
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class HargaBarangPosController extends Controller
 {
@@ -24,7 +25,11 @@ class HargaBarangPosController extends Controller
                 $queryBarang->where('tipe_penjualan', 'POS Gaharu');
             }
         }
-        $listBarang = $queryBarang->with(['hargaPosAktif', 'firstFifoLayer'])->get();
+        $listBarang = $queryBarang->with(['hargaPosAktif'])->get();
+
+        foreach ($listBarang as $barang) {
+            $barang->dynamic_hpp = $this->calculateHppBarangJadi($barang->id, $user->gudang_id ?? 3);
+        }
     
         return view('harga.index', compact('listBarang'));
     }
@@ -50,6 +55,8 @@ class HargaBarangPosController extends Controller
         $riwayatHarga = \App\Models\HargaPeriode::where('barang_id', $id)
             ->orderBy('tgl_mulai', 'desc')
             ->get();
+    
+        $barangTerpilih->dynamic_hpp = $this->calculateHppBarangJadi($id, $user->gudang_id ?? 3);
     
         return view('harga.show', compact('barangTerpilih', 'riwayatHarga'));
     }
@@ -146,5 +153,56 @@ class HargaBarangPosController extends Controller
 
         // Tolak hapus jika sedang aktif atau masa lalu
         return redirect()->back()->withErrors(['error' => 'Gagal! Hanya harga di masa depan yang boleh dihapus untuk menjaga riwayat transaksi.']);
+    }
+
+    private function getHargaFIFORata($gudangId, $barangId): float
+    {
+        $harga = DB::table('stok_gudang_batch')
+            ->where('gudang_id', $gudangId)
+            ->where('barang_id', $barangId)
+            ->where('qty_sisa', '>', 0)
+            ->avg('harga_per_qty');
+
+        if (!$harga) {
+            $harga = DB::table('stok_gudang_batch')
+                ->where('gudang_id', $gudangId)
+                ->where('barang_id', $barangId)
+                ->avg('harga_per_qty');
+        }
+
+        if (!$harga) {
+            $harga = DB::table('master_barang')
+                ->where('id', $barangId)
+                ->value('hpp_referensi') ?? 0;
+        }
+
+        return (float) $harga;
+    }
+
+    private function calculateHppBarangJadi($barangId, $gudangId)
+    {
+        $barangJadi = MasterBarang::find($barangId);
+        if (!$barangJadi || is_null($barangJadi->resep_id)) {
+            return $barangJadi ? $barangJadi->hpp_referensi : 0;
+        }
+
+        $resepUtama = DB::table('resep_btkl_bop')->where('id', $barangJadi->resep_id)->first();
+        if (!$resepUtama) {
+            return $barangJadi->hpp_referensi;
+        }
+
+        $outputQty = floatval($resepUtama->output_qty) > 0 ? floatval($resepUtama->output_qty) : 1;
+        $bopBtklPerPcs = (floatval($resepUtama->btkl_per_batch) + floatval($resepUtama->bop_per_batch)) / $outputQty;
+
+        $resepBahan = DB::table('resep_bahanbaku')->where('resep_id', $resepUtama->id)->get();
+        $totalHppBahan = 0;
+
+        foreach ($resepBahan as $bahan) {
+            $kebutuhanPerPcs = floatval($bahan->qty_bahan) / $outputQty;
+            $hppBahanIni = $this->getHargaFIFORata($gudangId, $bahan->bahan_id);
+            $totalHppBahan += ($kebutuhanPerPcs * $hppBahanIni);
+        }
+
+        return $totalHppBahan + $bopBtklPerPcs;
     }
 }

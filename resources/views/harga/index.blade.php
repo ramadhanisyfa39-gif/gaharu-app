@@ -61,7 +61,7 @@
                                 <tbody>
                                     @forelse($listBarang as $item)
                                         @php
-                                            $hpp = $item->firstFifoLayer ? $item->firstFifoLayer->harga_per_unit : $item->hpp_referensi;
+                                            $hpp = $item->dynamic_hpp;
                                         @endphp
                                         <tr>
                                             <td class="ps-4">

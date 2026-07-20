@@ -64,7 +64,7 @@
                             <span class="fw-bold text-gray-800 fs-6 d-block mt-1">{{ $barangTerpilih->nama }}</span>
                             <span class="badge bg-secondary mt-1">Kode: {{ $barangTerpilih->kode_barang }}</span>
                             @php
-                                $hpp = $barangTerpilih->firstFifoLayer ? $barangTerpilih->firstFifoLayer->harga_per_unit : $barangTerpilih->hpp_referensi;
+                                $hpp = $barangTerpilih->dynamic_hpp;
                             @endphp
                             <span class="badge bg-info text-dark mt-1">HPP Ref: Rp {{ number_format($hpp, 0, ',', '.') }}</span>
                         </div>
