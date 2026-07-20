@@ -277,16 +277,17 @@ public function detailJson(string $id)
                         'satuan'    => $detail->barang->satuan ?? 'pcs',
                     ];
                 } elseif ($detail->selisih > 0) {
-                    // Selisih positif = stok fisik > stok sistem → perlu penambahan stok
-                    $hargaUnit = $this->getHargaFIFO($opname->gudang_id, $detail->barang_id);
+                    $defaultSupplierId  = DB::table('suppliers')->value('id') ?? 1;
+                    $defaultPembelianId = DB::table('pembelian')->value('id') ?? 1;
+                    $defaultPemDetailId = DB::table('pembelian_detail')->value('id') ?? 1;
 
                     // 1. Buat batch FIFO baru untuk surplus
                     \App\Models\StokGudangBatch::create([
                         'gudang_id'           => $opname->gudang_id,
-                        'supplier_id'         => 0,
+                        'supplier_id'         => $defaultSupplierId,
                         'barang_id'           => $detail->barang_id,
-                        'pembelian_id'        => 0,
-                        'pembelian_detail_id' => 0,
+                        'pembelian_id'        => $defaultPembelianId,
+                        'pembelian_detail_id' => $defaultPemDetailId,
                         'batch_number'        => 'SO-SURPLUS-' . $opname->kode_opname,
                         'qty_masuk'           => $detail->selisih,
                         'qty_keluar'          => 0,

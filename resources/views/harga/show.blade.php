@@ -14,7 +14,7 @@
         .btn-outline-primary-theme:hover { background-color: #d88656; color: white; }
     </style>
 
-    <div class="container py-4" style="font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; min-height: 100vh; margin-top: 5.5rem !important;">
+    <div class="container py-4" style="font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; min-height: 100vh;">
         <div class="row">
             {{-- Alert Notifikasi --}}
             <div class="col-md-12 mb-3">

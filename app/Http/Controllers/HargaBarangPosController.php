@@ -157,12 +157,24 @@ class HargaBarangPosController extends Controller
 
     private function getHargaFIFORata($gudangId, $barangId): float
     {
+        // 1. Batch di gudang terpilih (qty_sisa > 0, batch terlama FIFO)
         $harga = DB::table('stok_gudang_batch')
             ->where('gudang_id', $gudangId)
             ->where('barang_id', $barangId)
             ->where('qty_sisa', '>', 0)
-            ->avg('harga_per_qty');
+            ->orderBy('id', 'asc')
+            ->value('harga_per_qty');
 
+        // 2. Jika tidak ada di gudang terpilih, cari batch di SEMUA gudang (qty_sisa > 0, batch terlama FIFO)
+        if (!$harga) {
+            $harga = DB::table('stok_gudang_batch')
+                ->where('barang_id', $barangId)
+                ->where('qty_sisa', '>', 0)
+                ->orderBy('id', 'asc')
+                ->value('harga_per_qty');
+        }
+
+        // 3. Fallback: Rata-rata histori semua batch di gudang terpilih
         if (!$harga) {
             $harga = DB::table('stok_gudang_batch')
                 ->where('gudang_id', $gudangId)
@@ -170,6 +182,14 @@ class HargaBarangPosController extends Controller
                 ->avg('harga_per_qty');
         }
 
+        // 4. Fallback: Rata-rata histori semua batch di semua gudang
+        if (!$harga) {
+            $harga = DB::table('stok_gudang_batch')
+                ->where('barang_id', $barangId)
+                ->avg('harga_per_qty');
+        }
+
+        // 5. Fallback akhir: hpp_referensi di master_barang
         if (!$harga) {
             $harga = DB::table('master_barang')
                 ->where('id', $barangId)
@@ -198,7 +218,7 @@ class HargaBarangPosController extends Controller
         $totalHppBahan = 0;
 
         foreach ($resepBahan as $bahan) {
-            $kebutuhanPerPcs = floatval($bahan->qty_bahan) / $outputQty;
+            $kebutuhanPerPcs = floatval($bahan->qty_bahan);
             $hppBahanIni = $this->getHargaFIFORata($gudangId, $bahan->bahan_id);
             $totalHppBahan += ($kebutuhanPerPcs * $hppBahanIni);
         }

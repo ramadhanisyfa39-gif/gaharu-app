@@ -60,13 +60,9 @@ class PengeluaranBahanBakuService
             |
             */
 
-            $gudangUtama = MasterGudang::where(
-                'nama',
-                'Gudang Utama'
-            )->firstOrFail();
-
-            // Gudang asal = Gudang Utama (sumber seluruh pembelian)
-            $gudangAsalId = $gudangUtama->id;
+            // Gudang asal selalu Gudang Utama karena seluruh pembelian masuk ke Gudang Utama
+            $gudangUtama = MasterGudang::where('nama', 'Gudang Utama')->first();
+            $gudangAsalId = $gudangUtama ? $gudangUtama->id : 1;
 
             /*
             |--------------------------------------------------------------------------

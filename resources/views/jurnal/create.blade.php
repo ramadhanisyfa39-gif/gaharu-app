@@ -109,6 +109,7 @@
                     </div>
 
                     <div class="text-end">
+                        <a href="{{ route('jurnal.index') }}" class="btn btn-light border">Batal</a>
                         <button type="submit" class="btn btn-primary px-4">Simpan Transaksi</button>
                     </div>
                 </form>

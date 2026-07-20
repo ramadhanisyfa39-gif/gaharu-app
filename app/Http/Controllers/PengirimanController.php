@@ -263,6 +263,32 @@ class PengirimanController extends Controller
                 // Jalankan Increment Alokasi & Decrement Stok Gudang
                 $alokasi->increment('qty_terkirim', $qtyKirim);
                 DB::table('stok_gudang')->where('id', $stok->id)->decrement('jumlah', $qtyKirim);
+
+                // Potong Stok Batch (FIFO)
+                $fifoResult = app(\App\Services\FifoService::class)->consumeFIFO(
+                    $barangId,
+                    $qtyKirim,
+                    $gudangB2B->id,
+                    true // allowNegative
+                );
+
+                $totalHppKirim = 0;
+                foreach ($fifoResult as $layer) {
+                    $totalHppKirim += floatval($layer['qty_keluar']) * floatval($layer['harga_per_qty']);
+                }
+
+                // Catat Log Transaksi Stok
+                \App\Models\TransaksiStok::create([
+                    'tanggal'        => now(),
+                    'tipe'           => 'keluar',
+                    'source_type'    => 'pengiriman',
+                    'source_id'      => $pengiriman->id,
+                    'gudang_asal_id' => $gudangB2B->id,
+                    'barang_id'      => $barangId,
+                    'qty'            => $qtyKirim,
+                    'total_harga'    => $totalHppKirim,
+                    'created_by'     => auth()->id() ?? 1,
+                ]);
             }
 
             // 3. Hitung Akumulasi Total Terkirim Seluruh Surat Jalan untuk Pesanan Ini

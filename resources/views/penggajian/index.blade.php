@@ -6,9 +6,9 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b pb-4">
                     <div>
                         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                            Sistem Manajemen Penggajian & Jurnal
+                            Sistem Pencatatan Gaji & Jurnal
                         </h2>
-                        <p class="text-sm text-gray-500 mt-1">Kelola data payroll kolektif per periode dan integrasi jurnal umum.</p>
+                        <p class="text-sm text-gray-500 mt-1">Kelola data gaji kolektif per periode dan integrasi jurnal umum.</p>
                     </div>
                     <div class="flex gap-2 items-center">
                         <form action="{{ route('penggajian.index') }}" method="GET" class="flex gap-2">

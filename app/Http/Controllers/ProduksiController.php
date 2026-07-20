@@ -8,6 +8,8 @@ use App\Models\WorkOrderDetail;
 use App\Models\MasterBarang;
 use App\Models\ResepBahanBaku;
 use App\Models\StokGudang;
+use App\Models\StokGudangBatch;
+use App\Models\TransaksiStok;
 use App\Models\Produksi;
 use App\Models\ProduksiDetail;
 use App\Models\ProduksiPesanan;
@@ -421,7 +423,7 @@ class ProduksiController extends Controller
                 $resepItems = ResepBahanBaku::where('resep_id', $produk->resep_id)->get();
 
                 foreach ($resepItems as $item) {
-                    $qtyButuh = (floatval($item->qty_bahan) / $outputQty) * $qtyHasil;
+                    $qtyButuh = floatval($item->qty_bahan) * $qtyHasil;
 
                     $fifoResult = $fifoService->consumeFIFO(
                         $item->bahan_id,
@@ -463,6 +465,7 @@ class ProduksiController extends Controller
 
                 // C. HITUNG TOTAL HPP & UPDATE KE DETAIL PRODUKSI
                 $hppKeseluruhan = $totalBbbProduk + $totalBtklBop;
+                $hppPerUnit     = $qtyHasil > 0 ? ($hppKeseluruhan / $qtyHasil) : 0;
 
                 DB::table('produksi_detail')
                     ->where('id', $detail->id)
@@ -471,7 +474,7 @@ class ProduksiController extends Controller
                         'updated_at' => now()
                     ]);
 
-                // D. TAMBAH STOK BARANG JADI KE GUDANG HASIL
+                // D. TAMBAH STOK BARANG JADI KE GUDANG HASIL (STOK, BATCH & LOG TRANSAKSI)
                 $stokBarangJadi = StokGudang::where('gudang_id', $gudangHasilId)
                     ->where('barang_id', $produkId)
                     ->first();
@@ -486,8 +489,37 @@ class ProduksiController extends Controller
                     ]);
                 }
 
+                $defaultSupplierId  = DB::table('suppliers')->value('id') ?? 1;
+                $defaultPembelianId = DB::table('pembelian')->value('id') ?? 1;
+                $defaultPemDetailId = DB::table('pembelian_detail')->value('id') ?? 1;
+
+                StokGudangBatch::create([
+                    'gudang_id'           => $gudangHasilId,
+                    'supplier_id'         => $defaultSupplierId,
+                    'barang_id'           => $produkId,
+                    'pembelian_id'        => $defaultPembelianId,
+                    'pembelian_detail_id' => $defaultPemDetailId,
+                    'batch_number'        => 'PROD-' . $produksi->kode_produksi,
+                    'qty_masuk'           => $qtyHasil,
+                    'qty_keluar'          => 0,
+                    'qty_sisa'            => $qtyHasil,
+                    'harga_per_qty'       => $hppPerUnit,
+                    'is_habis'            => false,
+                ]);
+
+                TransaksiStok::create([
+                    'tanggal'          => now(),
+                    'tipe'             => 'masuk',
+                    'source_type'      => 'produksi',
+                    'source_id'        => $produksi->id,
+                    'gudang_tujuan_id' => $gudangHasilId,
+                    'barang_id'        => $produkId,
+                    'qty'              => $qtyHasil,
+                    'total_harga'      => $hppKeseluruhan,
+                    'created_by'       => auth()->id() ?? 1,
+                ]);
+
                 // E. DISTRIBUSI ALOKASI PESANAN DALAM WO (PRO-RATA/SEQUENTIAL)
-                $hppPerUnit = $qtyHasil > 0 ? ($hppKeseluruhan / $qtyHasil) : 0;
                 $sisaBarangSiapBagi = $qtyHasil; 
 
                 $detailPesananWO = WorkOrderDetail::where('work_order_id', $workOrderId)

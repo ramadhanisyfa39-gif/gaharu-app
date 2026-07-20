@@ -10,9 +10,6 @@
             <a href="{{ route('penjualan_pos.laporan', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger">
                 📕 Export PDF
             </a>
-            <button onclick="window.print()" class="btn btn-secondary">
-                🖨️ Cetak / Save PDF
-            </button>
         </div>
     </div>
 

@@ -60,7 +60,6 @@ class CoaMasterSeeder extends Seeder
 
             // Persediaan (1300)
             ['kode' => '1301', 'nama' => 'Persediaan Bahan Baku', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1300'],
-            ['kode' => '1302', 'nama' => 'Persediaan Perlengkapan Operasional & ATK', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1300'],
 
             // Aset Tetap (1400)
             ['kode' => '1401', 'nama' => 'Tanah', 'tipe' => 'Aset', 'saldo_normal' => 'debit', 'parent_kode' => '1400'],
@@ -90,12 +89,15 @@ class CoaMasterSeeder extends Seeder
             ['kode' => '3104', 'nama' => 'Laba/Rugi Periode Berjalan', 'tipe' => 'Ekuitas', 'saldo_normal' => 'kredit', 'parent_kode' => '3100'],
 
             // Penjualan (4100)
-            ['kode' => '4101', 'nama' => 'Penjualan POS', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
-            ['kode' => '4102', 'nama' => 'Penjualan B2B', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
+            ['kode' => '4101', 'nama' => 'Penjualan POS Gaharu', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
+            ['kode' => '4102', 'nama' => 'Penjualan POS Kejingga', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
+            ['kode' => '4103', 'nama' => 'Penjualan B2B', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
+            ['kode' => '4104', 'nama' => 'Pendapatan Lain-lain', 'tipe' => 'Pendapatan', 'saldo_normal' => 'kredit', 'parent_kode' => '4100'],
 
             // Harga Pokok Penjualan (5100)
-            ['kode' => '5101', 'nama' => 'HPP Penjualan POS', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
-            ['kode' => '5102', 'nama' => 'HPP Penjualan B2B', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
+            ['kode' => '5101', 'nama' => 'HPP Penjualan POS Gaharu', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
+            ['kode' => '5102', 'nama' => 'HPP Penjualan POS Kejingga', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
+            ['kode' => '5103', 'nama' => 'HPP Penjualan B2B', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '5100'],
 
             // Beban Gaji Karyawan (6100)
             ['kode' => '6101', 'nama' => 'Beban Gaji Karyawan', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6100'],
@@ -112,8 +114,8 @@ class CoaMasterSeeder extends Seeder
 
             // Beban Pemasaran & Penyusutan Aset (6300)
             ['kode' => '6301', 'nama' => 'Biaya Iklan & Promosi B2B / Kafe', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
-            ['kode' => '6302', 'nama' => 'Potongan Diskon Penjualan Outlet 1', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
-            ['kode' => '6303', 'nama' => 'Potongan Diskon Penjualan Outlet 2', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
+            ['kode' => '6302', 'nama' => 'Potongan Diskon Penjualan Outlet Gaharu', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
+            ['kode' => '6303', 'nama' => 'Potongan Diskon Penjualan Outlet Kejingga', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
             ['kode' => '6304', 'nama' => 'Beban Penyusutan - Gedung & Bangunan', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
             ['kode' => '6305', 'nama' => 'Beban Penyusutan - Mesin Kopi & Peralatan Kafe', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],
             ['kode' => '6306', 'nama' => 'Beban Penyusutan - Kendaraan Operasional', 'tipe' => 'Beban', 'saldo_normal' => 'debit', 'parent_kode' => '6300'],

@@ -86,6 +86,7 @@
                 
                 {{-- ROW CHARTS 1: POS & B2B --}}
                 <div class="row gx-3">
+                    @if($hasPurchaseAccess)
                     <div class="{{ $row1ChartColClass }} mb-3 mb-md-0">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
@@ -96,6 +97,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
 
                     @if($hasB2bAccess)
                     <div class="{{ $row1ChartColClass }}">
