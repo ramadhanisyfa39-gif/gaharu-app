@@ -1,344 +1,682 @@
+@php
+    $userRole = auth()->user()->role->nama ?? '';
+    $tipePenjualanOptions = [];
+    if (in_array($userRole, ['Super Admin', 'Administrator'])) {
+        $tipePenjualanOptions = ['POS Gaharu', 'POS Kejingga', 'B2B'];
+    } elseif ($userRole === 'Kepala Outlet Gaharu') {
+        $tipePenjualanOptions = ['POS Gaharu', 'B2B'];
+    } elseif ($userRole === 'Kepala Outlet Kejingga') {
+        $tipePenjualanOptions = ['POS Kejingga'];
+    } elseif ($userRole === 'Kepala Gudang') {
+        $tipePenjualanOptions = ['B2B'];
+    }
+@endphp
 <x-app-layout>
-    <x-slot name="header">
+<x-slot name="header">
+
         Master Barang
+
     </x-slot>
 
-    <div class="container">
-        <h3 class="mb-3">Data Barang</h3>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <h5 class="mb-0 fw-bold">Master Data Barang</h5>
+            <small class="text-muted">Kelola data barang perusahaan</small>
+        </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <button type="button" class="btn text-white" style="background-color: #d88656; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahBarang">
-                + Tambah Barang
-            </button>
-
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <form action="{{ route('barang.index') }}" method="GET" class="d-flex gap-2">
-                <select name="kategori_id" class="form-select form-select-sm" style="width: 180px;">
+                <select name="kategori_id" class="form-select form-select-sm" style="width: 170px; border-radius: 6px;">
                     <option value="">-- Semua Kategori --</option>
                     @foreach($kategori as $k)
                         <option value="{{ $k->id }}" {{ request('kategori_id') == $k->id ? 'selected' : '' }}>{{ $k->nama }}</option>
                     @endforeach
                 </select>
-                <div class="input-group input-group-sm" style="width: 220px;">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama/kode..." value="{{ request('search') }}">
-                    <button type="submit" class="btn text-white" style="background-color: #d88656; border: none;">
-                        <i class="bi bi-search"></i>
-                    </button>
-                </div>
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama/kode..." value="{{ request('search') }}" style="width: 180px; border-radius: 6px;">
+                <button type="submit" class="btn btn-sm text-white" style="background-color: #d88656; border-radius: 6px; border: none; padding: 5px 15px;">Cari</button>
                 @if(request('kategori_id') || request('search'))
-                    <a href="{{ route('barang.index') }}" class="btn btn-sm btn-secondary">
-                        <i class="bi bi-arrow-clockwise"></i> Reset
-                    </a>
+                    <a href="{{ route('barang.index') }}" class="btn btn-sm btn-secondary" style="border-radius: 6px; padding: 5px 15px;">Reset</a>
                 @endif
             </form>
-        </div>
 
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-
-        @if(session('error'))
-            <div class="alert alert-danger d-flex align-items-center gap-2">
-                <i class="bi bi-exclamation-triangle-fill"></i>
-                {{ session('error') }}
-            </div>
-        @endif
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <table class="table table-bordered table-hover align-middle text-center">
-                    <thead style="background-color: #d88656; color: white;">
-                        <tr>
-                            <th style="background-color: #d88656; color: white;">Kode</th>
-                            <th style="background-color: #d88656; color: white;">Nama</th>
-                            <th style="background-color: #d88656; color: white;">Kategori</th>
-                            <th style="background-color: #d88656; color: white;">Satuan</th>
-                            <th style="background-color: #d88656; color: white;">Jenis</th>
-                            <th style="background-color: #d88656; color: white;">Min. Stock</th>
-                            <th style="background-color: #d88656; color: white;">Min. Order</th>
-                            <th style="background-color: #d88656; color: white;">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($data as $d)
-                            <tr class="{{ !$d->is_active ? 'table-secondary' : '' }}">
-                                <td>{{ $d->kode_barang }}</td>
-                                <td class="text-start fw-semibold">
-                                    {{ $d->nama }} 
-                                    @if(!$d->is_active) <span class="badge bg-secondary ms-2">Non-Aktif</span> @endif
-                                </td>
-                                <td>{{ $d->kategori->nama ?? '-' }}</td>
-                                <td>{{ $d->satuan }}</td>
-                                <td>
-                                    @if($d->is_bahan_baku)
-                                        <span class="badge bg-primary-subtle text-primary px-3 py-2">Bahan Baku</span>
-                                    @elseif($d->is_barang_jadi)
-                                        <span class="badge bg-success-subtle text-success px-3 py-2">Barang Jadi</span>
-                                    @elseif($d->is_operational)
-                                        <span class="badge bg-warning-subtle text-dark px-3 py-2">Operational</span>
-                                    @endif
-                                </td>
-                                {{-- FIX: Menghilangkan tag penutup td ganda --}}
-                                <td>
-                                    @if($d->minimum_stock !== null)
-                                        <span class="fw-bold text-dark">{{ number_format($d->minimum_stock) }}</span> 
-                                        <small class="text-muted">{{ $d->satuan }}</small>
-                                    @else
-                                        <span class="text-muted">—</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="fw-bold text-dark">{{ number_format($d->minimum_order ?? 1) }}</span> 
-                                    <small class="text-muted">{{ $d->satuan }}</small>
-                                </td>
-                                <td>
-                                    <div class="d-flex justify-content-center gap-1">
-                                        <a href="{{ route('barang.show', $d->id) }}" class="btn btn-info btn-sm text-white">
-                                            Detil
-                                        </a>
-
-                                        <form action="{{ route('barang.toggle', $d->id) }}" method="POST">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit" class="btn btn-{{ $d->is_active ? 'secondary' : 'success' }} btn-sm" title="Ubah Status">
-                                                {{ $d->is_active ? 'Non-Aktifkan' : 'Aktifkan' }}
-                                            </button>
-                                        </form>
-
-                                        <a href="{{ route('barang.edit',$d->id) }}" class="btn btn-warning btn-sm">
-                                            Edit
-                                        </a>
-
-                                        <form action="{{ route('barang.destroy',$d->id) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button onclick="return confirm('Yakin hapus data ini?')" class="btn btn-danger btn-sm">
-                                                Hapus
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">
-                                    Data belum tersedia
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="mt-3">
-            {{ $data->links() }}
+            {{-- Tombol Tambah membuka modal --}}
+            <button type="button" class="btn btn-sm text-white" style="background-color: #d88656; border: none; border-radius: 6px; padding: 5px 15px;" data-bs-toggle="modal" data-bs-target="#modalTambahBarang">
+                + Tambah Barang
+            </button>
         </div>
     </div>
 
-    {{-- MODAL TAMBAH BARANG --}}
-    <div class="modal fade" id="modalTambahBarang" tabindex="-1" aria-labelledby="modalTambahBarangLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header text-white" style="background-color: #d88656;">
-                    <h5 class="modal-title" id="modalTambahBarangLabel">Tambah Barang Baru</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                
-                <form action="{{ route('barang.store') }}" method="POST" id="formTambahBarang">
-                    @csrf
-                    <div class="modal-body text-start">
-                        
-                        <div class="mb-3">
-                            <label class="fw-semibold">Kategori</label>
-                            <select name="kategori_id" id="kategori_id" class="form-control" required>
-                                <option value="">-- Pilih Kategori --</option>
-                                @foreach($kategori as $k)
-                                    <option value="{{ $k->id }}">{{ $k->nama }}</option>
+    <div class="card-body">
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center mb-0">
+                <thead>
+                    <tr>
+                        <th>Kode</th>
+                        <th class="text-start">Nama</th>
+                        <th>Kategori</th>
+                        <th>Satuan</th>
+                        <th>Jenis</th>
+                        <th>Min. Stock</th>
+                        <th>Min. Order</th>
+                        <th style="width: 150px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($data as $d)
+                        <tr class="{{ !$d->is_active ? 'table-secondary' : '' }}">
+                            <td class="font-monospace">{{ $d->kode_barang }}</td>
+                            <td class="text-start fw-semibold">
+                                {{ $d->nama }}
+                                @if(!$d->is_active) <span class="badge bg-secondary ms-2">Non-Aktif</span> @endif
+                            </td>
+                            <td>{{ $d->kategori->nama ?? '-' }}</td>
+                            <td>{{ $d->satuan }}</td>
+                            <td>
+                                @if($d->is_bahan_baku)
+                                    <span class="badge bg-primary-subtle text-primary px-3 py-2">Bahan Baku</span>
+                                @elseif($d->is_barang_jadi)
+                                    <span class="badge bg-success-subtle text-success px-3 py-2">Barang Jadi</span>
+                                @elseif($d->is_operational)
+                                    <span class="badge bg-warning-subtle text-dark px-3 py-2">Operational</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($d->minimum_stock !== null)
+                                    <span class="fw-bold text-dark">{{ number_format($d->minimum_stock) }}</span>
+                                    <small class="text-muted">{{ $d->satuan }}</small>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="fw-bold text-dark">{{ number_format($d->minimum_order ?? 1) }}</span>
+                                <small class="text-muted">{{ $d->satuan }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex justify-content-center flex-nowrap gap-1">
+                                    {{-- Tombol Detil membuka modal detail --}}
+                                    <button type="button"
+                                            class="btn btn-icon-action btn-info text-white"
+                                            title="Detil"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalDetailBarang"
+                                            data-kode="{{ $d->kode_barang }}"
+                                            data-nama="{{ $d->nama }}"
+                                            data-kategori="{{ $d->kategori->nama ?? '-' }}"
+                                            data-satuan="{{ $d->satuan }}"
+                                            data-jenis="{{ $d->jenis_utama }}"
+                                            data-active="{{ $d->is_active ? '1' : '0' }}"
+                                            data-min-stock="{{ $d->minimum_stock !== null ? number_format($d->minimum_stock) . ' ' . $d->satuan : '—' }}"
+                                            data-min-order="{{ number_format($d->minimum_order ?? 1) }} {{ $d->satuan }}"
+                                            data-tipe-penjualan="{{ $d->tipe_penjualan ?: 'Belum Diatur' }}">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </button>
+
+                                    <form action="{{ route('barang.toggle', $d->id) }}" method="POST">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit"
+                                                class="btn btn-icon-action btn-{{ $d->is_active ? 'secondary' : 'success' }} text-white"
+                                                title="{{ $d->is_active ? 'Non-Aktifkan' : 'Aktifkan' }}">
+                                            <i class="bi {{ $d->is_active ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
+                                        </button>
+                                    </form>
+
+                                    {{-- Tombol Edit membuka modal edit, terisi otomatis --}}
+                                    <button type="button"
+                                            class="btn btn-icon-action btn-warning"
+                                            title="Edit"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalEditBarang"
+                                            data-id="{{ $d->id }}"
+                                            data-kategori-id="{{ $d->kategori_id }}"
+                                            data-kode="{{ $d->kode_barang }}"
+                                            data-nama="{{ $d->nama }}"
+                                            data-satuan="{{ $d->satuan }}"
+                                            data-jenis="{{ $d->jenis_utama }}"
+                                            data-min-stock="{{ $d->minimum_stock }}"
+                                            data-min-order="{{ $d->minimum_order ?? 1 }}"
+                                            data-tipe-penjualan="{{ $d->tipe_penjualan }}"
+                                            data-action="{{ route('barang.update', $d->id) }}">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
+
+                                    {{-- Tombol Hapus membuka modal konfirmasi --}}
+                                    <button type="button"
+                                            class="btn btn-icon-action btn-danger"
+                                            title="Hapus"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalHapusBarang"
+                                            data-nama="{{ $d->nama }}"
+                                            data-action="{{ route('barang.destroy', $d->id) }}">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                Data barang belum tersedia.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3">
+            {{ $data->links() }}
+        </div>
+
+    </div>
+</div>
+
+
+{{-- ================= MODAL TAMBAH BARANG ================= --}}
+<div class="modal fade" id="modalTambahBarang" tabindex="-1" aria-labelledby="modalTambahBarangLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+            <div class="modal-header text-white" style="background-color: #d88656;">
+                <h5 class="modal-title fw-bold" id="modalTambahBarangLabel">Tambah Barang Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form action="{{ route('barang.store') }}" method="POST" id="formTambahBarang">
+                @csrf
+                <input type="hidden" name="_form" value="create">
+
+                <div class="modal-body text-start">
+
+                    <div class="mb-3">
+                        <label class="custom-label">Kategori</label>
+                        <select name="kategori_id" id="kategori_id" class="form-control custom-input @error('kategori_id') is-invalid @enderror" required>
+                            <option value="">-- Pilih Kategori --</option>
+                            @foreach($kategori as $k)
+                                <option value="{{ $k->id }}" {{ old('kategori_id') == $k->id ? 'selected' : '' }}>{{ $k->nama }}</option>
+                            @endforeach
+                        </select>
+                        @error('kategori_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Kode Barang</label>
+                            <input type="text" name="kode_barang" id="kode_barang" class="form-control custom-input @error('kode_barang') is-invalid @enderror" value="{{ old('kode_barang') }}" readonly required>
+                            @error('kode_barang') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Nama Barang</label>
+                            <input type="text" name="nama" id="nama_barang" class="form-control custom-input @error('nama') is-invalid @enderror" value="{{ old('nama') }}" required autocomplete="off">
+                            @error('nama') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Satuan</label>
+                            <input type="text" name="satuan" class="form-control custom-input @error('satuan') is-invalid @enderror" value="{{ old('satuan') }}" required placeholder="Contoh: kg, pcs, liter">
+                            @error('satuan') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Jenis Barang</label>
+                            <select name="jenis_utama" id="jenis" class="form-control custom-input @error('jenis_utama') is-invalid @enderror" required>
+                                <option value="">-- Pilih Jenis --</option>
+                                <option value="BAHAN_BAKU" {{ old('jenis_utama') == 'BAHAN_BAKU' ? 'selected' : '' }}>Bahan Baku</option>
+                                <option value="BARANG_JADI" {{ old('jenis_utama') == 'BARANG_JADI' ? 'selected' : '' }}>Barang Jadi</option>
+                                <option value="OPERATIONAL" {{ old('jenis_utama') == 'OPERATIONAL' ? 'selected' : '' }}>Operational</option>
+                            </select>
+                            @error('jenis_utama') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="group-min-stock">
+                            <label class="custom-label text-danger">Minimum Stock (Batas Kritis)</label>
+                            <input type="number" name="minimum_stock" id="minimum_stock" class="form-control custom-input" value="{{ old('minimum_stock') }}" placeholder="Contoh: 10" min="0">
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="group-tipe-penjualan">
+                            <label class="custom-label">Tipe Penjualan</label>
+                            <select name="tipe_penjualan" id="tipe_penjualan" class="form-control custom-input">
+                                <option value="">-- Pilih Tipe Penjualan --</option>
+                                @foreach($tipePenjualanOptions as $opt)
+                                    <option value="{{ $opt }}" {{ old('tipe_penjualan') == $opt ? 'selected' : '' }}>{{ $opt }}</option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Kode Barang</label>
-                                <input type="text" name="kode_barang" id="kode_barang" class="form-control" readonly required>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Nama Barang</label>
-                                <input type="text" name="nama" id="nama_barang" class="form-control" required autocomplete="off">
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Satuan</label>
-                                <input type="text" name="satuan" class="form-control" required placeholder="Contoh: kg, pcs, liter">
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold">Jenis Barang</label>
-                                <select name="jenis_utama" id="jenis" class="form-control" required>
-                                    <option value="">-- Pilih Jenis --</option>
-                                    <option value="BAHAN_BAKU">Bahan Baku</option>
-                                    <option value="BARANG_JADI">Barang Jadi</option>
-                                    <option value="OPERATIONAL">Operational</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-6 mb-3" id="group-min-stock" style="display: block;">
-                                <label class="fw-semibold text-danger">Minimum Stock (Batas Kritis)</label>
-                                <input type="number" name="minimum_stock" id="minimum_stock" class="form-control" placeholder="Contoh: 10" min="0">
-                            </div>
-
-                            <div class="col-md-6 mb-3" id="group-tipe-penjualan">
-                                <label class="fw-semibold text-gray-700">Tipe Penjualan</label>
-                                <select name="tipe_penjualan" id="tipe_penjualan" class="form-control">
-                                    <option value="">-- Pilih Tipe Penjualan --</option>
-                                    @php
-                                        $userRole = auth()->user()->role->nama ?? '';
-                                        $options = [];
-                                        if (in_array($userRole, ['Super Admin', 'Administrator'])) {
-                                            $options = ['POS Gaharu', 'POS Kejingga', 'B2B'];
-                                        } elseif ($userRole === 'Kepala Outlet Gaharu') {
-                                            $options = ['POS Gaharu', 'B2B'];
-                                        } elseif ($userRole === 'Kepala Outlet Kejingga') {
-                                            $options = ['POS Kejingga'];
-                                        } elseif ($userRole === 'Kepala Gudang') {
-                                            $options = ['B2B'];
-                                        }
-                                    @endphp
-                                    @foreach($options as $opt)
-                                        <option value="{{ $opt }}">{{ $opt }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="fw-semibold text-primary">Minimum Order (Batas Order)</label>
-                                <input type="number" name="minimum_order" id="minimum_order" class="form-control" placeholder="Default: 1" min="1" value="1" step="0.01">
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label text-primary">Minimum Order (Batas Order)</label>
+                            <input type="number" name="minimum_order" id="minimum_order" class="form-control custom-input" placeholder="Default: 1" min="1" value="{{ old('minimum_order', 1) }}" step="0.01">
                         </div>
-
                     </div>
 
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
-                        <button type="submit" class="btn text-white" style="background-color: #d88656">Simpan</button>
+                </div>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn custom-btn-batal" data-bs-dismiss="modal">Kembali</button>
+                    <button type="submit" class="btn text-white custom-btn-simpan">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{{-- ================= MODAL DETAIL BARANG ================= --}}
+<div class="modal fade" id="modalDetailBarang" tabindex="-1" aria-labelledby="modalDetailBarangLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+            <div class="modal-header text-white" style="background-color: #d88656;">
+                <h5 class="modal-title fw-bold" id="modalDetailBarangLabel">Informasi Barang</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Nama Barang</label>
+                        <p class="fs-5 text-dark fw-semibold mb-0" id="detailNama"></p>
                     </div>
-                </form>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Kode Barang</label>
+                        <p class="fs-5 text-dark fw-semibold font-monospace mb-0" id="detailKode"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Kategori</label>
+                        <p class="fs-6 text-dark mb-0" id="detailKategori"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Satuan</label>
+                        <p class="fs-6 text-dark mb-0" id="detailSatuan"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Jenis Barang</label>
+                        <p class="fs-6 mb-0" id="detailJenis"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Status</label>
+                        <p class="fs-6 mb-0" id="detailStatus"></p>
+                    </div>
+                    <div class="col-md-6 mb-3" id="detailTipePenjualanWrap">
+                        <label class="custom-label">Tipe Penjualan</label>
+                        <p class="fs-6 mb-0"><span class="badge bg-info text-dark" id="detailTipePenjualan"></span></p>
+                    </div>
+                    <div class="col-md-6 mb-3" id="detailMinStockWrap">
+                        <label class="custom-label">Batas Minimum Stock</label>
+                        <p class="fs-6 text-danger fw-bold mb-0" id="detailMinStock"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="custom-label">Batas Minimum Order</label>
+                        <p class="fs-6 text-primary fw-bold mb-0" id="detailMinOrder"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn custom-btn-batal w-100" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const jenis = document.getElementById('jenis');
-        const groupMinStock = document.getElementById('group-min-stock');
-        const minStockInput = document.getElementById('minimum_stock');
-        const groupTipePenjualan = document.getElementById('group-tipe-penjualan');
-        const tipePenjualanSelect = document.getElementById('tipe_penjualan');
 
-        function toggleForm() {
-            if (jenis.value === "BAHAN_BAKU") {
-                groupMinStock.style.display = "block";
-            } else {
-                groupMinStock.style.display = "none";
-                minStockInput.value = "";
-            }
+{{-- ================= MODAL EDIT BARANG ================= --}}
+<div class="modal fade" id="modalEditBarang" tabindex="-1" aria-labelledby="modalEditBarangLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+            <div class="modal-header text-white" style="background-color: #d88656;">
+                <h5 class="modal-title fw-bold" id="modalEditBarangLabel">Edit Barang</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-            if (jenis.value === "BARANG_JADI") {
-                groupTipePenjualan.style.display = "block";
-                tipePenjualanSelect.setAttribute('required', 'required');
-            } else {
-                groupTipePenjualan.style.display = "none";
-                tipePenjualanSelect.removeAttribute('required');
-                tipePenjualanSelect.value = "";
-            }
+            <form id="formEditBarang" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="_form" value="edit">
+
+                <div class="modal-body text-start">
+
+                    <div class="mb-3">
+                        <label class="custom-label">Kategori</label>
+                        <select name="kategori_id" id="editKategoriId" class="form-control custom-input @error('kategori_id') is-invalid @enderror" required>
+                            @foreach($kategori as $k)
+                                <option value="{{ $k->id }}">{{ $k->nama }}</option>
+                            @endforeach
+                        </select>
+                        @error('kategori_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Kode Barang</label>
+                            <input type="text" name="kode_barang" id="editKodeBarang" class="form-control custom-input @error('kode_barang') is-invalid @enderror" required>
+                            @error('kode_barang') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Nama Barang</label>
+                            <input type="text" name="nama" id="editNama" class="form-control custom-input @error('nama') is-invalid @enderror" required autocomplete="off">
+                            @error('nama') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Satuan</label>
+                            <input type="text" name="satuan" id="editSatuan" class="form-control custom-input @error('satuan') is-invalid @enderror" required>
+                            @error('satuan') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label">Jenis Barang</label>
+                            <select name="jenis_utama" id="editJenis" class="form-control custom-input @error('jenis_utama') is-invalid @enderror" required>
+                                <option value="BAHAN_BAKU">Bahan Baku</option>
+                                <option value="BARANG_JADI">Barang Jadi</option>
+                                <option value="OPERATIONAL">Operational</option>
+                            </select>
+                            @error('jenis_utama') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="editGroupMinStock">
+                            <label class="custom-label text-danger">Minimum Stock (Batas Kritis)</label>
+                            <input type="number" name="minimum_stock" id="editMinimumStock" class="form-control custom-input" min="0">
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="editGroupTipePenjualan">
+                            <label class="custom-label">Tipe Penjualan</label>
+                            <select name="tipe_penjualan" id="editTipePenjualan" class="form-control custom-input">
+                                <option value="">-- Pilih Tipe Penjualan --</option>
+                                @foreach($tipePenjualanOptions as $opt)
+                                    <option value="{{ $opt }}">{{ $opt }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="custom-label text-primary">Minimum Order (Batas Order)</label>
+                            <input type="number" name="minimum_order" id="editMinimumOrder" class="form-control custom-input" min="1" step="0.01">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn custom-btn-batal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn text-white custom-btn-simpan">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{{-- ================= MODAL HAPUS BARANG ================= --}}
+<div class="modal fade" id="modalHapusBarang" tabindex="-1" aria-labelledby="modalHapusBarangLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold" id="modalHapusBarangLabel" style="color: #2d3748;">Konfirmasi Hapus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form id="formHapusBarang" method="POST">
+                @csrf
+                @method('DELETE')
+
+                <div class="modal-body px-4 pt-2 pb-4">
+                    <p class="mb-0 text-secondary">
+                        Yakin ingin menghapus barang
+                        <strong id="hapusNama" class="text-dark"></strong>?
+                        Tindakan ini tidak dapat dibatalkan.
+                    </p>
+                </div>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn custom-btn-batal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .custom-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #718096;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .custom-input {
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        border: 1px solid #e2e8f0 !important;
+        font-size: 14px !important;
+    }
+    .custom-input:focus {
+        border-color: #d88656 !important;
+        box-shadow: 0 0 0 3px rgba(216, 134, 86, 0.15) !important;
+    }
+    .custom-btn-batal {
+        background-color: #f7fafc;
+        border: 1px solid #e2e8f0;
+        color: #4a5568;
+        border-radius: 8px;
+        padding: 8px 18px;
+        font-size: 14px;
+    }
+    .custom-btn-batal:hover {
+        background-color: #edf2f7;
+    }
+    .custom-btn-simpan {
+        background-color: #d88656;
+        border-radius: 8px;
+        padding: 8px 18px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+    }
+    .custom-btn-simpan:hover {
+        background-color: #c87443;
+    }
+    .btn-close-white {
+        filter: invert(1) grayscale(1) brightness(2);
+    }
+
+    /* ── TOMBOL AKSI IKON KOMPAK ── */
+    .btn-icon-action {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 13px;
+        border: none;
+        flex-shrink: 0;
+    }
+</style>
+
+@push('scripts')
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    /* ============ MODAL TAMBAH: toggle field & generate kode & cek nama duplikat ============ */
+    const jenis = document.getElementById('jenis');
+    const groupMinStock = document.getElementById('group-min-stock');
+    const minStockInput = document.getElementById('minimum_stock');
+    const groupTipePenjualan = document.getElementById('group-tipe-penjualan');
+    const tipePenjualanSelect = document.getElementById('tipe_penjualan');
+
+    function toggleForm() {
+        if (jenis.value === "BAHAN_BAKU") {
+            groupMinStock.style.display = "block";
+        } else {
+            groupMinStock.style.display = "none";
+            minStockInput.value = "";
         }
 
-        jenis.addEventListener('change', toggleForm);
-        toggleForm();
-
-        // AUTO GENERATE KODE BARANG BERDASARKAN KATEGORI
-        const kategori = document.getElementById('kategori_id');
-        kategori.addEventListener('change', function () {
-            let kategoriId = this.value;
-            if (kategoriId == '') {
-                document.getElementById('kode_barang').value = '';
-                return;
-            }
-
-            fetch("{{ route('barang.generate-kode', ':kategori') }}".replace(':kategori', kategoriId))
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('kode_barang').value = data.kode_barang;
-                });
-        });
-
-        if (kategori.value != '') {
-            kategori.dispatchEvent(new Event('change'));
+        if (jenis.value === "BARANG_JADI") {
+            groupTipePenjualan.style.display = "block";
+            tipePenjualanSelect.setAttribute('required', 'required');
+        } else {
+            groupTipePenjualan.style.display = "none";
+            tipePenjualanSelect.removeAttribute('required');
+            tipePenjualanSelect.value = "";
         }
+    }
+    jenis.addEventListener('change', toggleForm);
+    toggleForm();
 
-        // VALIDASI NAMA BARANG DUPLIKAT DENGAN AJAX (Lebih Tangguh)
-        const form = document.getElementById('formTambahBarang');
-        let bypassCheck = false;
-
-        form.addEventListener('submit', function (e) {
-            if (bypassCheck) return;
-            e.preventDefault(); // Block submit pertama kali
-
-            try {
-                const namaInput = document.getElementById('nama_barang');
-                if (!namaInput) {
-                    bypassFormSubmit();
-                    return;
-                }
-
-                const namaVal = namaInput.value.trim();
-                if (!namaVal) {
-                    bypassFormSubmit();
-                    return;
-                }
-
-                fetch("{{ route('barang.check-nama') }}?nama=" + encodeURIComponent(namaVal))
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error("HTTP error " + response.status);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.exists) {
-                            const confirmSubmit = confirm("Nama Barang ini sudah terdaftar, apakah tetap ingin diinput?");
-                            if (confirmSubmit) {
-                                bypassFormSubmit();
-                            }
-                        } else {
-                            bypassFormSubmit();
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Duplicate name check failed:", err);
-                        bypassFormSubmit();
-                    });
-            } catch (err) {
-                console.error("Error in duplicate check handler:", err);
-                bypassFormSubmit();
-            }
-
-            function bypassFormSubmit() {
-                bypassCheck = true;
-                form.submit();
-            }
-        });
+    const kategoriSelect = document.getElementById('kategori_id');
+    kategoriSelect.addEventListener('change', function () {
+        let kategoriId = this.value;
+        if (kategoriId == '') {
+            document.getElementById('kode_barang').value = '';
+            return;
+        }
+        fetch("{{ route('barang.generate-kode', ':kategori') }}".replace(':kategori', kategoriId))
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('kode_barang').value = data.kode_barang;
+            });
     });
-    </script>
+    if (kategoriSelect.value != '') {
+        kategoriSelect.dispatchEvent(new Event('change'));
+    }
+
+    const formTambah = document.getElementById('formTambahBarang');
+    let bypassCheck = false;
+    formTambah.addEventListener('submit', function (e) {
+        if (bypassCheck) return;
+        e.preventDefault();
+
+        const namaInput = document.getElementById('nama_barang');
+        const namaVal = namaInput.value.trim();
+        if (!namaVal) { bypassFormSubmit(); return; }
+
+        fetch("{{ route('barang.check-nama') }}?nama=" + encodeURIComponent(namaVal))
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    if (confirm("Nama Barang ini sudah terdaftar, apakah tetap ingin diinput?")) {
+                        bypassFormSubmit();
+                    }
+                } else {
+                    bypassFormSubmit();
+                }
+            })
+            .catch(() => bypassFormSubmit());
+
+        function bypassFormSubmit() {
+            bypassCheck = true;
+            formTambah.submit();
+        }
+    });
+
+    /* ============ MODAL DETAIL: isi dari data-attribute ============ */
+    var modalDetail = document.getElementById('modalDetailBarang');
+    modalDetail.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var jenisVal = button.getAttribute('data-jenis');
+
+        document.getElementById('detailNama').innerText = button.getAttribute('data-nama');
+        document.getElementById('detailKode').innerText = button.getAttribute('data-kode');
+        document.getElementById('detailKategori').innerText = button.getAttribute('data-kategori');
+        document.getElementById('detailSatuan').innerText = button.getAttribute('data-satuan');
+        document.getElementById('detailMinOrder').innerText = button.getAttribute('data-min-order');
+
+        var jenisLabel = { BAHAN_BAKU: ['Bahan Baku', 'primary'], BARANG_JADI: ['Barang Jadi', 'success'], OPERATIONAL: ['Operational', 'warning'] };
+        var info = jenisLabel[jenisVal] || ['Umum', 'secondary'];
+        document.getElementById('detailJenis').innerHTML = '<span class="badge bg-' + info[1] + '-subtle text-' + info[1] + ' px-3 py-2">' + info[0] + '</span>';
+
+        var isActive = button.getAttribute('data-active') === '1';
+        document.getElementById('detailStatus').innerHTML = isActive
+            ? '<span class="badge bg-success">Aktif</span>'
+            : '<span class="badge bg-danger">Non-Aktif</span>';
+
+        var minStockWrap = document.getElementById('detailMinStockWrap');
+        var tipeWrap = document.getElementById('detailTipePenjualanWrap');
+
+        if (jenisVal === 'BAHAN_BAKU') {
+            minStockWrap.style.display = 'block';
+            document.getElementById('detailMinStock').innerText = button.getAttribute('data-min-stock');
+        } else {
+            minStockWrap.style.display = 'none';
+        }
+
+        if (jenisVal === 'BARANG_JADI') {
+            tipeWrap.style.display = 'block';
+            document.getElementById('detailTipePenjualan').innerText = button.getAttribute('data-tipe-penjualan');
+        } else {
+            tipeWrap.style.display = 'none';
+        }
+    });
+
+    /* ============ MODAL EDIT: isi dari data-attribute + toggle field ============ */
+    var editJenis = document.getElementById('editJenis');
+    var editGroupMinStock = document.getElementById('editGroupMinStock');
+    var editMinimumStock = document.getElementById('editMinimumStock');
+    var editGroupTipePenjualan = document.getElementById('editGroupTipePenjualan');
+    var editTipePenjualan = document.getElementById('editTipePenjualan');
+
+    function toggleEditForm() {
+        if (editJenis.value === "BAHAN_BAKU") {
+            editGroupMinStock.style.display = "block";
+        } else {
+            editGroupMinStock.style.display = "none";
+        }
+
+        if (editJenis.value === "BARANG_JADI") {
+            editGroupTipePenjualan.style.display = "block";
+            editTipePenjualan.setAttribute('required', 'required');
+        } else {
+            editGroupTipePenjualan.style.display = "none";
+            editTipePenjualan.removeAttribute('required');
+        }
+    }
+    editJenis.addEventListener('change', toggleEditForm);
+
+    var modalEdit = document.getElementById('modalEditBarang');
+    modalEdit.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+
+        document.getElementById('editKategoriId').value = button.getAttribute('data-kategori-id');
+        document.getElementById('editKodeBarang').value = button.getAttribute('data-kode');
+        document.getElementById('editNama').value = button.getAttribute('data-nama');
+        document.getElementById('editSatuan').value = button.getAttribute('data-satuan');
+        editJenis.value = button.getAttribute('data-jenis');
+        editMinimumStock.value = button.getAttribute('data-min-stock');
+        editTipePenjualan.value = button.getAttribute('data-tipe-penjualan');
+        document.getElementById('editMinimumOrder').value = button.getAttribute('data-min-order');
+        document.getElementById('formEditBarang').action = button.getAttribute('data-action');
+
+        toggleEditForm();
+    });
+
+    /* ============ MODAL HAPUS ============ */
+    var modalHapus = document.getElementById('modalHapusBarang');
+    modalHapus.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        document.getElementById('hapusNama').innerText = button.getAttribute('data-nama');
+        document.getElementById('formHapusBarang').action = button.getAttribute('data-action');
+    });
+
+    /* ============ Auto-buka kembali modal Tambah/Edit jika ada error validasi ============ */
+    @if ($errors->any())
+        @if (old('_form') === 'edit')
+            new bootstrap.Modal(document.getElementById('modalEditBarang')).show();
+        @else
+            new bootstrap.Modal(document.getElementById('modalTambahBarang')).show();
+        @endif
+    @endif
+});
+</script>
+@endpush
+
 </x-app-layout>

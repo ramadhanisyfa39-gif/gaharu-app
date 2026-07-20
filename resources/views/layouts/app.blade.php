@@ -237,10 +237,151 @@
         .badge.bg-cyan-500 {
             background: #92c4e6 !important;
         }
+
+        /* ── POPUP TOAST NOTIFICATION ── */
+        .popup-toast-wrapper {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .popup-toast {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 380px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .15);
+            border-left: 5px solid #2e9e5b;
+            pointer-events: auto;
+            opacity: 0;
+            transform: translateX(120%) scale(.95);
+            animation: toastIn .45s cubic-bezier(.34, 1.56, .64, 1) forwards;
+        }
+
+        .popup-toast.toast-error {
+            border-left-color: #d9534f;
+        }
+
+        .popup-toast.toast-hide {
+            animation: toastOut .35s ease forwards;
+        }
+
+        .popup-toast .toast-icon {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8f7ee;
+            color: #2e9e5b;
+            font-size: 20px;
+            animation: toastIconPop .5s .15s cubic-bezier(.34, 1.56, .64, 1) both;
+        }
+
+        .popup-toast.toast-error .toast-icon {
+            background: #fbeaea;
+            color: #d9534f;
+        }
+
+        .popup-toast .toast-text {
+            font-size: 14.5px;
+            font-weight: 600;
+            color: #1a1a1a;
+            line-height: 1.4;
+        }
+
+        .popup-toast .toast-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #9a9a9a;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 0 0 8px;
+            flex-shrink: 0;
+        }
+
+        .popup-toast .toast-close:hover {
+            color: #1a1a1a;
+        }
+
+        @keyframes toastIn {
+            0% {
+                opacity: 0;
+                transform: translateX(120%) scale(.95);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes toastOut {
+            0% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+                max-height: 100px;
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(120%) scale(.95);
+                max-height: 0;
+                margin-bottom: -12px;
+                padding-top: 0;
+                padding-bottom: 0;
+            }
+        }
+
+        @keyframes toastIconPop {
+            0% {
+                transform: scale(0);
+            }
+
+            60% {
+                transform: scale(1.15);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 
 <body>
+
+    {{-- ── POPUP TOAST NOTIFICATION ── --}}
+    <div class="popup-toast-wrapper" id="popupToastWrapper">
+        @if(session('success'))
+            <div class="popup-toast" data-autohide="4000">
+                <div class="toast-icon"><i class="bi bi-check-lg"></i></div>
+                <div class="toast-text">{{ session('success') }}</div>
+                <button type="button" class="toast-close" aria-label="Tutup">&times;</button>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="popup-toast toast-error" data-autohide="4000">
+                <div class="toast-icon"><i class="bi bi-x-lg"></i></div>
+                <div class="toast-text">{{ session('error') }}</div>
+                <button type="button" class="toast-close" aria-label="Tutup">&times;</button>
+            </div>
+        @endif
+    </div>
 
     <div class="d-flex min-vh-100">
 
@@ -295,6 +436,32 @@
 
         </div>
     </div>
+
+    <script>
+        // ── Auto-dismiss popup toast (sukses/error) ──
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.popup-toast').forEach(function (toast) {
+                var delay = parseInt(toast.getAttribute('data-autohide')) || 4000;
+
+                var hideToast = function () {
+                    if (toast.classList.contains('toast-hide')) return;
+                    toast.classList.add('toast-hide');
+                    setTimeout(function () {
+                        toast.remove();
+                    }, 350);
+                };
+
+                var timer = setTimeout(hideToast, delay);
+
+                toast.querySelector('.toast-close').addEventListener('click', function () {
+                    clearTimeout(timer);
+                    hideToast();
+                });
+            });
+        });
+    </script>
+
+    @stack('scripts')
 
 </body>
 

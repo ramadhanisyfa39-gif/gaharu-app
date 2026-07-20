@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 
 class SupplierController extends Controller
 {
@@ -106,7 +107,12 @@ class SupplierController extends Controller
     {
         $supplier = Supplier::findOrFail($id);
 
-        $supplier->delete();
+        try {
+            $supplier->delete();
+        } catch (QueryException $e) {
+            return redirect()->route('suppliers.index')
+                ->with('error', 'Data supplier "' . $supplier->nama . '" tidak dapat dihapus karena masih digunakan pada data pembelian.');
+        }
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Data supplier berhasil dihapus.');
