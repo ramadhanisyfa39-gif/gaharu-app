@@ -84,7 +84,12 @@
                                 </tr>
                                 @foreach($account->items as $item)
                                 @php
-                                $saldo += ($item->debit - $item->kredit);
+                                $saldoNormal = strtolower($account->saldo_normal);
+                                if ($saldoNormal === 'kredit') {
+                                    $saldo += ($item->kredit - $item->debit);
+                                } else {
+                                    $saldo += ($item->debit - $item->kredit);
+                                }
                                 $subDebet += $item->debit; $subKredit += $item->kredit;
                                 @endphp
                                 <tr class="hover:bg-gray-50/50 transition">

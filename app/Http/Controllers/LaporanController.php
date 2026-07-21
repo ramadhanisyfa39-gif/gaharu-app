@@ -443,14 +443,23 @@ class LaporanController extends Controller
         $tahun = $request->get('tahun', date('Y'));
         $firstDayOfMonth = "$tahun-$bulan-01";
 
-        // 1. HITUNG SALDO AWAL (Semua transaksi sebelum bulan ini)
-        // Kita langsung tembak tabel journal_items dan filter secara mandiri agar tidak konflik join
+        // 1. HITUNG SALDO AWAL (Semua transaksi sebelum tanggal 1 bulan ini)
+        // Saldo awal = Saldo Opening + Akumulasi seluruh mutasi transaksi sebelum $firstDayOfMonth
         $beginningBalances = DB::table('journal_items')
-            ->select('account_id')
-            ->selectRaw('SUM(debit) as total_debit')
-            ->selectRaw('SUM(kredit) as total_kredit')
-            ->where('journal_type', 'opening')
-            ->groupBy('account_id')
+            ->leftJoin('journals', 'journal_items.journal_id', '=', 'journals.id')
+            ->leftJoin('jurnal_pembelian', 'journal_items.journal_id', '=', 'jurnal_pembelian.id')
+            ->leftJoin('jurnal_penjualan_pos', 'journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
+            ->leftJoin('jurnal_penjualan_b2b', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+            ->leftJoin('jurnal_penyesuaian', 'journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+            ->select('journal_items.account_id')
+            ->selectRaw('SUM(journal_items.debit) as total_debit, SUM(journal_items.kredit) as total_kredit')
+            ->where(function ($q) use ($firstDayOfMonth) {
+                $q->where('journal_items.journal_type', 'opening')
+                  ->orWhere(function ($sub) use ($firstDayOfMonth) {
+                      $sub->whereRaw("COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) < ?", [$firstDayOfMonth]);
+                  });
+            })
+            ->groupBy('journal_items.account_id')
             ->get()
             ->keyBy('account_id');
 
@@ -467,12 +476,10 @@ class LaporanController extends Controller
             ->selectRaw("COALESCE(journals.no_ref, jurnal_pembelian.no_ref, jurnal_penjualan_pos.no_ref, jurnal_penjualan_b2b.no_ref, jurnal_penyesuaian.no_ref) as no_ref")
             ->where(function ($query) {
                 $query->where(function ($q) {
-                    $q->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal'])
-                      ->where('journals.status', 'approved');
+                    $q->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing']);
                 })
                     ->orWhere(function ($q) {
-                        $q->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian'])
-                          ->where('jurnal_penyesuaian.status', 'approved');
+                        $q->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']);
                     })
                     ->orWhere('journal_items.journal_type', 'LIKE', '%Pembelian%')
                     ->orWhere('journal_items.journal_type', 'LIKE', '%Pos%')
