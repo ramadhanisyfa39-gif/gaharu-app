@@ -106,6 +106,10 @@ class PembelianController extends Controller
     {
         $data = $request->validated();
 
+        if (\App\Models\Journal::isPeriodClosed($data['tanggal'])) {
+            return back()->withErrors(['error' => 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($data['tanggal'])) . ' sudah ditutup buku. Tidak dapat menambah transaksi pembelian pada periode yang sudah ditutup.'])->withInput();
+        }
+
         DB::transaction(function () use ($data) {
 
             $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']);

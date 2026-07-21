@@ -542,19 +542,20 @@ class JurnalController extends Controller
         if ($persenDP > 0) {
             $tahap[] = 'dp';
 
-            if (!$isDiterima) {
+            if ($isLunas) {
+                $tahap[] = 'pelunasan';
+            }
+
+            // Jurnal persediaan (reklas_lunas / gabungan) hanya boleh muncul jika barang SUDAH DITERIMA
+            if ($isDiterima) {
                 if ($isLunas) {
-                    $tahap[] = 'pelunasan';
-                }
-            } else {
-                if ($isLunas) {
-                    $tahap[] = 'pelunasan';
                     $tahap[] = 'reklas_lunas';
                 } else {
                     $tahap[] = 'gabungan';
                 }
             }
         } else {
+            // Untuk COD, Jurnal persediaan hanya boleh muncul jika barang SUDAH DITERIMA
             if ($isDiterima) {
                 $tahap[] = 'cod';
             }
@@ -643,6 +644,13 @@ class JurnalController extends Controller
 
         $tahap = in_array($tahapReq, ['dp', 'pelunasan', 'reklas_lunas', 'gabungan', 'cod']) ? $tahapReq : $tahapSaran;
 
+        // Proteksi Tambahan: Jika tahap membutuhkan pengakuan persediaan namun barang belum diterima
+        if (in_array($tahap, ['cod', 'reklas_lunas', 'gabungan']) && !$pembelian->is_diterima) {
+            return redirect()
+                ->route('jurnal-pembelian.index')
+                ->with('error', 'Barang pada Pembelian ' . $pembelian->kode_pembelian . ' belum diterima. Jurnal pengakuan Persediaan baru dapat dicatat setelah barang diterima di menu Pembelian.');
+        }
+
         if ($tahap === 'dp') {
             $defaultDetails = [
                 ['account_id' => $idUangMukaPemb, 'debit' => $nominalDP, 'kredit' => 0],
@@ -694,6 +702,23 @@ class JurnalController extends Controller
         ]);
 
         $pembelian = \App\Models\Pembelian::findOrFail($id);
+
+        // 1a. Validasi penutupan periode: Blokir pencatatan jurnal pada periode yang sudah ditutup
+        if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
+            return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($request->tanggal)) . ' sudah ditutup buku. Tidak dapat menambah jurnal pada periode yang sudah ditutup.')->withInput();
+        }
+
+        // 1b. Validasi backend: Blokir pengakuan Persediaan (13xx) jika barang belum diterima
+        if (!$pembelian->is_diterima) {
+            $persediaanCoaIds = \App\Models\ChartOfAccount::where('kode', 'like', '13%')->pluck('id')->toArray();
+            foreach ($request->details as $item) {
+                if (in_array($item['account_id'], $persediaanCoaIds) && floatval($item['debit'] ?? 0) > 0) {
+                    return back()
+                        ->with('error', "Nominal Persediaan (13xx) tidak dapat dicatat karena barang pada Pembelian '{$pembelian->kode_pembelian}' belum diterima (is_diterima = false). Silakan lakukan penerimaan barang terlebih dahulu di Menu Pembelian.")
+                        ->withInput();
+                }
+            }
+        }
 
         try {
             DB::beginTransaction();

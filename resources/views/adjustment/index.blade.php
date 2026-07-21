@@ -152,8 +152,8 @@
                                                     <tbody>
                                                         @foreach($item->details as $d)
                                                         <tr>
-                                                            <td class="ps-3 font-monospace fw-bold text-secondary">{{ $d->coa->kode ?? '-' }}</td>
-                                                            <td class="fw-semibold text-dark">{{ $d->coa->nama ?? 'Akun #' . $d->account_id }}</td>
+                                                            <td class="ps-3 font-monospace fw-bold text-secondary">{{ $d->chart_of_accounts->kode ?? '-' }}</td>
+                                                            <td class="fw-semibold text-dark">{{ $d->chart_of_accounts->nama ?? 'Akun #' . $d->account_id }}</td>
                                                             <td class="text-end text-success fw-bold">
                                                                 {{ $d->debit > 0 ? number_format($d->debit, 0, ',', '.') : '-' }}
                                                             </td>

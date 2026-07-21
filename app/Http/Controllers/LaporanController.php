@@ -446,11 +446,26 @@ class LaporanController extends Controller
         // 1. HITUNG SALDO AWAL (Semua transaksi sebelum tanggal 1 bulan ini)
         // Saldo awal = Saldo Opening + Akumulasi seluruh mutasi transaksi sebelum $firstDayOfMonth
         $beginningBalances = DB::table('journal_items')
-            ->leftJoin('journals', 'journal_items.journal_id', '=', 'journals.id')
-            ->leftJoin('jurnal_pembelian', 'journal_items.journal_id', '=', 'jurnal_pembelian.id')
-            ->leftJoin('jurnal_penjualan_pos', 'journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
-            ->leftJoin('jurnal_penjualan_b2b', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
-            ->leftJoin('jurnal_penyesuaian', 'journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+            ->leftJoin('journals', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'journals.id')
+                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing', 'opening']);
+            })
+            ->leftJoin('jurnal_pembelian', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
+            })
+            ->leftJoin('jurnal_penjualan_pos', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_penjualan_pos');
+            })
+            ->leftJoin('jurnal_penjualan_b2b', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_penjualan_b2b');
+            })
+            ->leftJoin('jurnal_penyesuaian', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+                     ->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']);
+            })
             ->select('journal_items.account_id')
             ->selectRaw('SUM(journal_items.debit) as total_debit, SUM(journal_items.kredit) as total_kredit')
             ->where(function ($q) use ($firstDayOfMonth) {
@@ -465,26 +480,30 @@ class LaporanController extends Controller
 
         // 2. TARIK MUTASI BERJALAN (Transaksi khusus bulan/tahun ini)
         $mutasiItems = DB::table('journal_items')
-            ->leftJoin('journals', 'journal_items.journal_id', '=', 'journals.id')
-            ->leftJoin('jurnal_pembelian', 'journal_items.journal_id', '=', 'jurnal_pembelian.id')
-            ->leftJoin('jurnal_penjualan_pos', 'journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
-            ->leftJoin('jurnal_penjualan_b2b', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
-            ->leftJoin('jurnal_penyesuaian', 'journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+            ->leftJoin('journals', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'journals.id')
+                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing', 'opening']);
+            })
+            ->leftJoin('jurnal_pembelian', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
+            })
+            ->leftJoin('jurnal_penjualan_pos', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_penjualan_pos');
+            })
+            ->leftJoin('jurnal_penjualan_b2b', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+                     ->where('journal_items.journal_type', '=', 'jurnal_penjualan_b2b');
+            })
+            ->leftJoin('jurnal_penyesuaian', function ($join) {
+                $join->on('journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+                     ->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']);
+            })
             ->select('journal_items.*')
             ->selectRaw("COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) as tanggal")
             ->selectRaw("COALESCE(journals.deskripsi, jurnal_pembelian.deskripsi, jurnal_penjualan_pos.deskripsi, jurnal_penjualan_b2b.deskripsi, jurnal_penyesuaian.deskripsi) as deskripsi")
             ->selectRaw("COALESCE(journals.no_ref, jurnal_pembelian.no_ref, jurnal_penjualan_pos.no_ref, jurnal_penjualan_b2b.no_ref, jurnal_penyesuaian.no_ref) as no_ref")
-            ->where(function ($query) {
-                $query->where(function ($q) {
-                    $q->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing']);
-                })
-                    ->orWhere(function ($q) {
-                        $q->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']);
-                    })
-                    ->orWhere('journal_items.journal_type', 'LIKE', '%Pembelian%')
-                    ->orWhere('journal_items.journal_type', 'LIKE', '%Pos%')
-                    ->orWhere('journal_items.journal_type', 'LIKE', '%B2b%');
-            })
             ->whereRaw('MONTH(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [(int)$bulan])
             ->whereRaw('YEAR(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [(int)$tahun])
             ->orderBy('tanggal', 'asc')

@@ -25,6 +25,6 @@ class JurnalPenjualanB2b extends Model
     // Relasi ke item jurnal (optional, tapi sangat berguna untuk merapikan method index & show)
     public function items()
     {
-        return $this->hasMany(JournalItem::class, 'journal_id')->where('journal_type', 'penjualan_b2b');
+        return $this->hasMany(JournalItem::class, 'journal_id')->whereIn('journal_type', ['penjualan_b2b', 'jurnal_penjualan_b2b']);
     }
 }

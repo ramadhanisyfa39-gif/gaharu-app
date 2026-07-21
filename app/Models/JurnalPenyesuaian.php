@@ -23,6 +23,7 @@ class JurnalPenyesuaian extends Model
     public function details()
     {
         // Parameter: NamaModelDetail, foreign_key_di_detail, local_key_di_header
-        return $this->hasMany(JournalItem::class, 'journal_id', 'id');
+        return $this->hasMany(JournalItem::class, 'journal_id', 'id')
+            ->whereIn('journal_type', [self::class, 'jurnal_penyesuaian']);
     }
 }

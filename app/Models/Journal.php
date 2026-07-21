@@ -20,6 +20,25 @@ class Journal extends Model
     ];
     public function details(): HasMany
     {
-        return $this->hasMany(JournalItem::class, 'journal_id');
+        return $this->hasMany(JournalItem::class, 'journal_id')
+            ->whereIn('journal_type', ['jurnal_umum', 'jurnal', 'closing', 'opening']);
+    }
+
+    public static function isPeriodClosed($date): bool
+    {
+        if (!$date) return false;
+
+        $latestClosing = self::where('source_type', 'closing')
+            ->orderBy('tanggal', 'desc')
+            ->first();
+
+        if (!$latestClosing) {
+            return false;
+        }
+
+        $closingDate = \Carbon\Carbon::parse($latestClosing->tanggal)->endOfMonth();
+        $targetDate  = \Carbon\Carbon::parse($date);
+
+        return $targetDate->lte($closingDate);
     }
 }
