@@ -71,6 +71,10 @@ class PenjualanPosController extends Controller
             'harga.*'     => 'required|numeric',
         ]);
 
+        if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
+            return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($request->tanggal)) . ' sudah ditutup buku. Tidak dapat membuat transaksi POS pada periode yang sudah ditutup.')->withInput();
+        }
+
         if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
             return back()->with('error', 'Tanggal transaksi tidak boleh sebelum hari ini.')->withInput();
         }
@@ -300,6 +304,10 @@ class PenjualanPosController extends Controller
 
         try {
             $penjualan = PenjualanPos::with('details')->findOrFail($id);
+
+            if (\App\Models\Journal::isPeriodClosed($penjualan->tanggal)) {
+                return redirect()->route('penjualan_pos.index')->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($penjualan->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses transaksi pada periode yang sudah ditutup.');
+            }
 
             if ($penjualan->status !== 'Draft') {
                 return redirect()->route('penjualan_pos.index')->with('error', 'Transaksi ini sudah pernah diproses sebelumnya.');

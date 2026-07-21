@@ -216,6 +216,10 @@ class PengirimanController extends Controller
     {
         $pengiriman = Pengiriman::with('details')->findOrFail($id);
 
+        if (\App\Models\Journal::isPeriodClosed($pengiriman->tanggal)) {
+            return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($pengiriman->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses pengiriman B2B pada periode yang sudah ditutup.');
+        }
+
         if ($pengiriman->status_pengiriman !== 'Draft') {
             return back()->with('error', 'Data ini sudah disetujui sebelumnya.');
         }

@@ -448,7 +448,7 @@ class LaporanController extends Controller
         $beginningBalances = DB::table('journal_items')
             ->leftJoin('journals', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'journals.id')
-                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing', 'opening']);
+                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing']);
             })
             ->leftJoin('jurnal_pembelian', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
@@ -478,11 +478,11 @@ class LaporanController extends Controller
             ->get()
             ->keyBy('account_id');
 
-        // 2. TARIK MUTASI BERJALAN (Transaksi khusus bulan/tahun ini)
+        // 2. TARIK MUTASI BERJALAN (Transaksi khusus bulan/tahun ini, TIDAK TERMASUK SALDO AWAL / OPENING)
         $mutasiItems = DB::table('journal_items')
             ->leftJoin('journals', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'journals.id')
-                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing', 'opening']);
+                     ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing']);
             })
             ->leftJoin('jurnal_pembelian', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
@@ -504,6 +504,7 @@ class LaporanController extends Controller
             ->selectRaw("COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) as tanggal")
             ->selectRaw("COALESCE(journals.deskripsi, jurnal_pembelian.deskripsi, jurnal_penjualan_pos.deskripsi, jurnal_penjualan_b2b.deskripsi, jurnal_penyesuaian.deskripsi) as deskripsi")
             ->selectRaw("COALESCE(journals.no_ref, jurnal_pembelian.no_ref, jurnal_penjualan_pos.no_ref, jurnal_penjualan_b2b.no_ref, jurnal_penyesuaian.no_ref) as no_ref")
+            ->where('journal_items.journal_type', '!=', 'opening')
             ->whereRaw('MONTH(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [(int)$bulan])
             ->whereRaw('YEAR(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [(int)$tahun])
             ->orderBy('tanggal', 'asc')

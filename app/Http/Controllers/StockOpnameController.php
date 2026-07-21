@@ -243,6 +243,10 @@ public function detailJson(string $id)
             $opname = StockOpname::with(['details.barang', 'gudang'])
                 ->findOrFail($id);
 
+            if (\App\Models\Journal::isPeriodClosed($opname->tanggal)) {
+                return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($opname->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses Stock Opname pada periode yang sudah ditutup.');
+            }
+
             // ── Guard: sudah approved ──
             if ($opname->status === 'approved') {
                 return back()->with('error', 'Stock opname sudah diapprove.');
