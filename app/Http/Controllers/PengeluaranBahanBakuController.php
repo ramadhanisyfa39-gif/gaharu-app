@@ -475,10 +475,6 @@ class PengeluaranBahanBakuController extends Controller
                     'details'
                 )->findOrFail($id);
 
-                if (\App\Models\Journal::isPeriodClosed($data->tanggal)) {
-                    throw new \Exception('Periode akuntansi tanggal ' . date('d/m/Y', strtotime($data->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses transaksi pada periode yang sudah ditutup.');
-                }
-
                 /*
                 |--------------------------------------------------------------------------
                 | VALIDASI STATUS

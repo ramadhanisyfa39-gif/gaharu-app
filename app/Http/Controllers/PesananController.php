@@ -81,6 +81,10 @@ class PesananController extends Controller
             'subtotal' => 'required|array|min:1',
         ]);
 
+        if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
+            return redirect()->back()->withErrors(['tanggal' => 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($request->tanggal)) . ' sudah ditutup buku. Tidak dapat membuat Pesanan B2B pada periode yang sudah ditutup.'])->withInput();
+        }
+
         if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
             return redirect()->back()->withErrors(['tanggal' => 'Tanggal transaksi tidak boleh sebelum hari ini.'])->withInput();
         }

@@ -1163,6 +1163,11 @@ class JurnalController extends Controller
         // PINTU LOGIKAA 1: JURNAL ALIRAN KAS MASUK (DP ATAU PELUNASAN KEDUA)
         if ($type === 'pembayaran') {
             $pembayaran = \App\Models\Pembayaran::with(['pesanan.customer'])->findOrFail($id);
+
+            if (\App\Models\Journal::isPeriodClosed($pembayaran->tanggal_bayar ?? $pembayaran->tanggal ?? null)) {
+                return redirect()->route('jurnal-penjualanb2b.index')->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($pembayaran->tanggal_bayar ?? $pembayaran->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses jurnal B2B pada periode yang sudah ditutup.');
+            }
+
             $pesanan = $pembayaran->pesanan;
 
             if (!$pesanan) {
@@ -1212,6 +1217,10 @@ class JurnalController extends Controller
                 return back()->with('error', 'Data pengiriman tidak ditemukan.');
             }
 
+            if (\App\Models\Journal::isPeriodClosed($pengiriman->tanggal_pengiriman ?? $pengiriman->tanggal ?? null)) {
+                return redirect()->route('jurnal-penjualanb2b.index')->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($pengiriman->tanggal_pengiriman ?? $pengiriman->tanggal)) . ' sudah ditutup buku. Tidak dapat memproses jurnal B2B pada periode yang sudah ditutup.');
+            }
+
             $pesanan = \App\Models\Pesanan::with('customer')->findOrFail($pengiriman->pesanan_id);
 
             // PERBAIKAN 3: Ambil status pesanan secara eksplisit di Pintu Logika 2
@@ -1250,6 +1259,10 @@ class JurnalController extends Controller
             'details.*.debit'      => 'required|numeric|min:0',
             'details.*.kredit'     => 'required|numeric|min:0',
         ]);
+
+        if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
+            return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($request->tanggal)) . ' sudah ditutup buku. Tidak dapat menyimpan Jurnal Penjualan B2B pada periode yang sudah ditutup.')->withInput();
+        }
 
         try {
             DB::beginTransaction();
