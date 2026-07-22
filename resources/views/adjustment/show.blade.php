@@ -2,13 +2,13 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Detail Jurnal: {{ $jurnal->no_ref }}
+                Detail Jurnal Penyesuaian: {{ $jurnal->no_ref }}
             </h2>
             <div class="flex gap-2">
-                <a href="{{ route('jurnal.edit', $jurnal->id) }}" class="bg-yellow-500 text-black px-4 py-2 rounded text-sm shadow-sm hover:bg-yellow-600 transition">
+                <a href="{{ route('adjustment.edit', $jurnal->id) }}" class="bg-yellow-500 text-black px-4 py-2 rounded text-sm shadow-sm hover:bg-yellow-600 transition">
                     Edit
                 </a>
-                <a href="{{ route('jurnal.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded text-sm shadow-sm hover:bg-gray-600 transition">
+                <a href="{{ route('adjustment.index') }}" class="bg-gray-500 text-white px-4 py-2 rounded text-sm shadow-sm hover:bg-gray-600 transition">
                     Kembali
                 </a>
             </div>
@@ -19,14 +19,24 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 border-b pb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 border-b pb-6">
                     <div>
                         <p class="text-sm text-gray-500 uppercase font-bold">Tanggal Transaksi</p>
-                        <p class="text-lg font-semibold">{{ \Carbon\Carbon::parse($jurnal->tanggal)->format('d F Y') }}</p>
+                        <p class="text-lg font-semibold">{{ \Carbon\Carbon::parse($jurnal->tanggal)->translatedFormat('d F Y') }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 uppercase font-bold">Nomor Referensi</p>
                         <p class="text-lg font-semibold font-mono text-gray-700">{{ $jurnal->no_ref }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 uppercase font-bold">Status</p>
+                        <p class="mt-1">
+                            @if($jurnal->status === 'approved')
+                                <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase">Posted</span>
+                            @else
+                                <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold uppercase">Draft</span>
+                            @endif
+                        </p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500 uppercase font-bold">Deskripsi / Keterangan</p>
@@ -73,14 +83,10 @@
                     </table>
                 </div>
 
-                <div class="mt-8 pt-4 border-t text-xs text-gray-400 italic">
-                    Sumber: {{ strtoupper($jurnal->source_type) }} | Dicatat pada: {{ $jurnal->created_at ?? 'N/A' }}
-                </div>
-
                 <div class="mt-8 flex justify-end gap-3 border-t pt-6">
-                    <a href="{{ route('jurnal.index') }}"
+                    <a href="{{ route('adjustment.index') }}"
                         class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md font-semibold hover:bg-gray-300 transition">
-                        Tutup Detail
+                        Tutup
                     </a>
                 </div>
 

@@ -156,6 +156,105 @@ class JurnalController extends Controller
         return view('jurnal.show', compact('jurnal', 'items'));
     }
 
+    public function edit($id)
+    {
+        // Mengambil data jurnal beserta relasi detail bertipe 'jurnal_umum'
+        $jurnal = Journal::with(['details' => function ($query) {
+            $query->where('journal_type', 'jurnal_umum')->with('coa');
+        }])
+            ->whereHas('details', function ($query) {
+                $query->where('journal_type', 'jurnal_umum');
+            })
+            ->findOrFail($id);
+
+        // Mengambil daftar akun/COA untuk pilihan dropdown
+        $coas = ChartOfAccount::all();
+
+        // Mengambil tanggal closing terbaru untuk proteksi periode
+        $latestClosing = Journal::where('source_type', 'closing')->orderBy('tanggal', 'desc')->first();
+        $latestClosingDate = $latestClosing ? $latestClosing->tanggal : null;
+
+        return view('jurnal.edit', compact('jurnal', 'coas', 'latestClosingDate'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'deskripsi' => 'required|string',
+            'details' => 'required|array|min:2',
+            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
+            'details.*.debit' => 'required|numeric|min:0',
+            'details.*.kredit' => 'required|numeric|min:0',
+        ]);
+
+        $jurnal = Journal::findOrFail($id);
+
+        $tanggalJurnal = $request->tanggal;
+        $alertMessage = null;
+
+        // Pengecekan status closing akuntansi
+        $latestClosing = Journal::where('source_type', 'closing')
+            ->orderBy('tanggal', 'desc')
+            ->first();
+
+        if ($latestClosing) {
+            $closingDate = \Carbon\Carbon::parse($latestClosing->tanggal)->endOfMonth();
+            $targetDate = \Carbon\Carbon::parse($request->tanggal);
+
+            if ($targetDate->lte($closingDate)) {
+                $tanggalJurnal = $closingDate->addMonth()->startOfMonth()->toDateString();
+                $alertMessage = "Karena periode akuntansi s/d " . \Carbon\Carbon::parse($latestClosing->tanggal)->translatedFormat('F Y') . " sudah ditutup, perubahan jurnal otomatis dicatat pada awal periode berjalan selanjutnya tanggal " . \Carbon\Carbon::parse($tanggalJurnal)->translatedFormat('d M Y') . ".";
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update data header jurnal
+            $jurnal->update([
+                'tanggal' => $tanggalJurnal,
+                'deskripsi' => $request->deskripsi,
+            ]);
+
+            // Hapus detail jurnal lama bertipe 'jurnal_umum' untuk memperbarui dengan detail baru
+            $jurnal->details()->where('journal_type', 'jurnal_umum')->delete();
+
+            $totalDebit = 0;
+            $totalKredit = 0;
+
+            // Simpan ulang detail jurnal
+            foreach ($request->details as $item) {
+                $jurnal->details()->create([
+                    'account_id'   => $item['account_id'],
+                    'journal_type' => 'jurnal_umum',
+                    'debit'        => $item['debit'],
+                    'kredit'       => $item['kredit'],
+                ]);
+
+                $totalDebit += $item['debit'];
+                $totalKredit += $item['kredit'];
+            }
+
+            // Validasi Keseimbangan Debit & Kredit
+            if (number_format($totalDebit, 2, '.', '') !== number_format($totalKredit, 2, '.', '')) {
+                throw new \Exception("Total Debit dan Kredit tidak seimbang!");
+            }
+
+            DB::commit();
+
+            $successMsg = 'Jurnal berhasil diperbarui!';
+            if ($alertMessage) {
+                $successMsg .= ' ' . $alertMessage;
+            }
+
+            return redirect()->route('jurnal.index')->with('success', $successMsg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
+
     public function closingPage()
     {
         // Menampilkan halaman form penutupan dan daftar riwayat khusus closing
@@ -469,6 +568,119 @@ class JurnalController extends Controller
         return redirect()->back()->with('error', 'Tidak ada jurnal penyesuaian berstatus draft yang ditemukan pada rentang tanggal tersebut.');
     }
 
+    public function adjustmentShow($id)
+    {
+        // Ambil data jurnal beserta relasi details.coa tanpa membatasi journal_type
+        $jurnal = JurnalPenyesuaian::with('details.coa')->findOrFail($id);
+
+        return view('adjustment.show', compact('jurnal'));
+    }
+
+    /**
+     * Menampilkan Form Edit Jurnal Penyesuaian
+     */
+    public function adjustmentEdit($id)
+    {
+        // Ambil data jurnal beserta relasi details.coa
+        $jurnal = JurnalPenyesuaian::with('details.coa')->findOrFail($id);
+
+        $coas = ChartOfAccount::orderBy('kode', 'asc')->get();
+
+        $latestClosing = Journal::where('source_type', 'closing')->orderBy('tanggal', 'desc')->first();
+        $latestClosingDate = $latestClosing ? $latestClosing->tanggal : null;
+
+        return view('adjustment.edit', compact('jurnal', 'coas', 'latestClosingDate'));
+    }
+
+    /**
+     * Memperbarui Data Jurnal Penyesuaian
+     */
+    public function adjustmentUpdate(Request $request, $id)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'deskripsi' => 'required|string|max:255',
+            'details' => 'required|array|min:2',
+            'details.*.account_id' => 'required|exists:chart_of_accounts,id',
+            'details.*.debit' => 'required|numeric|min:0',
+            'details.*.kredit' => 'required|numeric|min:0',
+            'action' => 'required|in:draft,post',
+        ]);
+
+        $jurnal = JurnalPenyesuaian::findOrFail($id);
+
+        $tanggalJurnal = $request->tanggal;
+        $alertMessage = null;
+
+        // Pengecekan status closing akuntansi
+        $latestClosing = Journal::where('source_type', 'closing')
+            ->orderBy('tanggal', 'desc')
+            ->first();
+
+        if ($latestClosing) {
+            $closingDate = \Carbon\Carbon::parse($latestClosing->tanggal)->endOfMonth();
+            $targetDate = \Carbon\Carbon::parse($request->tanggal);
+
+            if ($targetDate->lte($closingDate)) {
+                $tanggalJurnal = $closingDate->addMonth()->startOfMonth()->toDateString();
+                $alertMessage = "Karena periode akuntansi s/d " . \Carbon\Carbon::parse($latestClosing->tanggal)->translatedFormat('F Y') . " sudah ditutup, jurnal penyesuaian otomatis dicatat pada awal periode berjalan selanjutnya tanggal " . \Carbon\Carbon::parse($tanggalJurnal)->translatedFormat('d M Y') . ".";
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Sihkan awalan [AJP] jika user mengetiknya ganda
+            $deskripsi = Str::startsWith($request->deskripsi, '[AJP]') 
+                ? $request->deskripsi 
+                : "[AJP] " . $request->deskripsi;
+
+            // 1. Update Header Jurnal Penyesuaian
+            $jurnal->update([
+                'tanggal'   => $tanggalJurnal,
+                'deskripsi' => $deskripsi,
+                'status'    => $request->action === 'post' ? 'approved' : 'draft',
+            ]);
+
+            // 2. Hapus detail lama yang bertipe JurnalPenyesuaian
+            $jurnal->details()->where('journal_type', \App\Models\JurnalPenyesuaian::class)->delete();
+
+            // 3. Simpan detail baru
+            foreach ($request->details as $item) {
+                if ($item['debit'] == 0 && $item['kredit'] == 0) continue;
+
+                $jurnal->details()->create([
+                    'account_id'   => $item['account_id'],
+                    'debit'        => $item['debit'],
+                    'kredit'       => $item['kredit'],
+                    'journal_type' => \App\Models\JurnalPenyesuaian::class,
+                ]);
+            }
+
+            $jurnal->load('details');
+
+            // 4. Validasi Balance
+            if (round($jurnal->details->sum('debit'), 2) != round($jurnal->details->sum('kredit'), 2)) {
+                throw new \Exception("Total Debit (" . $jurnal->details->sum('debit') . ") dan Kredit (" . $jurnal->details->sum('kredit') . ") tidak seimbang!");
+            }
+
+            DB::commit();
+
+            $pesan = $jurnal->status === 'approved'
+                ? 'Jurnal Penyesuaian berhasil diperbarui dan diposting ke Buku Besar!'
+                : 'Jurnal Penyesuaian berhasil diperbarui sebagai Draft!';
+
+            if ($alertMessage) {
+                $pesan .= ' ' . $alertMessage;
+            }
+
+            return redirect()->route('adjustment.index')->with('success', $pesan);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
     public function pembelianIndex()
     {
         $semuaPembelian = \App\Models\Pembelian::with(['supplier', 'gudang'])
@@ -621,6 +833,16 @@ class JurnalController extends Controller
         $defaultDetails = [];
 
         $dppTotal     = floatval($pembelian->total);
+        if ($pembelian->is_diterima) {
+            $dppReceived = 0;
+            foreach ($pembelian->details as $det) {
+                $qRec = floatval($det->qty_diterima ?? $det->qty);
+                $dppReceived += round($qRec * floatval($det->harga_per_qty), 2);
+            }
+            if ($dppReceived > 0) {
+                $dppTotal = $dppReceived;
+            }
+        }
         $ppnTotal     = round($dppTotal * $tarifPpn, 0);
         $totalKontrak = $dppTotal + $ppnTotal;
 
@@ -908,10 +1130,17 @@ class JurnalController extends Controller
         $nilaiPpn       = $nilaiPenjualan * $tarifPpn;
         $totalKasMasuk  = $nilaiPenjualan + $nilaiPpn;
 
-        // Ambil ID COA secara dinamis berdasarkan kode resmi
+        // Deteksi Outlet / Gudang (Gaharu vs Kejingga)
+        $gudang = DB::table('master_gudang')->where('id', $penjualan->gudang_id)->first();
+        $isKejingga = ($penjualan->gudang_id == 4) || ($gudang && stripos($gudang->nama, 'kejingga') !== false);
+
+        $kodeHpp       = $isKejingga ? '5102' : '5101';
+        $kodePenjualan = $isKejingga ? '4102' : '4101';
+
+        // Ambil ID COA secara dinamis berdasarkan kode resmi outlet
         $idKasOutlet      = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
-        $idHppPos         = DB::table('chart_of_accounts')->where('kode', '5101')->value('id') ?? 5;
-        $idPenjualanPos   = DB::table('chart_of_accounts')->where('kode', '4101')->value('id') ?? 4;
+        $idHppPos         = DB::table('chart_of_accounts')->where('kode', $kodeHpp)->value('id') ?? ($isKejingga ? 16 : 5);
+        $idPenjualanPos   = DB::table('chart_of_accounts')->where('kode', $kodePenjualan)->value('id') ?? ($isKejingga ? 15 : 4);
         $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2201')->value('id') ?? 6;
         $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 3;
 
@@ -1333,38 +1562,191 @@ class JurnalController extends Controller
         return view('jurnal-penjualanb2b.show', compact('jurnal', 'details', 'totalDebit', 'totalKredit'));
     }
 
-    public function bukuPembantuUangMuka()
+    public function bukuPembantuIndex(Request $request)
     {
-        // Berdasarkan fungsi pembelianCreate, ID Uang Muka Pembelian dicari dinamis menggunakan kode 1202
+        // 1. Tangkap jenis laporan dari parameter URL (default: 'utang')
+        $jenis = $request->query('jenis', 'utang');
+
+        // 2. Ambil ID COA secara dinamis berdasarkan kode resmi di sistem kamu
+        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 2;
         $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
+        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 1;
+        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 8;
 
-        $bukuPembantuUangMuka = DB::table('pembelian')
-            ->join('suppliers', 'pembelian.supplier_id', '=', 'suppliers.id')
-            // Hubungkan ke header jurnal pembelian
-            ->leftJoin('jurnal_pembelian', function ($join) {
-                $join->on('jurnal_pembelian.source_id', '=', 'pembelian.id')
-                    ->where('jurnal_pembelian.source_type', '=', 'pembelian');
-            })
-            // Hubungkan ke detail item jurnal dengan filter tipe polimorfik
-            ->leftJoin('journal_items', function ($join) {
-                $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
-                    ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
-            })
-            ->select(
-                'suppliers.nama as nama_supplier',
-                'pembelian.kode_pembelian',
-                'pembelian.tanggal as tanggal_transaksi',
-                // Uang muka bertambah di sisi DEBIT (saat Tahap: dp, pelunasan, gabungan)
-                DB::raw("SUM(CASE WHEN journal_items.account_id = {$idUangMukaPemb} THEN journal_items.debit ELSE 0 END) as total_uang_muka_keluar"),
-                // Uang muka berkurang/dibersihkan di sisi KREDIT (saat Tahap: reklas_lunas, gabungan)
-                DB::raw("SUM(CASE WHEN journal_items.account_id = {$idUangMukaPemb} THEN journal_items.kredit ELSE 0 END) as total_uang_muka_direklas")
-            )
-            ->groupBy('suppliers.nama', 'pembelian.kode_pembelian', 'pembelian.tanggal')
-            ->orderBy('suppliers.nama')
-            ->orderBy('pembelian.tanggal')
-            ->get();
+        $entities = collect();
 
-        // Mengubah nama file view agar lebih relevan dengan konteks Uang Muka
-        return view('bukupembantu-uangmuka.index', compact('bukuPembantuUangMuka'));
+        // 3. Query Data Berdasarkan Pilihan Tab
+        switch ($jenis) {
+            // --- SISI PEMBELIAN (SUPPLIERS) ---
+            case 'utang':
+            case 'um-pembelian':
+                $targetAccountId = ($jenis === 'utang') ? $idUtang : $idUangMukaPemb;
+
+                $entities = DB::table('pembelian')
+                    ->join('suppliers', 'pembelian.supplier_id', '=', 'suppliers.id')
+                    ->leftJoin('jurnal_pembelian', function ($join) {
+                        $join->on('jurnal_pembelian.source_id', '=', 'pembelian.id')
+                            ->where('jurnal_pembelian.source_type', '=', 'pembelian');
+                    })
+                    ->leftJoin('journal_items', function ($join) {
+                        $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
+                            ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
+                    })
+                    ->select(
+                        'suppliers.id as entity_id',
+                        'suppliers.nama as nama',
+                        DB::raw("CONCAT('NO. ', suppliers.id) as kode_akun"),
+                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.debit ELSE 0 END) as total_debit"),
+                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.kredit ELSE 0 END) as total_kredit"),
+                        // Perhitungan Saldo Normal: Utang (Kredit - Debit), UM Pembelian (Debit - Kredit)
+                        DB::raw("
+                            SUM(
+                                CASE WHEN journal_items.account_id = {$targetAccountId} 
+                                THEN " . ($jenis === 'utang' ? "(journal_items.kredit - journal_items.debit)" : "(journal_items.debit - journal_items.kredit)") . "
+                                ELSE 0 END
+                            ) as saldo
+                        ")
+                    )
+                    ->groupBy('suppliers.id', 'suppliers.nama')
+                    ->orderBy('suppliers.nama')
+                    ->get();
+                break;
+
+            // --- SISI PENJUALAN (CUSTOMERS) ---
+            case 'piutang':
+            case 'um-penjualan':
+                $targetAccountId = ($jenis === 'piutang') ? $idPiutang : $idUangMukaPenj;
+
+                $entities = DB::table('pesanan')
+                    ->join('customers', 'pesanan.customer_id', '=', 'customers.id')
+                    ->leftJoin('jurnal_penjualan_b2b', function ($join) {
+                        $join->on('jurnal_penjualan_b2b.source_id', '=', 'pesanan.id')
+                            ->whereIn('jurnal_penjualan_b2b.source_type', ['pembayaran', 'pengiriman']);
+                    })
+                    ->leftJoin('journal_items', function ($join) {
+                        $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+                            ->where('journal_items.journal_type', '=', 'penjualan_b2b');
+                    })
+                    ->select(
+                        'customers.id as entity_id',
+                        'customers.nama as nama',
+                        DB::raw("CONCAT('NO. ', customers.id) as kode_akun"),
+                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.debit ELSE 0 END) as total_debit"),
+                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.kredit ELSE 0 END) as total_kredit"),
+                        // Perhitungan Saldo Normal: Piutang (Debit - Kredit), UM Penjualan (Kredit - Debit)
+                        DB::raw("
+                            SUM(
+                                CASE WHEN journal_items.account_id = {$targetAccountId} 
+                                THEN " . ($jenis === 'piutang' ? "(journal_items.debit - journal_items.kredit)" : "(journal_items.kredit - journal_items.debit)") . "
+                                ELSE 0 END
+                            ) as saldo
+                        ")
+                    )
+                    ->groupBy('customers.id', 'customers.nama')
+                    ->orderBy('customers.nama')
+                    ->get();
+                break;
+        }
+
+        // 4. Transformasi Data untuk Tampilan Blade
+        $entities = $entities->map(function ($item) {
+            $item->status = ($item->saldo <= 0) ? 'Lunas' : 'Belum Lunas';
+            $item->keterangan_sub = ($item->saldo <= 0) 
+                ? 'Semua transaksi sudah selesai' 
+                : 'Terdapat transaksi aktif / belum tuntas';
+            return $item;
+        });
+
+        // 5. Summary Metrics
+        $summary = [
+            'total_saldo'   => $entities->sum('saldo'),
+            'total_akun'    => $entities->count(),
+            'total_pending' => $entities->where('saldo', '>', 0)->count(),
+        ];
+
+        return view('buku-pembantu.index', compact('jenis', 'entities', 'summary'));
+}
+
+public function bukuPembantuShow(Request $request, $jenis, $id)
+    {
+        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 2;
+        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
+        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 1;
+        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 8;
+
+        $entity = null;
+        $mutasi = collect();
+
+        switch ($jenis) {
+            case 'utang':
+            case 'um-pembelian':
+                $targetAccountId = ($jenis === 'utang') ? $idUtang : $idUangMukaPemb;
+                
+                $entity = DB::table('suppliers')->where('id', $id)->first();
+                if (!$entity) abort(404, 'Supplier tidak ditemukan.');
+
+                $mutasi = DB::table('journal_items')
+                    ->join('jurnal_pembelian', 'journal_items.journal_id', '=', 'jurnal_pembelian.id')
+                    ->join('pembelian', 'jurnal_pembelian.source_id', '=', 'pembelian.id')
+                    ->where('journal_items.journal_type', '=', 'jurnal_pembelian')
+                    ->where('journal_items.account_id', '=', $targetAccountId)
+                    ->where('pembelian.supplier_id', '=', $id)
+                    ->select(
+                        'jurnal_pembelian.tanggal',
+                        'jurnal_pembelian.deskripsi as keterangan',
+                        'jurnal_pembelian.no_ref as ref',
+                        'journal_items.debit',
+                        'journal_items.kredit'
+                    )
+                    ->orderBy('jurnal_pembelian.tanggal', 'asc')
+                    ->orderBy('jurnal_pembelian.id', 'asc')
+                    ->get();
+                break;
+
+            case 'piutang':
+            case 'um-penjualan':
+                $targetAccountId = ($jenis === 'piutang') ? $idPiutang : $idUangMukaPenj;
+
+                $entity = DB::table('customers')->where('id', $id)->first();
+                if (!$entity) abort(404, 'Customer tidak ditemukan.');
+
+                $mutasi = DB::table('journal_items')
+                    ->join('jurnal_penjualan_b2b', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+                    ->join('pesanan', 'jurnal_penjualan_b2b.source_id', '=', 'pesanan.id')
+                    ->where('journal_items.journal_type', '=', 'penjualan_b2b')
+                    ->where('journal_items.account_id', '=', $targetAccountId)
+                    ->where('pesanan.customer_id', '=', $id)
+                    ->select(
+                        'jurnal_penjualan_b2b.tanggal',
+                        'jurnal_penjualan_b2b.deskripsi as keterangan',
+                        'jurnal_penjualan_b2b.no_ref as ref',
+                        'journal_items.debit',
+                        'journal_items.kredit'
+                    )
+                    ->orderBy('jurnal_penjualan_b2b.tanggal', 'asc')
+                    ->orderBy('jurnal_penjualan_b2b.id', 'asc')
+                    ->get();
+                break;
+        }
+
+        // Akumulasi Saldo Berjalan (Running Balance)
+        $runningSaldo = 0;
+        $mutasi = $mutasi->map(function ($row) use (&$runningSaldo, $jenis) {
+            $debit = floatval($row->debit);
+            $kredit = floatval($row->kredit);
+
+            if (in_array($jenis, ['utang', 'um-penjualan'])) {
+                $runningSaldo += ($kredit - $debit);
+            } else {
+                $runningSaldo += ($debit - $kredit);
+            }
+
+            $row->saldo_akumulasi = $runningSaldo;
+            return $row;
+        });
+
+        $saldoAkhir = $runningSaldo;
+
+        return view('buku-pembantu.show', compact('jenis', 'entity', 'mutasi', 'saldoAkhir'));
     }
 }

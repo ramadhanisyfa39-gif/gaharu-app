@@ -29,7 +29,7 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Tanggal Pembukuan</label>
                             <input type="date" name="tanggal" class="form-control"
-                                value="{{ isset($pembelian) ? \Carbon\Carbon::parse($pembelian->tanggal)->format('Y-m-d') : date('Y-m-d') }}" required>
+                                value="{{ isset($pembelian) ? \Carbon\Carbon::parse($pembelian->tanggal)->format('Y-m-d') : date('Y-m-d') }}" required readonly style="background-color: #e9ecef; cursor: not-allowed;">
                         </div>
 
                         <div class="col-md-4">

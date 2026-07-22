@@ -155,6 +155,58 @@ class PenggajianController extends Controller
     }
 
     /**
+     * AUTO-FILL SEMUA KARYAWAN AKTIF KE DALAM PERIODE
+     */
+    public function autoFill(Request $request)
+    {
+        $periode = $request->input('periode');
+        if (!$periode) {
+            return back()->with('error', 'Periode penggajian tidak valid.');
+        }
+
+        // Ambil ID karyawan yang sudah diinput gajinya pada periode ini
+        $alreadyPaidIds = Penggajian::where('periode_bulan_tahun', $periode)
+            ->pluck('karyawan_id')
+            ->toArray();
+
+        // Ambil semua karyawan aktif yang belum ada di periode ini
+        $karyawans = Karyawan::whereNotIn('id', $alreadyPaidIds)->get();
+
+        if ($karyawans->isEmpty()) {
+            return back()->with('info', 'Semua karyawan aktif sudah terdaftar pada periode ini.');
+        }
+
+        // Cek status periode yang ada
+        $existingStatus = Penggajian::where('periode_bulan_tahun', $periode)->first()?->status ?? 'draft';
+
+        $count = 0;
+        foreach ($karyawans as $k) {
+            $gajiPokok = floatval($k->gaji_pokok ?? 0);
+            Penggajian::create([
+                'karyawan_id'           => $k->id,
+                'periode_bulan_tahun'   => $periode,
+                'gaji_pokok'            => $gajiPokok,
+                'tunjangan_transport'   => 0,
+                'tunjangan_makan'       => 0,
+                'lembur'                => 0,
+                'bonus_target'          => 0,
+                'bonus_tanggal_merah'   => 0,
+                'bonus_birthday'        => 0,
+                'bonus_dll'             => 0,
+                'potongan_inventaris'   => 0,
+                'potongan_terlambat'    => 0,
+                'total_gaji_bersih'     => $gajiPokok,
+                'status'                => $existingStatus,
+                'status_jurnal'         => false,
+            ]);
+            $count++;
+        }
+
+        return redirect()->route('penggajian.show-periode', ['periode' => $periode])
+            ->with('success', "Berhasil meng-autofill {$count} karyawan ke periode {$periode}.");
+    }
+
+    /**
      * PROSES AJUKAN APPROVAL (DARI DROPDOWN TITIK TIGA)
      */
     public function ajukanApproval(Request $request)

@@ -37,18 +37,18 @@ class PembelianController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $query = Pembelian::with(['supplier', 'gudang', 'user']);
+        $query = Pembelian::with(['supplier', 'gudang', 'user', 'details.barang']);
 
         if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('no_pembelian', 'like', '%' . $search . '%')
+                $q->where('kode_pembelian', 'like', '%' . $search . '%')
                   ->orWhereHas('supplier', function($sq) use ($search) {
                       $sq->where('nama', 'like', '%' . $search . '%');
                   });
             });
         }
 
-        $pembelian = $query->orderBy('tanggal', 'desc')->paginate(10)->withQueryString();
+        $pembelian = $query->orderBy('kode_pembelian', 'desc')->paginate(10)->withQueryString();
 
         $dataPembayaran = $pembelian->mapWithKeys(function ($item) {
             $label = match($item->metode_pembayaran) {
@@ -70,6 +70,16 @@ class PembelianController extends Controller
                 'tanggal_pelunasan'   => $item->tanggal_pelunasan,
                 'catatan'             => $item->catatan_pembayaran,
                 'dicatat_pada'        => $item->dicatat_pada,
+                'details'             => $item->details->map(function ($d) {
+                    return [
+                        'id'            => $d->id,
+                        'nama'          => $d->barang->nama ?? 'Barang',
+                        'satuan'        => $d->barang->satuan ?? 'Pcs',
+                        'qty'           => floatval($d->qty),
+                        'qty_diterima'  => floatval($d->qty_diterima ?? $d->qty),
+                        'harga_per_qty' => floatval($d->harga_per_qty),
+                    ];
+                })->values()->toArray(),
             ]];
         });
 
@@ -159,25 +169,43 @@ class PembelianController extends Controller
 
     public function terima(Request $request, Pembelian $pembelian)
     {
+        if (!$pembelian->is_lunas) {
+            return back()->with('error', 'Gagal memproses penerimaan barang: Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu.');
+        }
+
         if ($pembelian->is_diterima) {
             return back()->with('error', 'Barang sudah pernah diterima.');
         }
 
-        DB::transaction(function () use ($pembelian) {
+        $request->validate([
+            'qty_diterima'   => 'nullable|array',
+            'qty_diterima.*' => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($request, $pembelian) {
 
             $pembelian->load('details');
 
             foreach ($pembelian->details as $detail) {
+                $qtyDiterima = isset($request->qty_diterima[$detail->id]) 
+                    ? floatval($request->qty_diterima[$detail->id]) 
+                    : floatval($detail->qty);
 
-                // Buat FIFO batch
+                $detail->update([
+                    'qty_diterima' => $qtyDiterima,
+                ]);
+
+                $totalHargaDiterima = round($qtyDiterima * floatval($detail->harga_per_qty), 2);
+
+                // Buat FIFO batch (akan menggunakan qty_diterima)
                 $this->fifoService->createBatchStock($pembelian, $detail);
 
                 // Tambah stok gudang
                 $this->stockService->stockIn([
                     'barang_id'       => $detail->barang_id,
                     'gudang_tujuan_id'=> $pembelian->gudang_id,
-                    'qty'             => $detail->qty,
-                    'total_harga'     => $detail->harga,
+                    'qty'             => $qtyDiterima,
+                    'total_harga'     => $totalHargaDiterima,
                     'source_type'     => 'pembelian',
                     'source_id'       => $pembelian->id,
                     'user_id'         => auth()->id(),
@@ -407,5 +435,13 @@ class PembelianController extends Controller
         $number = $last ? ((int) substr($last->kode_pembelian, -4)) + 1 : 1;
 
         return $prefix . str_pad($number, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function cetakPoPdf($id)
+    {
+        $pembelian = Pembelian::with(['supplier', 'gudang', 'user', 'details.barang'])->findOrFail($id);
+        $pdf = app('dompdf.wrapper')->setPaper('a4', 'portrait');
+        $pdf->loadView('pembelian.po-pdf', compact('pembelian'));
+        return $pdf->stream('Purchase-Order-' . $pembelian->kode_pembelian . '.pdf');
     }
 }

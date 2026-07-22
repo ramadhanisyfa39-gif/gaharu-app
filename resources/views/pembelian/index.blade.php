@@ -151,17 +151,21 @@
                                             {{ \Carbon\Carbon::parse($item->diterima_at)->format('d M Y') }}
                                         </small>
                                     </div>
+                                @elseif(!$item->is_lunas)
+                                    <button type="button"
+                                            class="btn btn-sm"
+                                            disabled
+                                            title="Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu."
+                                            style="background:#d0d0d0; color:#888; font-size:11px; padding:2px 10px; cursor:not-allowed;">
+                                        Terima Barang
+                                    </button>
                                 @else
-                                    <form action="{{ route('pembelian.terima', $item->id) }}"
-                                          method="POST" class="d-inline"
-                                          onsubmit="return confirm('Konfirmasi penerimaan barang {{ $item->kode_pembelian }}?\nStok akan langsung masuk ke gudang.')">
-                                        @csrf
-                                        <button type="submit"
-                                                class="btn btn-sm"
-                                                style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;">
-                                            Terima Barang
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                            class="btn btn-sm"
+                                            style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;"
+                                            onclick="bukaModalTerimaBarang({{ $item->id }})">
+                                        Terima Barang
+                                    </button>
                                 @endif
                             </td>
     
@@ -172,6 +176,11 @@
                                        class="btn btn-sm"
                                        style="background:#606060; color:#fff; font-size:11px;">
                                         Detail
+                                    </a>
+                                    <a href="{{ route('pembelian.cetak-pdf', $item->id) }}"
+                                       class="btn btn-sm btn-danger text-white"
+                                       style="font-size:11px;" target="_blank" title="Cetak Purchase Order (PDF)">
+                                        <i class="bi bi-file-earmark-pdf-fill"></i> Cetak PO
                                     </a>
     
                                     @if(!$item->isTerkunci())
@@ -360,6 +369,48 @@
         </div>
     </div>
 
+    {{-- ══════════════════ MODAL TERIMA BARANG (QTY INPUT) ══════════════════ --}}
+    <div class="modal fade" id="modalTerimaBarang" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="formTerimaBarang" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title fs-6 fw-bold">Konfirmasi Penerimaan Barang — <span id="terima_kode" class="text-primary"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" style="font-size:13px;">
+                        <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size:12px;">
+                            <i class="bi bi-info-circle-fill fs-5"></i>
+                            <div>
+                                Periksa dan sesuaikan <strong>Qty Barang Diterima</strong> di bawah ini.
+                                Stok gudang dan batch FIFO akan ditambahkan secara proporsional sesuai Qty yang diterima.
+                            </div>
+                        </div>
+                        <table class="table table-bordered align-middle mb-0" style="font-size:13px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nama Barang</th>
+                                    <th class="text-center" style="width:130px;">Qty Dipesan</th>
+                                    <th class="text-center" style="width:170px;">Qty Diterima</th>
+                                    <th class="text-end" style="width:140px;">Harga/Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTerimaBarang">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-sm btn-success px-3">
+                            <i class="bi bi-check-lg me-1"></i> Simpan & Terima Barang
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- ══════════════════ SCRIPT ══════════════════ --}}
     <script>
         const dataPembayaran = @json($dataPembayaran);
@@ -468,6 +519,41 @@
             document.getElementById('lunasi_sisa').textContent     = 'Rp ' + Number(kekurangan).toLocaleString('id-ID');
             document.getElementById('inputNominalLunasi').value    = kekurangan;
             new bootstrap.Modal(document.getElementById('modalLunasi')).show();
+        }
+
+        // ── Modal Terima Barang (Input Qty Diterima) ──
+        function bukaModalTerimaBarang(id) {
+            const data = dataPembayaran[id];
+            if (!data || !data.details) return;
+
+            document.getElementById('formTerimaBarang').action = '/pembelian/' + id + '/terima';
+            document.getElementById('terima_kode').textContent = data.kode;
+
+            const tbody = document.getElementById('tbodyTerimaBarang');
+            tbody.innerHTML = '';
+
+            data.details.forEach(det => {
+                const tr = document.createElement('tr');
+                const qtyVal = det.qty_diterima !== undefined && det.qty_diterima !== null ? det.qty_diterima : det.qty;
+                tr.innerHTML = `
+                    <td><strong>${det.nama}</strong></td>
+                    <td class="text-center">${det.qty} ${det.satuan}</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" min="0" 
+                                   class="form-control text-center fw-bold" 
+                                   name="qty_diterima[${det.id}]" 
+                                   value="${qtyVal}" 
+                                   required>
+                            <span class="input-group-text">${det.satuan}</span>
+                        </div>
+                    </td>
+                    <td class="text-end">Rp ${Number(det.harga_per_qty).toLocaleString('id-ID')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            new bootstrap.Modal(document.getElementById('modalTerimaBarang')).show();
         }
     </script>
 

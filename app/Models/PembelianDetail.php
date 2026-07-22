@@ -28,6 +28,8 @@ class PembelianDetail extends Model
 
         'qty',
 
+        'qty_diterima',
+
         /*
         |--------------------------------------------------------------------------
         | harga = TOTAL HARGA
@@ -62,6 +64,9 @@ class PembelianDetail extends Model
     protected $casts = [
 
         'qty'
+            => 'decimal:2',
+
+        'qty_diterima'
             => 'decimal:2',
 
         'harga'

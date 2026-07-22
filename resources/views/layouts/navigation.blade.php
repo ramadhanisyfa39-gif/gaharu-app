@@ -284,7 +284,10 @@
                             <i class="bi bi-list-check me-2" style="font-size:12px;"></i>Trial Balance
                         </a>
                         <a href="{{ route('laporan.buku-besar.index') }}" class="{{ request()->routeIs('laporan.buku-besar.*') ? 'active' : '' }}">
-                            <i class="bi bi-list-check me-2" style="font-size:12px;"></i>General Ledger
+                            <i class="bi bi-folder-fill me-2" style="font-size:12px;"></i>General Ledger
+                        </a>
+                        <a href="{{ route('buku-pembantu.index') }}" class="{{ request()->routeIs('buku-pembantu.*') ? 'active' : '' }}">
+                            <i class="bi bi-book-half me-2" style="font-size:12px;"></i>Subsidiary Ledger
                         </a>
                     @endif
                 </div>

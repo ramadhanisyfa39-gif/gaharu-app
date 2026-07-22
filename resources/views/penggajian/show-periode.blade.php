@@ -14,9 +14,19 @@
                     </div>
 
                     @if($currentStatus == 'draft' || $currentStatus == 'waiting approval')
-                    <a href="{{ route('penggajian.create', ['target_periode' => $periode]) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm text-sm font-medium transition-all">
-                        + Input Gaji Karyawan Baru
-                    </a>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form action="{{ route('penggajian.auto-fill') }}" method="POST" class="inline">
+                            @csrf
+                            <input type="hidden" name="periode" value="{{ $periode }}">
+                            <button type="submit" onclick="return confirm('Tambahkan seluruh karyawan aktif yang belum terdaftar ke periode {{ $periode }} secara otomatis?')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm text-sm font-medium transition-all flex items-center gap-1.5">
+                                ⚡ + Auto-Fill Semua Karyawan
+                            </button>
+                        </form>
+
+                        <a href="{{ route('penggajian.create', ['target_periode' => $periode]) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm text-sm font-medium transition-all">
+                            + Input Manual
+                        </a>
+                    </div>
                     @else
                     <span class="bg-gray-100 text-gray-400 border px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed">
                         Periode Terkunci (Approved)
@@ -29,9 +39,22 @@
                     {{ session('success') }}
                 </div>
                 @endif
+                @if(session('info'))
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-4 text-sm">
+                    {{ session('info') }}
+                </div>
+                @endif
+
+                {{-- Live Search Input --}}
+                <div class="mb-4 flex justify-between items-center flex-wrap gap-2">
+                    <div class="relative w-full sm:w-72">
+                        <input type="text" id="searchKaryawan" onkeyup="filterKaryawan()" placeholder="🔍 Cari nama karyawan..." class="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    </div>
+                    <span class="text-xs text-gray-500">Total Karyawan Terdaftar: <strong>{{ count($payrolls) }}</strong></span>
+                </div>
 
                 <div class="overflow-x-auto border border-gray-200 rounded-xl shadow-sm">
-                    <table class="w-full text-sm text-left text-gray-500">
+                    <table class="w-full text-sm text-left text-gray-500" id="tableKaryawan">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-100 border-b">
                             <tr>
                                 <th class="px-6 py-3 text-center w-16">No</th>
@@ -43,9 +66,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 bg-white">
                             @forelse($payrolls as $index => $payroll)
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="payroll-row hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-center font-medium text-gray-900">{{ $index + 1 }}</td>
-                                <td class="px-6 py-4 font-semibold text-gray-800">{{ $payroll->karyawan->nama_karyawan }}</td>
+                                <td class="px-6 py-4 font-semibold text-gray-800 nama-karyawan">{{ $payroll->karyawan->nama_karyawan }}</td>
                                 <td class="px-6 py-4 text-right text-gray-700">Rp {{ number_format($payroll->gaji_pokok, 0, ',', '.') }}</td>
                                 <td class="px-6 py-4 text-right font-bold text-blue-600">Rp {{ number_format($payroll->total_gaji_bersih, 0, ',', '.') }}</td>
                                 <td class="px-6 py-4 text-center">
@@ -77,7 +100,7 @@
                             @empty
                             <tr>
                                 <td colspan="5" class="px-6 py-12 text-center text-gray-400">
-                                    Belum ada karyawan yang dimasukkan pada periode ini. Silakan klik "+ Input Gaji Karyawan Baru" di atas.
+                                    Belum ada karyawan yang dimasukkan pada periode ini. Silakan klik "⚡ + Auto-Fill Semua Karyawan" atau "+ Input Manual" di atas.
                                 </td>
                             </tr>
                             @endforelse
@@ -88,4 +111,19 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function filterKaryawan() {
+            const input = document.getElementById('searchKaryawan').value.toLowerCase();
+            const rows = document.querySelectorAll('.payroll-row');
+            rows.forEach(row => {
+                const nameText = row.querySelector('.nama-karyawan').textContent.toLowerCase();
+                if (nameText.includes(input)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </x-app-layout>

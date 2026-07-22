@@ -10,6 +10,10 @@
                 Kembali
             </a>
 
+            <a href="{{ route('penjualan_pos.cetak-pdf', $penjualan->id) }}" class="btn btn-danger me-2 px-4 text-white" target="_blank">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> Cetak Struk PDF
+            </a>
+
             {{-- TOMBOL EDIT DAN APPROVE HANYA MUNCUL JIKA STATUS MASIH DRAFT --}}
             @if(($penjualan->status ?? 'Draft') === 'Draft')
                 <a href="{{ route('penjualan_pos.edit', $penjualan->id) }}" class="btn btn-warning px-4 text-dark fw-medium me-2">

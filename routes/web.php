@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
         // Transaksi POS
         Route::post('penjualan-pos/{id}/approve', [PenjualanPosController::class, 'approve'])->name('penjualan_pos.approve');
         Route::get('/penjualan_pos/get-harga/{produk_id}', [PenjualanPosController::class, 'getHargaAktif'])->name('penjualan_pos.get-harga');
+        Route::get('/penjualan_pos/{id}/cetak-pdf', [PenjualanPosController::class, 'cetakNotaPdf'])->name('penjualan_pos.cetak-pdf');
         Route::resource('penjualan_pos', PenjualanPosController::class);
         Route::resource('penjualanpos-detail', PenjualanPosDetailController::class);
     });
@@ -111,6 +112,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('customer', CustomerController::class)->names('customer');
 
         // Pesanan B2B
+        Route::get('/pesanan/{id}/cetak-pdf', [PesananController::class, 'cetakSoPdf'])->name('pesanan.cetak-pdf');
         Route::resource('pesanan', PesananController::class)->names('pesanan');
         Route::resource('pesanan-detail', PesananDetailController::class);
         Route::post('/pesanan/{id}/pembayaran', [PesananController::class, 'simpanPembayaran'])->name('pesanan.bayar');
@@ -136,6 +138,7 @@ Route::middleware('auth')->group(function () {
         // Jurnal / Finance
         Route::get('/coa/get-name/{id}', [JurnalController::class, 'getCoaName'])->name('coa.getName');
         Route::resource('jurnal', JurnalController::class);
+
         Route::post('/jurnal/approve-batch', [JurnalController::class, 'approveBatch'])->name('jurnal.approve_batch');
 
         // Closing & Adjustment
@@ -144,6 +147,9 @@ Route::middleware('auth')->group(function () {
         Route::get('adjustment', [JurnalController::class, 'adjustmentIndex'])->name('adjustment.index');
         Route::get('adjustment/create', [JurnalController::class, 'adjustmentPage'])->name('adjustment.create');
         Route::post('adjustment', [JurnalController::class, 'adjustmentStore'])->name('adjustment.store');
+        Route::get('/adjustment/{id}', [JurnalController::class, 'adjustmentShow'])->name('adjustment.show');
+        Route::get('/adjustment/{id}/edit', [JurnalController::class, 'adjustmentEdit'])->name('adjustment.edit');
+        Route::put('/adjustment/{id}', [JurnalController::class, 'adjustmentUpdate'])->name('adjustment.update');
         Route::put('adjustment/{id}/approve', [JurnalController::class, 'adjustmentApprove'])->name('adjustment.approve');
         Route::post('adjustment/approve-batch', [JurnalController::class, 'adjustmentApproveBatch'])->name('adjustment.approve_batch');
 
@@ -159,11 +165,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/jurnal-penggajian/store/{id}', [JurnalController::class, 'penggajianStore'])->name('jurnal-penggajian.store');
         Route::get('/jurnal-penggajian/show/{id}', [JurnalController::class, 'penggajianShow'])->name('jurnal-penggajian.show');
 
-        Route::get('/penggajian/periode', [PenggajianController::class, 'periodeDetail'])->name('penggajian.show-periode');
-        Route::post('/penggajian/ajukan-approval', [PenggajianController::class, 'ajukanApproval'])->name('penggajian.ajukanApproval');
-        Route::post('/penggajian/approve', [PenggajianController::class, 'approve'])->name('penggajian.approve');
-        Route::post('/penggajian/kirim-jurnal', [PenggajianController::class, 'kirimJurnalUmum'])->name('penggajian.kirimJurnalUmum');
-
         // Jurnal Produksi
         Route::get('/jurnal-produksi', [JurnalController::class, 'produksiIndex'])->name('jurnal-produksi.index');
         Route::get('/jurnal-produksi/create/{id}', [JurnalController::class, 'produksiCreate'])->name('jurnal-produksi.create');
@@ -175,9 +176,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/jurnal-penjualanb2b/create/{id}', [JurnalController::class, 'penjualanb2bCreate'])->name('jurnal-penjualanb2b.create');
         Route::post('/jurnal-penjualanb2b/store/{id}', [JurnalController::class, 'penjualanB2BStore'])->name('jurnal-penjualanb2b.store');
         Route::get('/jurnal-penjualanb2b/show/{id}', [JurnalController::class, 'penjualanB2BShow'])->name('jurnal-penjualanb2b.show');
-        Route::get('/bukupembantu-uangmuka', [JurnalController::class, 'bukuPembantuUangMuka'])->name('bukupembantu-uangmuka.index');
-
-        // Laporan Keuangan
+        Route::get('/buku-pembantu', [JurnalController::class, 'bukuPembantuIndex'])->name('buku-pembantu.index');
+        Route::get('/buku-pembantu/{jenis}/{id}', [JurnalController::class, 'bukuPembantuShow'])->name('buku-pembantu.show');        // Laporan Keuangan
         Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/', [LaporanController::class, 'labaRugiIndex'])->name('index');
             Route::get('/laba-rugi', [LaporanController::class, 'labaRugiIndex'])->name('laba-rugi.index');
@@ -253,6 +253,7 @@ Route::middleware('auth')->group(function () {
         Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
         Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
 
+        Route::get('pembelian/{id}/cetak-pdf', [PembelianController::class, 'cetakPoPdf'])->name('pembelian.cetak-pdf');
         Route::post('pembelian/{pembelian}/terima', [PembelianController::class, 'terima'])->name('pembelian.terima');
         Route::post('pembelian/{pembelian}/lunasi', [PembelianController::class, 'lunasi'])->name('pembelian.lunasi');
         Route::post('pembelian/{pembelian}/catat-pembayaran', [PembelianController::class, 'catatPembayaran'])->name('pembelian.catat-pembayaran');
@@ -295,16 +296,21 @@ Route::middleware('auth')->group(function () {
         Route::resource('karyawan', KaryawanController::class)->names('karyawan');
     });
 
-    // Payroll (HRD & Direktur Keuangan)
-    Route::middleware(['role:HRD,Direktur Keuangan'])->group(function () {
-        Route::resource('penggajian', PenggajianController::class);
+    // Payroll (HRD, Direktur Keuangan, & Kepala Outlet Gaharu)
+    Route::middleware(['role:HRD,Direktur Keuangan,Kepala Outlet Gaharu'])->group(function () {
         Route::get('/penggajian/create', [PenggajianController::class, 'create'])->name('penggajian.create');
+        Route::get('/penggajian/periode', [PenggajianController::class, 'periodeDetail'])->name('penggajian.show-periode');
+        Route::post('/penggajian/auto-fill', [PenggajianController::class, 'autoFill'])->name('penggajian.auto-fill');
+        Route::post('/penggajian/ajukan-approval', [PenggajianController::class, 'ajukanApproval'])->name('penggajian.ajukanApproval');
+        Route::post('/penggajian/approve', [PenggajianController::class, 'approve'])->name('penggajian.approve');
+        Route::post('/penggajian/kirim-jurnal', [PenggajianController::class, 'kirimJurnalUmum'])->name('penggajian.kirimJurnalUmum');
         Route::get('/penggajian/periode/{periode}', [PenggajianController::class, 'showPeriode'])->name('penggajian.periode');
         Route::post('/penggajian/store', [PenggajianController::class, 'store'])->name('penggajian.store');
         Route::post('/penggajian/periode/{periode}/submit', [PenggajianController::class, 'submitToDirector'])->name('penggajian.submit');
         Route::post('/penggajian/periode/{periode}/approve', [PenggajianController::class, 'approveByDirector'])->name('penggajian.approve');
         Route::post('/penggajian/periode/{periode}/journal', [PenggajianController::class, 'sendToJournal'])->name('penggajian.journal');
         Route::delete('/penggajian/{penggajian}', [PenggajianController::class, 'destroy'])->name('penggajian.destroy');
+        Route::resource('penggajian', PenggajianController::class);
     });
     });
 

@@ -82,6 +82,10 @@
                                        class="btn btn-info btn-sm text-white shadow-sm" title="Lihat Detail">
                                         Detail
                                     </a>
+                                    <a href="{{ route('penjualan_pos.cetak-pdf', $item->id) }}"
+                                       class="btn btn-danger btn-sm text-white shadow-sm" title="Cetak Struk / Nota PDF" target="_blank">
+                                        <i class="bi bi-file-earmark-pdf-fill"></i> Cetak Struk
+                                    </a>
 
                                     @if(($item->status ?? 'Draft') === 'Draft')
                                         {{-- Tombol Approve --}}

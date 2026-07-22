@@ -345,4 +345,12 @@ class PesananController extends Controller
         $pesanan = Pesanan::with(['customer', 'pembayaran'])->findOrFail($id);
         return view('pesanan.kwitansi', compact('pesanan'));
     }
+
+    public function cetakSoPdf($id)
+    {
+        $pesanan = Pesanan::with(['customer', 'gudang', 'creator', 'details.produk', 'pembayaran'])->findOrFail($id);
+        $pdf = app('dompdf.wrapper')->setPaper('a4', 'portrait');
+        $pdf->loadView('pesanan.so-pdf', compact('pesanan'));
+        return $pdf->stream('Sales-Order-' . $pesanan->kode_pesanan . '.pdf');
+    }
 }

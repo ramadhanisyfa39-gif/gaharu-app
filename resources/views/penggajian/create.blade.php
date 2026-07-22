@@ -95,7 +95,10 @@
             <div class="card-payroll">
                 <div class="input-group">
                     <label>Nama Karyawan</label>
-                    <select name="karyawan_id" class="input-group input" required {{ isset($payroll) ? 'disabled' : '' }}>
+                    @if(!isset($payroll))
+                    <input type="text" id="searchSelectKaryawan" onkeyup="filterKaryawanSelect()" placeholder="🔍 Ketik untuk memfilter nama karyawan..." style="margin-bottom: 8px; font-size: 13px;">
+                    @endif
+                    <select name="karyawan_id" id="selectKaryawanId" class="input-group input" required {{ isset($payroll) ? 'disabled' : '' }}>
                         <option value="">-- Pilih Karyawan --</option>
                         @foreach($karyawans as $k)
                         <option value="{{ $k->id }}" data-gaji="{{ $k->gaji_pokok }}" {{ (isset($payroll) && $payroll->karyawan_id == $k->id) ? 'selected' : '' }}>
@@ -255,5 +258,20 @@
                 });
             }
         });
+
+        function filterKaryawanSelect() {
+            const input = document.getElementById('searchSelectKaryawan').value.toLowerCase();
+            const select = document.getElementById('selectKaryawanId');
+            if (!select) return;
+            const options = select.options;
+            for (let i = 1; i < options.length; i++) {
+                const text = options[i].text.toLowerCase();
+                if (text.includes(input)) {
+                    options[i].style.display = '';
+                } else {
+                    options[i].style.display = 'none';
+                }
+            }
+        }
     </script>
 </x-app-layout>

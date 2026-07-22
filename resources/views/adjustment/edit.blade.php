@@ -1,18 +1,24 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Edit Jurnal: {{ $jurnal->no_ref }}
+            Edit Jurnal Penyesuaian: {{ $jurnal->no_ref }}
         </h2>
     </x-slot>
 
     <div class="container py-4">
         <div class="card shadow">
             <div class="card-header bg-warning text-dark">
-                <h4 class="mb-0">Koreksi Jurnal Umum: {{ $jurnal->no_ref }}</h4>
+                <h4 class="mb-0">Koreksi Jurnal Penyesuaian: {{ $jurnal->no_ref }}</h4>
             </div>
             <div class="card-body">
+                @if(session('error'))
+                <div class="alert alert-danger mb-3">
+                    {{ session('error') }}
+                </div>
+                @endif
+
                 @if($errors->any())
-                <div class="alert alert-danger">
+                <div class="alert alert-danger mb-3">
                     <ul class="mb-0">
                         @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
@@ -21,7 +27,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('jurnal.update', $jurnal->id) }}" method="POST" id="form-jurnal">
+                <form action="{{ route('adjustment.update', $jurnal->id) }}" method="POST" id="form-adjustment">
                     @csrf
                     @method('PUT')
 
@@ -41,7 +47,7 @@
                         </div>
                     </div>
 
-                    <h5 class="fw-bold mb-3">Item Jurnal</h5>
+                    <h5 class="fw-bold mb-3">Item Jurnal Penyesuaian</h5>
                     <div class="table-responsive">
                         <table class="table table-bordered" id="table-items">
                             <thead class="table-light">
@@ -96,9 +102,16 @@
                         </button>
                     </div>
 
-                    <div class="d-flex justify-content-between pt-3">
-                        <a href="{{ route('jurnal.index') }}" class="btn btn-light border px-4">Batal</a>
-                        <button type="submit" class="btn btn-warning px-5 shadow fw-bold">Perbarui Jurnal</button>
+                    <div class="d-flex justify-content-between pt-3 border-top">
+                        <a href="{{ route('adjustment.index') }}" class="btn btn-light border px-4">Batal</a>
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="action" value="draft" class="btn btn-secondary px-4 fw-bold">
+                                Simpan sebagai Draft
+                            </button>
+                            <button type="submit" name="action" value="post" class="btn btn-warning px-4 fw-bold shadow">
+                                Perbarui & Post ke Buku Besar
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -139,7 +152,7 @@
         function hapusBaris(button) {
             let totalRows = document.querySelectorAll('#wrapper-items tr').length;
             if (totalRows <= 2) {
-                alert('Jurnal minimal harus memiliki 2 item (Debit & Kredit)!');
+                alert('Jurnal Penyesuaian minimal harus memiliki 2 item (Debit & Kredit)!');
                 return;
             }
             button.closest('tr').remove();

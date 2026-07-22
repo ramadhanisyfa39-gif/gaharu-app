@@ -23,7 +23,7 @@
                     <div class="row mb-4">
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Tanggal Pembukuan</label>
-                            <input type="date" name="tanggal" class="form-control" value="{{ $type === 'pembayaran' ? \Carbon\Carbon::parse($pembayaran->tanggal_bayar)->format('Y-m-d') : \Carbon\Carbon::parse($pengiriman->tanggal_pengiriman)->format('Y-m-d') }}" required>
+                            <input type="date" name="tanggal" class="form-control" value="{{ $type === 'pembayaran' ? \Carbon\Carbon::parse($pembayaran->tanggal_bayar)->format('Y-m-d') : \Carbon\Carbon::parse($pengiriman->tanggal_pengiriman)->format('Y-m-d') }}" required readonly style="background-color: #e9ecef; cursor: not-allowed;">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">No. Referensi</label>

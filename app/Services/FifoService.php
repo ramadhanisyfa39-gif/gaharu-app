@@ -50,13 +50,13 @@ class FifoService
             */
 
             'qty_masuk'
-                => $detail->qty,
+                => $detail->qty_diterima ?? $detail->qty,
 
             'qty_keluar'
                 => 0,
 
             'qty_sisa'
-                => $detail->qty,
+                => $detail->qty_diterima ?? $detail->qty,
 
             /*
             |--------------------------------------------------------------------------

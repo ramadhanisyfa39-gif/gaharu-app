@@ -586,4 +586,12 @@ class PenjualanPosController extends Controller
             'nama'      => $barang->nama,
         ]);
     }
+
+    public function cetakNotaPdf($id)
+    {
+        $penjualan = PenjualanPos::with(['gudang', 'creator', 'details.produk'])->findOrFail($id);
+        $pdf = app('dompdf.wrapper')->setPaper('a4', 'portrait');
+        $pdf->loadView('penjualan_pos.nota-pdf', compact('penjualan'));
+        return $pdf->stream('Sales-Order-POS-' . $penjualan->kode_transaksi . '.pdf');
+    }
 }

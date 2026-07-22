@@ -212,6 +212,11 @@
                                             <i class="bi bi-printer-fill"></i>
                                         </a>
 
+                                        {{-- TOMBOL PRINT SALES ORDER PDF --}}
+                                        <a href="{{ route('pesanan.cetak-pdf', $item->id) }}" class="btn-action-base text-danger" style="background:#fee2e2; border-color:#fca5a5;" data-bs-toggle="tooltip" title="Cetak Sales Order (PDF)" target="_blank">
+                                            <i class="bi bi-file-earmark-pdf-fill"></i>
+                                        </a>
+
                                         {{-- 2. TOMBOL EDIT (Hanya Muncul Jika Belum Masuk WO) --}}
                                         @if(!isset($item->wo_status) || $item->wo_status === null)
                                             <a href="{{ route('pesanan.edit', $item->id) }}" class="btn-action-base btn-action-edit" data-bs-toggle="tooltip" title="Edit Pesanan">
