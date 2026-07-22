@@ -165,7 +165,7 @@
                 </div>
 
                 <div class="submenu-content">
-                    @if($canRole(['Kepala Gudang', 'Kepala Outlet Gaharu']))
+                    @if($canRole(['Kepala Gudang', 'Kepala Outlet Gaharu', 'Kepala Outlet Kejingga']))
                         <div class="submenu-divider">INVENTORY</div>
                         <a href="{{ route('pembelian.index') }}" class="{{ request()->routeIs('pembelian.*') ? 'active' : '' }}">
                             <i class="bi bi-bag-plus me-2" style="font-size:12px;"></i>Purchase

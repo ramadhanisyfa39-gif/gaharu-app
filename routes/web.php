@@ -247,7 +247,7 @@ Route::middleware('auth')->group(function () {
     // 5. GROUP KEPALA GUDANG & KEPALA OUTLET GAHARU
     // Hak Akses: Master Gudang, Pembelian, Stok Gudang, Stock Opname
     // =========================================================================
-    Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu'])->group(function () {
+    Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu,Kepala Outlet Kejingga'])->group(function () {
         Route::resource('gudangs', GudangController::class)->names('gudangs');
 
         Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
