@@ -142,7 +142,7 @@ class DashboardController extends Controller
         $labelsPos = [];
         $dataPos = [];
         $chartPosQuery = PenjualanPos::where('tanggal', '>=', now()->subDays(6)->startOfDay())
-            ->where('status', 'Completed');
+            ->whereIn('status', ['SUKSES', 'Approved', 'Completed']);
 
         if ($roleName === 'Kepala Outlet Gaharu') {
             $chartPosQuery->where('gudang_id', 2);
@@ -279,6 +279,32 @@ class DashboardController extends Controller
             abort(403, 'Anda tidak memiliki hak akses ke Dashboard Keuangan.');
         }
 
+        // Base helper query for joining journal_items with header tables
+        $getBaseJournalItems = function() {
+            return DB::table('journal_items')
+                ->leftJoin('journals', function ($join) {
+                    $join->on('journal_items.journal_id', '=', 'journals.id')
+                         ->whereIn('journal_items.journal_type', ['jurnal_umum', 'jurnal', 'closing']);
+                })
+                ->leftJoin('jurnal_pembelian', function ($join) {
+                    $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
+                         ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
+                })
+                ->leftJoin('jurnal_penjualan_pos', function ($join) {
+                    $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_pos.id')
+                         ->where('journal_items.journal_type', '=', 'jurnal_penjualan_pos');
+                })
+                ->leftJoin('jurnal_penjualan_b2b', function ($join) {
+                    $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
+                         ->where('journal_items.journal_type', '=', 'jurnal_penjualan_b2b');
+                })
+                ->leftJoin('jurnal_penyesuaian', function ($join) {
+                    $join->on('journal_items.journal_id', '=', 'jurnal_penyesuaian.id')
+                         ->whereIn('journal_items.journal_type', [\App\Models\JurnalPenyesuaian::class, 'jurnal_penyesuaian']);
+                })
+                ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id');
+        };
+
         // 1. Profit & Loss trend for the last 6 months
         $months = [];
         $incomeData = [];
@@ -292,27 +318,21 @@ class DashboardController extends Controller
 
             // Income: accounts type 'Pendapatan' or 'Pendapatan Lain-lain' or code starting with '4'
             // balance: kredit - debit
-            $income = DB::table('journal_items')
-                ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
-                ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-                ->where('journals.status', 'posted')
-                ->whereMonth('journals.tanggal', $month)
-                ->whereYear('journals.tanggal', $year)
+            $income = $getBaseJournalItems()
+                ->whereRaw('MONTH(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [$month])
+                ->whereRaw('YEAR(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [$year])
                 ->where(function($q) {
                     $q->whereIn('chart_of_accounts.tipe', ['Pendapatan', 'Pendapatan Lain-lain'])
                       ->orWhere('chart_of_accounts.kode', 'like', '4%');
                 })
-                ->selectRaw('SUM(kredit - debit) as total')
+                ->selectRaw('SUM(journal_items.kredit - journal_items.debit) as total')
                 ->value('total') ?? 0;
 
             // Expenses: accounts type 'Beban' or codes starting with '5', '6', '7', '8'
             // balance: debit - kredit
-            $expense = DB::table('journal_items')
-                ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
-                ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-                ->where('journals.status', 'posted')
-                ->whereMonth('journals.tanggal', $month)
-                ->whereYear('journals.tanggal', $year)
+            $expense = $getBaseJournalItems()
+                ->whereRaw('MONTH(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [$month])
+                ->whereRaw('YEAR(COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal)) = ?', [$year])
                 ->where(function($q) {
                     $q->whereIn('chart_of_accounts.tipe', ['Beban', 'Beban Administratif', 'Beban Operasional', 'Beban Pajak', 'Harga Pokok Penjualan'])
                       ->orWhere('chart_of_accounts.kode', 'like', '5%')
@@ -320,7 +340,7 @@ class DashboardController extends Controller
                       ->orWhere('chart_of_accounts.kode', 'like', '7%')
                       ->orWhere('chart_of_accounts.kode', 'like', '8%');
                 })
-                ->selectRaw('SUM(debit - kredit) as total')
+                ->selectRaw('SUM(journal_items.debit - journal_items.kredit) as total')
                 ->value('total') ?? 0;
 
             $incomeData[] = (float)$income;
@@ -336,11 +356,9 @@ class DashboardController extends Controller
 
         $balances = [];
         foreach ($cashAccounts as $acc) {
-            $balance = DB::table('journal_items')
-                ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-                ->where('journals.status', 'posted')
+            $balance = $getBaseJournalItems()
                 ->where('journal_items.account_id', $acc->id)
-                ->selectRaw('SUM(debit - kredit) as balance')
+                ->selectRaw('SUM(journal_items.debit - journal_items.kredit) as balance')
                 ->value('balance') ?? 0;
 
             $balances[] = [
@@ -352,30 +370,21 @@ class DashboardController extends Controller
 
         // 3. Assets vs Liabilities/Equity
         // Assets: code starts with '1'
-        $totalAssets = DB::table('journal_items')
-            ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
-            ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-            ->where('journals.status', 'posted')
+        $totalAssets = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '1%')
-            ->selectRaw('SUM(debit - kredit) as total')
+            ->selectRaw('SUM(journal_items.debit - journal_items.kredit) as total')
             ->value('total') ?? 0;
 
         // Liabilities: code starts with '2'
-        $totalLiabilities = DB::table('journal_items')
-            ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
-            ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-            ->where('journals.status', 'posted')
+        $totalLiabilities = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '2%')
-            ->selectRaw('SUM(kredit - debit) as total')
+            ->selectRaw('SUM(journal_items.kredit - journal_items.debit) as total')
             ->value('total') ?? 0;
 
         // Equity: code starts with '3'
-        $totalEquity = DB::table('journal_items')
-            ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id')
-            ->join('journals', 'journal_items.journal_id', '=', 'journals.id')
-            ->where('journals.status', 'posted')
+        $totalEquity = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '3%')
-            ->selectRaw('SUM(kredit - debit) as total')
+            ->selectRaw('SUM(journal_items.kredit - journal_items.debit) as total')
             ->value('total') ?? 0;
 
         // 4. Recent Adjustments
@@ -384,9 +393,18 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // 5. Recent Journals
-        $recentJournals = DB::table('journals')
+        // 5. Recent Journals (Union across all journal types)
+        $qJournals = DB::table('journals')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("COALESCE(status, 'posted') as status"));
+        $qPembelian = DB::table('jurnal_pembelian')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+        $qPos = DB::table('jurnal_penjualan_pos')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+        $qB2b = DB::table('jurnal_penjualan_b2b')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+
+        $recentJournals = $qJournals
+            ->unionAll($qPembelian)
+            ->unionAll($qPos)
+            ->unionAll($qB2b)
             ->orderByDesc('tanggal')
+            ->orderByDesc('id')
             ->limit(5)
             ->get();
 

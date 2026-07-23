@@ -873,27 +873,34 @@ class JurnalController extends Controller
                 ->with('error', 'Barang pada Pembelian ' . $pembelian->kode_pembelian . ' belum diterima. Jurnal pengakuan Persediaan baru dapat dicatat setelah barang diterima di menu Pembelian.');
         }
 
+        $dppDP = $totalKontrak > 0 ? round($dppTotal * ($nominalDP / $totalKontrak), 2) : 0;
+        $ppnDP = round($nominalDP - $dppDP, 2);
+
+        $dppPelunasan = round($dppTotal - $dppDP, 2);
+        $ppnPelunasan = round($nominalPelunasan - $dppPelunasan, 2);
+
         if ($tahap === 'dp') {
             $defaultDetails = [
-                ['account_id' => $idUangMukaPemb, 'debit' => $nominalDP, 'kredit' => 0],
+                ['account_id' => $idUangMukaPemb, 'debit' => $dppDP, 'kredit' => 0],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnDP, 'kredit' => 0],
                 ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalDP]
             ];
         } elseif ($tahap === 'pelunasan') {
             $defaultDetails = [
-                ['account_id' => $idUangMukaPemb, 'debit' => $nominalPelunasan, 'kredit' => 0],
+                ['account_id' => $idUangMukaPemb, 'debit' => $dppPelunasan, 'kredit' => 0],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnPelunasan, 'kredit' => 0],
                 ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
             ];
         } elseif ($tahap === 'reklas_lunas') {
             $defaultDetails = [
                 ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $totalKontrak]
+                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $dppTotal]
             ];
         } elseif ($tahap === 'gabungan') {
             $defaultDetails = [
                 ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $nominalDP],
+                ['account_id' => $idPPNMasukan, 'debit' => $ppnPelunasan, 'kredit' => 0],
+                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $dppDP],
                 ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
             ];
         } else {
