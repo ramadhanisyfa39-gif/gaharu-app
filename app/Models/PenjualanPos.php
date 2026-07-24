@@ -22,6 +22,11 @@ class PenjualanPos extends Model
         return $this->hasMany(PenjualanPosDetail::class, 'penjualan_id');
     }
 
+    public function pembayaran()
+    {
+        return $this->hasMany(Pembayaran::class, 'penjualan_pos_id');
+    }
+
     public function gudang()
     {
         return $this->belongsTo(MasterGudang::class, 'gudang_id');

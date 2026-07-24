@@ -61,7 +61,7 @@ class PesananController extends Controller
     public function create()
     {
         $customers = Customer::all();
-        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
+        $produk = MasterBarang::where('is_barang_jadi', 1)->where('is_active', true)->get();
 
         return view('pesanan.create', compact('customers', 'produk'));
     }
@@ -79,6 +79,7 @@ class PesananController extends Controller
             'qty' => 'required|array|min:1',
             'harga' => 'required|array|min:1',
             'subtotal' => 'required|array|min:1',
+            'tax_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
@@ -96,13 +97,26 @@ class PesananController extends Controller
         foreach ($request->produk_id as $key => $produkId) {
             if (!$produkId) continue;
             $barang = MasterBarang::find($produkId);
+            if (!$barang || !$barang->is_active) {
+                return redirect()->back()->withErrors([
+                    'produk_id' => "Barang " . ($barang->nama ?? 'pilihan') . " sedang tidak aktif dan tidak dapat dipilih dalam transaksi."
+                ])->withInput();
+            }
             $qty = $request->qty[$key] ?? 0;
-            if ($barang && $qty < $barang->minimum_order) {
+            if ($qty < $barang->minimum_order) {
                 return redirect()->back()->withErrors([
                     'qty' => "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
                 ])->withInput();
             }
         }
+
+        $taxPercentage = floatval($request->tax_percentage ?? 0);
+        $subtotalDpp = 0;
+        foreach ($request->subtotal as $sub) {
+            $subtotalDpp += floatval($sub);
+        }
+        $taxAmount = round($subtotalDpp * ($taxPercentage / 100), 2);
+        $totalPesanan = $subtotalDpp + $taxAmount;
 
         $pesanan = Pesanan::create([
             'kode_pesanan' => $request->kode_pesanan,
@@ -110,7 +124,9 @@ class PesananController extends Controller
             'tanggal' => $request->tanggal,
             'estimasi_kirim' => $request->estimasi_kirim,
             'estimasi_produksi' => $request->estimasi_produksi,
-            'total_pesanan' => $request->total_pesanan,
+            'total_pesanan' => $totalPesanan,
+            'tax_percentage' => $taxPercentage,
+            'tax_service' => $taxAmount,
             'status_pesanan' => 'pending',
             'status_pembayaran' => 'Belum Bayar',
             'created_by' => auth()->id(),
@@ -155,7 +171,7 @@ class PesananController extends Controller
         }
 
         $customers = Customer::all();
-        $produk = MasterBarang::where('is_barang_jadi', 1)->get();
+        $produk = MasterBarang::where('is_barang_jadi', 1)->where('is_active', true)->get();
 
         return view('pesanan.edit', compact('pesanan', 'customers', 'produk'));
     }
@@ -173,6 +189,7 @@ class PesananController extends Controller
             'qty' => 'required|array|min:1',
             'harga' => 'required|array|min:1',
             'subtotal' => 'required|array|min:1',
+            'tax_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if (date('Y-m-d', strtotime($request->tanggal)) < date('Y-m-d')) {
@@ -186,8 +203,13 @@ class PesananController extends Controller
         foreach ($request->produk_id as $key => $produkId) {
             if (!$produkId) continue;
             $barang = MasterBarang::find($produkId);
+            if (!$barang || !$barang->is_active) {
+                return redirect()->back()->withErrors([
+                    'produk_id' => "Barang " . ($barang->nama ?? 'pilihan') . " sedang tidak aktif dan tidak dapat dipilih dalam transaksi."
+                ])->withInput();
+            }
             $qty = $request->qty[$key] ?? 0;
-            if ($barang && $qty < $barang->minimum_order) {
+            if ($qty < $barang->minimum_order) {
                 return redirect()->back()->withErrors([
                     'qty' => "Jumlah order untuk {$barang->nama} kurang dari batas minimum order (" . number_format($barang->minimum_order) . " {$barang->satuan})."
                 ])->withInput();
@@ -195,6 +217,14 @@ class PesananController extends Controller
         }
 
         $pesanan = Pesanan::findOrFail($id);
+
+        $taxPercentage = floatval($request->tax_percentage ?? 0);
+        $subtotalDpp = 0;
+        foreach ($request->subtotal as $sub) {
+            $subtotalDpp += floatval($sub);
+        }
+        $taxAmount = round($subtotalDpp * ($taxPercentage / 100), 2);
+        $totalPesanan = $subtotalDpp + $taxAmount;
     
         // update header pesanan
         $pesanan->update([
@@ -202,7 +232,9 @@ class PesananController extends Controller
             'tanggal' => $request->tanggal,
             'estimasi_kirim' => $request->estimasi_kirim,
             'estimasi_produksi' => $request->estimasi_produksi,
-            'total_pesanan' => $request->total_pesanan,
+            'total_pesanan' => $totalPesanan,
+            'tax_percentage' => $taxPercentage,
+            'tax_service' => $taxAmount,
         ]);
     
         // hapus detail lama
@@ -271,15 +303,27 @@ class PesananController extends Controller
         $request->validate([
             'tanggal_bayar' => 'required|date',
             'jumlah_bayar' => 'required|numeric|min:' . $minBayar . '|max:' . $sisaTagihan,
-            'metode_pembayaran' => 'required|string'
+            'metode_pembayaran' => 'required|string',
+            'bukti_file'        => 'nullable|array',
+            'bukti_file.*'      => 'file|image|max:2048'
         ]);
+
+        $buktiFiles = [];
+        if ($request->hasFile('bukti_file')) {
+            foreach ($request->file('bukti_file') as $file) {
+                $path = $file->store('pembayaran_bukti', 'public');
+                $buktiFiles[] = $path;
+            }
+        }
     
         Pembayaran::create([
             'pesanan_id' => $pesanan->id,
+            'kategori_pembayaran' => 'penjualan',
             'tanggal_bayar' => $request->tanggal_bayar,
             'jumlah_bayar' => $request->jumlah_bayar,
             'metode_pembayaran' => $request->metode_pembayaran,
             'catatan' => $request->catatan,
+            'bukti_pembayaran' => $buktiFiles,
             'created_by' => auth()->id()
         ]);
     

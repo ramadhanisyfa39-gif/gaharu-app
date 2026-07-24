@@ -94,10 +94,8 @@ class PengeluaranBahanBakuController extends Controller
                 1
             );
         })
-        ->where(
-            'master_barang.is_bahan_baku',
-            1
-        )
+        ->where('master_barang.is_bahan_baku', 1)
+        ->where('master_barang.is_active', true)
         ->select([
             'master_barang.*',
             DB::raw('COALESCE(stok_gudang.jumlah,0) as stok')
@@ -302,6 +300,7 @@ class PengeluaranBahanBakuController extends Controller
                  ->where('stok_gudang.gudang_id', 1);
         })
         ->where('master_barang.is_bahan_baku', 1)
+        ->where('master_barang.is_active', true)
         ->select([
             'master_barang.*',
             DB::raw('COALESCE(stok_gudang.jumlah,0) as stok')

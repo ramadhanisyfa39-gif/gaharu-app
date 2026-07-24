@@ -177,6 +177,16 @@
     
                     </tbody>
                 </table>
+            <div class="row mt-3">
+                <div class="col-12 col-md-4 offset-md-8">
+                    <div class="card border-0 shadow-sm p-3" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                        <label class="form-label fw-bold text-secondary small">Biaya Tambahan (Tax / Service / Ongkir)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light fw-semibold text-muted">Rp</span>
+                            <input type="text" name="tax_service" id="tax_service" class="form-control mask-number fw-bold text-end" value="{{ old('tax_service', 0) }}" placeholder="0">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex flex-column flex-sm-row gap-2 mt-3">

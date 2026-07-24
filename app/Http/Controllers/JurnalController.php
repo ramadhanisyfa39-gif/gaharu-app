@@ -683,48 +683,98 @@ class JurnalController extends Controller
 
     public function pembelianIndex()
     {
+        // 1. Ambil jurnal yang sudah tersimpan
+        $jurnalTersimpan = DB::table('jurnal_pembelian')
+            ->select('source_type', 'source_id', 'tahap')
+            ->get();
+
+        $pembelianJurnalMap = $jurnalTersimpan->where('source_type', 'pembelian')
+            ->groupBy('source_id')
+            ->map(fn($rows) => $rows->pluck('tahap')->toArray());
+
+        $penerimaanJurnalMap = $jurnalTersimpan->where('source_type', 'penerimaan_pembelian')
+            ->pluck('source_id')
+            ->toArray();
+
+        $pembeliansBelum = collect();
+
+        // 2. Queue for Pembelian (DP dan Pelunasan)
         $semuaPembelian = \App\Models\Pembelian::with(['supplier', 'gudang'])
             ->orderBy('tanggal', 'desc')
             ->get();
 
-        $tahapTersimpan = DB::table('jurnal_pembelian')
-            ->where('source_type', 'pembelian')
-            ->select('source_id', 'tahap')
-            ->get()
-            ->groupBy('source_id')
-            ->map(function ($rows) {
-                return $rows->pluck('tahap')->map(fn($t) => trim(strtolower((string)$t)))->filter()->toArray();
-            });
-
-        $pembeliansBelum = collect();
-
         foreach ($semuaPembelian as $p) {
-            $tahapSeharusnya = $this->tahapSeharusnyaAda($p);
-            $sudahAda        = $tahapTersimpan->get($p->id, []);
-            $tahapKurang     = array_diff($tahapSeharusnya, $sudahAda);
+            $persenDP = floatval($p->persen_dp ?? 0);
+            $isLunas  = (bool) $p->is_lunas;
+            $sudahAda = $pembelianJurnalMap->get($p->id, []);
 
-            foreach ($tahapKurang as $tahap) {
-                // Kloning objek agar aman diubah propertinya per baris antrean
+            // DP
+            if ($persenDP > 0 && !in_array('dp', $sudahAda)) {
                 $clone = clone $p;
-                $clone->tahap_selanjutnya = $tahap;
-                $clone->total_keluar = $this->hitungTotalKeluar($p, $tahap);
+                $clone->tahap_selanjutnya = 'dp';
+                $clone->total_keluar = $this->hitungTotalKeluar($p, 'dp');
+                $clone->queue_type = 'pembelian';
+                $clone->label_no_invoice = $p->kode_pembelian;
+                $pembeliansBelum->push($clone);
+            }
+
+            // Pelunasan
+            if ($persenDP > 0 && $isLunas && !in_array('pelunasan', $sudahAda)) {
+                $clone = clone $p;
+                $clone->tahap_selanjutnya = 'pelunasan';
+                $clone->total_keluar = $this->hitungTotalKeluar($p, 'pelunasan');
+                $clone->queue_type = 'pembelian';
+                $clone->label_no_invoice = $p->kode_pembelian;
                 $pembeliansBelum->push($clone);
             }
         }
 
+        // 3. Queue for Penerimaan Pembelian (Reklas Persediaan / COD)
+        $semuaPenerimaan = \App\Models\PenerimaanPembelian::with(['pembelian.supplier', 'pembelian.gudang', 'details'])
+            ->orderBy('tanggal', 'desc')
+            ->get();
+
+        foreach ($semuaPenerimaan as $rcv) {
+            if (in_array($rcv->id, $penerimaanJurnalMap)) {
+                continue; // Sudah dijurnal
+            }
+
+            $p = $rcv->pembelian;
+            if (!$p) continue;
+
+            $metode = $p->metode_pembayaran;
+            $tahapSelanjutnya = ($metode === 'cod') ? 'cod' : 'reklas_lunas';
+
+            // Hitung total penerimaan ini (DPP + PPN 10% jika COD)
+            $dppReceipt = 0;
+            foreach ($rcv->details as $det) {
+                $dppReceipt += floatval($det->qty) * floatval($det->harga_per_qty);
+            }
+            $totalKeluar = ($tahapSelanjutnya === 'cod') ? ($dppReceipt + round($dppReceipt * 0.10, 2)) : $dppReceipt;
+
+            // Kloning objek pembelian agar viewnya tetap sama, tapi id-nya diganti id penerimaan!
+            $clone = clone $p;
+            $clone->id = $rcv->id; // GANTI ID KE PENERIMAAN!
+            $clone->tahap_selanjutnya = $tahapSelanjutnya;
+            $clone->total_keluar = $totalKeluar;
+            $clone->queue_type = 'penerimaan_pembelian';
+            $clone->label_no_invoice = $p->kode_pembelian . ' (' . $rcv->no_penerimaan . ')';
+            $pembeliansBelum->push($clone);
+        }
+
+        // 4. Riwayat Jurnal (termasuk yang digabung ke penerimaan_pembelian)
         $jurnalsSudah = DB::table('jurnal_pembelian')
             ->join('journal_items', function ($join) {
                 $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
                     ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
             })
-            ->join('pembelian', 'jurnal_pembelian.source_id', '=', 'pembelian.id')
-            ->where('jurnal_pembelian.source_type', 'pembelian')
             ->select(
                 'jurnal_pembelian.id',
                 'jurnal_pembelian.tanggal',
                 'jurnal_pembelian.no_ref',
                 'jurnal_pembelian.deskripsi',
                 'jurnal_pembelian.tahap',
+                'jurnal_pembelian.source_type',
                 'jurnal_pembelian.source_id',
                 DB::raw('SUM(journal_items.debit) as total_transaksi')
             )
@@ -734,6 +784,7 @@ class JurnalController extends Controller
                 'jurnal_pembelian.no_ref',
                 'jurnal_pembelian.deskripsi',
                 'jurnal_pembelian.tahap',
+                'jurnal_pembelian.source_type',
                 'jurnal_pembelian.source_id'
             )
             ->orderBy('jurnal_pembelian.tanggal', 'desc')
@@ -780,21 +831,24 @@ class JurnalController extends Controller
     private function hitungTotalKeluar($pembelian, $tahapBerikutnya = null): float
     {
         $dppTotal     = floatval($pembelian->total);
-        $ppnTotal     = round($dppTotal * 0.10, 0);
-        $totalKontrak = $dppTotal + $ppnTotal;
         $persenDP     = floatval($pembelian->persen_dp ?? 0);
+        $dpMurni      = floatval($pembelian->nominal_dp ?? ($dppTotal * ($persenDP / 100)));
+        $ppnDP        = round($dpMurni * 0.10, 2);
+        $kasDP        = $dpMurni + $ppnDP;
 
-        $nominalDP = floatval($pembelian->nominal_dp ?? ($totalKontrak * ($persenDP / 100)));
+        $sisaDpp      = max(0, $dppTotal - $dpMurni);
+        $ppnPelunasan = round($sisaDpp * 0.10, 2);
+        $kasPelunasan = $sisaDpp + $ppnPelunasan;
 
         // Pastikan format string kecil dan bersih dari spasi gantung
         $tahapClean = trim(strtolower((string)$tahapBerikutnya));
 
         if ($tahapClean === 'dp') {
-            return $nominalDP;
+            return $kasDP;
         }
 
         if ($tahapClean === 'pelunasan' || $tahapClean === 'gabungan') {
-            return $totalKontrak - $nominalDP;
+            return $kasPelunasan;
         }
 
         if ($tahapClean === 'reklas_lunas') {
@@ -802,7 +856,7 @@ class JurnalController extends Controller
         }
 
         if ($tahapClean === 'cod') {
-            return $totalKontrak;
+            return $dppTotal + round($dppTotal * 0.10, 2);
         }
 
         return 0;
@@ -810,7 +864,17 @@ class JurnalController extends Controller
 
     public function pembelianCreate(Request $request, $id)
     {
-        $pembelian = \App\Models\Pembelian::with(['supplier', 'details.barang'])->findOrFail($id);
+        $tahapReq = trim(strtolower((string)$request->query('tahap')));
+
+        if (in_array($tahapReq, ['reklas_lunas', 'cod'])) {
+            $penerimaan = \App\Models\PenerimaanPembelian::with(['pembelian.supplier', 'details.barang'])->findOrFail($id);
+            $pembelian = $penerimaan->pembelian;
+            $tahap = $tahapReq;
+        } else {
+            $pembelian = \App\Models\Pembelian::with(['supplier', 'details.barang'])->findOrFail($id);
+            $tahap = $tahapReq;
+        }
+
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
         // Deteksi apakah pembelian berisi barang operasional / perlengkapan (bukan bahan baku)
@@ -824,96 +888,72 @@ class JurnalController extends Controller
 
         $debitCoaCode = $hasOperational ? '1302' : '1301'; // 1302 = Persediaan Perlengkapan Operasional & ATK, 1301 = Persediaan Bahan Baku
 
-        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
-        $idPersediaan     = DB::table('chart_of_accounts')->where('kode', $debitCoaCode)->value('id') ?? ($hasOperational ? 19 : 18);
-        $idUangMukaPemb   = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
-        $idPPNMasukan     = DB::table('chart_of_accounts')->where('kode', '1203')->value('id') ?? 8;
+        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 15;
+        $idPersediaan     = DB::table('chart_of_accounts')->where('kode', $debitCoaCode)->value('id') ?? ($hasOperational ? 27 : 19);
+        $idUangMukaPemb   = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 17;
+        $idPPNMasukan     = DB::table('chart_of_accounts')->where('kode', '1203')->value('id') ?? 18;
 
         $tarifPpn = 0.10;
         $defaultDetails = [];
 
-        $dppTotal     = floatval($pembelian->total);
-        if ($pembelian->is_diterima) {
-            $dppReceived = 0;
-            foreach ($pembelian->details as $det) {
-                $qRec = floatval($det->qty_diterima ?? $det->qty);
-                $dppReceived += round($qRec * floatval($det->harga_per_qty), 2);
+        if (in_array($tahap, ['reklas_lunas', 'cod'])) {
+            // DPP total dihitung dari item penerimaan
+            $dppTotal = 0;
+            foreach ($penerimaan->details as $det) {
+                $dppTotal += floatval($det->qty) * floatval($det->harga_per_qty);
             }
-            if ($dppReceived > 0) {
-                $dppTotal = $dppReceived;
+            $ppnTotal     = round($dppTotal * $tarifPpn, 2);
+            $totalContracts = $dppTotal + $ppnTotal;
+
+            if ($tahap === 'reklas_lunas') {
+                $defaultDetails = [
+                    ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
+                    ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $dppTotal]
+                ];
+            } else {
+                // cod
+                $defaultDetails = [
+                    ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
+                    ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
+                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $totalContracts]
+                ];
             }
-        }
-        $ppnTotal     = round($dppTotal * $tarifPpn, 0);
-        $totalKontrak = $dppTotal + $ppnTotal;
-
-        $persenDP   = floatval($pembelian->persen_dp ?? 0);
-        $nominalDP        = floatval($pembelian->nominal_dp ?? ($totalKontrak * ($persenDP / 100)));
-        $nominalPelunasan = $totalKontrak - $nominalDP;
-
-        $tahapTersimpan = DB::table('jurnal_pembelian')
-            ->where('source_type', 'pembelian')
-            ->where('source_id', $pembelian->id)
-            ->pluck('tahap')
-            ->map(fn($t) => trim(strtolower((string)$t)))
-            ->filter()
-            ->toArray();
-
-        // Tentukan tahap berdasarkan query parameter, jika tidak ada fallback ke saran tahap kurang pertama
-        $tahapReq = trim(strtolower((string)$request->query('tahap')));
-        $tahapSeharusnya = $this->tahapSeharusnyaAda($pembelian);
-        $tahapKurang = array_diff($tahapSeharusnya, $tahapTersimpan);
-        $tahapSaran = array_values($tahapKurang)[0] ?? null;
-
-        $tahap = in_array($tahapReq, ['dp', 'pelunasan', 'reklas_lunas', 'gabungan', 'cod']) ? $tahapReq : $tahapSaran;
-
-        // Proteksi Tambahan: Jika tahap membutuhkan pengakuan persediaan namun barang belum diterima
-        if (in_array($tahap, ['cod', 'reklas_lunas', 'gabungan']) && !$pembelian->is_diterima) {
-            return redirect()
-                ->route('jurnal-pembelian.index')
-                ->with('error', 'Barang pada Pembelian ' . $pembelian->kode_pembelian . ' belum diterima. Jurnal pengakuan Persediaan baru dapat dicatat setelah barang diterima di menu Pembelian.');
-        }
-
-        $dppDP = $totalKontrak > 0 ? round($dppTotal * ($nominalDP / $totalKontrak), 2) : 0;
-        $ppnDP = round($nominalDP - $dppDP, 2);
-
-        $dppPelunasan = round($dppTotal - $dppDP, 2);
-        $ppnPelunasan = round($nominalPelunasan - $dppPelunasan, 2);
-
-        if ($tahap === 'dp') {
-            $defaultDetails = [
-                ['account_id' => $idUangMukaPemb, 'debit' => $dppDP, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnDP, 'kredit' => 0],
-                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalDP]
-            ];
-        } elseif ($tahap === 'pelunasan') {
-            $defaultDetails = [
-                ['account_id' => $idUangMukaPemb, 'debit' => $dppPelunasan, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnPelunasan, 'kredit' => 0],
-                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
-            ];
-        } elseif ($tahap === 'reklas_lunas') {
-            $defaultDetails = [
-                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
-                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $dppTotal]
-            ];
-        } elseif ($tahap === 'gabungan') {
-            $defaultDetails = [
-                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnPelunasan, 'kredit' => 0],
-                ['account_id' => $idUangMukaPemb, 'debit' => 0, 'kredit' => $dppDP],
-                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $nominalPelunasan]
-            ];
         } else {
-            // Default ke COD
-            $tahap = 'cod';
-            $defaultDetails = [
-                ['account_id' => $idPersediaan, 'debit' => $dppTotal, 'kredit' => 0],
-                ['account_id' => $idPPNMasukan, 'debit' => $ppnTotal, 'kredit' => 0],
-                ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $totalKontrak]
-            ];
+            $dppTotal = floatval($pembelian->total);
+            $persenDP   = floatval($pembelian->persen_dp ?? 0);
+            $dpMurni    = floatval($pembelian->nominal_dp ?? ($dppTotal * ($persenDP / 100)));
+            $ppnDP      = round($dpMurni * $tarifPpn, 2);
+            $kasDP      = $dpMurni + $ppnDP;
+
+            $sisaDpp      = max(0, $dppTotal - $dpMurni);
+            $ppnPelunasan = round($sisaDpp * $tarifPpn, 2);
+            $kasPelunasan = $sisaDpp + $ppnPelunasan;
+
+            if ($tahap === 'dp') {
+                $defaultDetails = [
+                    ['account_id' => $idUangMukaPemb, 'debit' => $dpMurni, 'kredit' => 0],
+                    ['account_id' => $idPPNMasukan, 'debit' => $ppnDP, 'kredit' => 0],
+                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $kasDP]
+                ];
+            } else {
+                // pelunasan
+                $defaultDetails = [
+                    ['account_id' => $idUangMukaPemb, 'debit' => $sisaDpp, 'kredit' => 0],
+                    ['account_id' => $idPPNMasukan, 'debit' => $ppnPelunasan, 'kredit' => 0],
+                    ['account_id' => $idKasBank, 'debit' => 0, 'kredit' => $kasPelunasan]
+                ];
+            }
         }
 
-        return view('jurnal-pembelian.create', compact('pembelian', 'coas', 'defaultDetails', 'tahap'));
+        // Simpan referensi no_penerimaan atau no_pembelian ke deskripsi/ref
+        $labelRef = in_array($tahap, ['reklas_lunas', 'cod']) ? $penerimaan->no_penerimaan : $pembelian->kode_pembelian;
+        $descJurnal = 'Pembukuan jurnal khusus pembelian (' . strtoupper($tahap) . ') atas No. Invoice: ' . $pembelian->kode_pembelian;
+        if (in_array($tahap, ['reklas_lunas', 'cod'])) {
+            $descJurnal .= ' [No. Penerimaan: ' . $penerimaan->no_penerimaan . ']';
+        }
+        $descJurnal .= ' [Supplier: ' . ($pembelian->supplier->nama ?? '-') . ']';
+
+        return view('jurnal-pembelian.create', compact('pembelian', 'coas', 'defaultDetails', 'tahap', 'labelRef', 'descJurnal', 'id'));
     }
 
     public function prosesJurnalPembelian(Request $request, $id)
@@ -930,7 +970,17 @@ class JurnalController extends Controller
             'details.*.kredit'     => 'required|numeric|min:0',
         ]);
 
-        $pembelian = \App\Models\Pembelian::findOrFail($id);
+        $tahap = $request->input('tahap');
+        if (in_array($tahap, ['reklas_lunas', 'cod'])) {
+            $penerimaan = \App\Models\PenerimaanPembelian::findOrFail($id);
+            $pembelian = $penerimaan->pembelian;
+            $sourceType = 'penerimaan_pembelian';
+            $sourceId = $penerimaan->id;
+        } else {
+            $pembelian = \App\Models\Pembelian::findOrFail($id);
+            $sourceType = 'pembelian';
+            $sourceId = $pembelian->id;
+        }
 
         // 1a. Validasi penutupan periode: Blokir pencatatan jurnal pada periode yang sudah ditutup
         if (\App\Models\Journal::isPeriodClosed($request->tanggal)) {
@@ -938,12 +988,12 @@ class JurnalController extends Controller
         }
 
         // 1b. Validasi backend: Blokir pengakuan Persediaan (13xx) jika barang belum diterima
-        if (!$pembelian->is_diterima) {
-            $persediaanCoaIds = \App\Models\ChartOfAccount::where('kode', 'like', '13%')->pluck('id')->toArray();
+        if ($sourceType === 'pembelian' && !$pembelian->is_diterima && in_array($tahap, ['reklas_lunas', 'cod'])) {
+            $persediaanCoaIds = \App\Models\ChartOfAccount::where('parent_id', 18)->orWhere('parent_id', 19)->orWhere('kode', 'like', '13%')->pluck('id')->toArray();
             foreach ($request->details as $item) {
                 if (in_array($item['account_id'], $persediaanCoaIds) && floatval($item['debit'] ?? 0) > 0) {
                     return back()
-                        ->with('error', "Nominal Persediaan (13xx) tidak dapat dicatat karena barang pada Pembelian '{$pembelian->kode_pembelian}' belum diterima (is_diterima = false). Silakan lakukan penerimaan barang terlebih dahulu di Menu Pembelian.")
+                        ->with('error', "Nominal Persediaan (13xx) tidak dapat dicatat karena barang pada Pembelian '{$pembelian->kode_pembelian}' belum diterima. Silakan lakukan penerimaan barang terlebih dahulu di Menu Pembelian.")
                         ->withInput();
                 }
             }
@@ -969,16 +1019,13 @@ class JurnalController extends Controller
                 'tanggal'     => $request->tanggal,
                 'deskripsi'   => $request->deskripsi,
                 'no_ref'      => $request->no_ref ?? 'JR-PEMB-' . time(),
-                'source_type' => 'pembelian',
-                'source_id'   => $pembelian->id, // Mengunci ID pembelian agar hilang dari antrean atas
-                'tahap'       => $request->tahap, // Tahap jurnal: dp, pelunasan, reklas, gabungan, atau cod
+                'source_type' => $sourceType,
+                'source_id'   => $sourceId, // Mengunci ID pembelian / penerimaan agar hilang dari antrean atas
+                'tahap'       => $tahap, // Tahap jurnal: dp, pelunasan, reklas, gabungan, atau cod
                 'created_by'  => Auth::id() ?? 1,
             ]);
 
             // 3. Simpan baris detail debit/kredit ke tabel journal_items
-            // [OPSI A] Setiap baris kini ikut menyimpan journal_type = 'jurnal_pembelian'
-            // supaya nantinya bisa dibedakan dari baris journal_items milik modul lain
-            // (mis. jurnal_penjualan_pos) walau journal_id-nya kebetulan bernilai sama.
             foreach ($request->details as $item) {
                 if (floatval($item['debit']) == 0 && floatval($item['kredit']) == 0) {
                     continue;
@@ -986,7 +1033,7 @@ class JurnalController extends Controller
 
                 DB::table('journal_items')->insert([
                     'journal_id'   => $jurnalPembelianId,
-                    'journal_type' => 'jurnal_pembelian', // [OPSI A]
+                    'journal_type' => 'jurnal_pembelian',
                     'account_id'   => $item['account_id'],
                     'debit'        => $item['debit'],
                     'kredit'       => $item['kredit'],
@@ -996,7 +1043,7 @@ class JurnalController extends Controller
             DB::commit();
             return redirect()
                 ->route('jurnal-pembelian.index')
-                ->with('success', 'Invoice ' . $pembelian->kode_pembelian . ' berhasil disimpan ke Jurnal Pembelian (Tahap: ' . $request->tahap . ')!');
+                ->with('success', 'Jurnal pembelian (' . strtoupper($tahap) . ') berhasil disimpan!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
@@ -1005,7 +1052,7 @@ class JurnalController extends Controller
 
     public function pembelianShow($id)
     {
-        $jurnal = DB::table('jurnal_pembelian')->where('id', $id)->where('source_type', 'pembelian')->first();
+        $jurnal = DB::table('jurnal_pembelian')->where('id', $id)->first();
 
         if (!$jurnal) {
             return redirect()->route('jurnal-pembelian.index')->with('error', 'Data riwayat tidak ditemukan.');
@@ -1385,12 +1432,12 @@ class JurnalController extends Controller
         $coas = \App\Models\ChartOfAccount::orderBy('kode', 'asc')->get();
 
         // PENCATATAN ID COA SECARA DINAMIS BERDASARKAN KODE AKUN RESMI
-        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 1;
-        $idUangMuka       = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 2;
-        $idPendapatan     = DB::table('chart_of_accounts')->where('kode', '4102')->value('id') ?? 4;
-        $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2201')->value('id') ?? 6;
-        $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 3;
-        $idHPP            = DB::table('chart_of_accounts')->where('kode', '5102')->value('id') ?? 5;
+        $idKasBank        = DB::table('chart_of_accounts')->where('kode', '1101')->value('id') ?? 15;
+        $idUangMuka       = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 29;
+        $idPendapatan     = DB::table('chart_of_accounts')->where('kode', '4103')->value('id') ?? 39;
+        $idPpnKeluaran    = DB::table('chart_of_accounts')->where('kode', '2201')->value('id') ?? 30;
+        $idPersediaanJadi = DB::table('chart_of_accounts')->where('kode', '1301')->value('id') ?? 19;
+        $idHPP            = DB::table('chart_of_accounts')->where('kode', '5103')->value('id') ?? 43;
 
         $defaultDetails = [];
         $pembayaran = null;
@@ -1410,39 +1457,23 @@ class JurnalController extends Controller
                 return back()->with('error', 'Data induk pesanan untuk pembayaran ini tidak ditemukan.');
             }
 
-            // PERBAIKAN 1: Ambil status pesanan secara eksplisit di Pintu Logika 1
             $statusPesanan = $pesanan->status_pesanan;
+            $taxPercentage = floatval($pesanan->tax_percentage ?? 0);
 
-            $totalBayarSebelumnya = DB::table('pembayaran')
-                ->where('pesanan_id', $pesanan->id)
-                ->where('id', '<', $pembayaran->id)
-                ->sum('jumlah_bayar');
+            // Nilai dari tabel pembayaran adalah kas yang diterima (DPP + PPN)
+            $totalKasBank = floatval($pembayaran->jumlah_bayar);
+            $dppCurrent   = round($totalKasBank / (1 + ($taxPercentage / 100)), 2);
+            $ppnCurrent   = round($totalKasBank - $dppCurrent, 2);
 
-            // Nilai dari tabel pembayaran diperlakukan sebagai DPP bersih (Belum PPN)
-            $dppCurrent   = floatval($pembayaran->jumlah_bayar);
-            $ppnCurrent   = round($dppCurrent * 0.10, 2);
-            $totalKasBank = round($dppCurrent + $ppnCurrent, 2);
+            $defaultDetails = [
+                ['account_id' => $idKasBank, 'debit' => $totalKasBank, 'kredit' => 0],
+                ['account_id' => $idUangMuka, 'debit' => 0, 'kredit' => $dppCurrent]
+            ];
 
-            $totalDppPenjualan = floatval($pesanan->total_pesanan);
-
-            // DETEKSI KONDISI 3: Bayar Langsung Lunas 100% di Awal (Belum Dikirim)
-            if ($totalBayarSebelumnya == 0 && abs($dppCurrent - $totalDppPenjualan) <= 0.05) {
-                $defaultDetails = [
-                    ['account_id' => $idKasBank, 'debit' => $totalKasBank, 'kredit' => 0],
-                    ['account_id' => $idUangMuka, 'debit' => 0, 'kredit' => $dppCurrent],
-                    ['account_id' => $idPpnKeluaran, 'debit' => 0, 'kredit' => $ppnCurrent]
-                ];
-            }
-            // DETEKSI KONDISI 1: Pembayaran Uang Muka (DP) Berkala atau Angsuran Kedua
-            else {
-                $defaultDetails = [
-                    ['account_id' => $idKasBank, 'debit' => $totalKasBank, 'kredit' => 0],
-                    ['account_id' => $idUangMuka, 'debit' => 0, 'kredit' => $dppCurrent],
-                    ['account_id' => $idPpnKeluaran, 'debit' => 0, 'kredit' => $ppnCurrent]
-                ];
+            if ($ppnCurrent > 0) {
+                $defaultDetails[] = ['account_id' => $idPpnKeluaran, 'debit' => 0, 'kredit' => $ppnCurrent];
             }
 
-            // PERBAIKAN 2: Pastikan variabel 'statusPesanan' ikut dilempar ke view
             return view('jurnal-penjualanb2b.create', compact('pembayaran', 'pesanan', 'coas', 'defaultDetails', 'type', 'statusPesanan'));
         }
 
@@ -1458,17 +1489,17 @@ class JurnalController extends Controller
             }
 
             $pesanan = \App\Models\Pesanan::with('customer')->findOrFail($pengiriman->pesanan_id);
-
-            // PERBAIKAN 3: Ambil status pesanan secara eksplisit di Pintu Logika 2
             $statusPesanan = $pesanan->status_pesanan;
+            $taxPercentage = floatval($pesanan->tax_percentage ?? 0);
 
-            // Ambil biaya akumulasi HPP riil dari sistem manufaktur alokasi produksi
+            // Pengakuan Omzet komersial bersih (DPP)
+            $totalDppPenjualan = round(floatval($pesanan->total_pesanan) / (1 + ($taxPercentage / 100)), 2);
+
+            // Ambil biaya HPP
             $totalHppRiil = DB::table('alokasi_produksi_pesanan')->where('pesanan_id', $pesanan->id)->sum('total_hpp_alokasi') ?? 0;
             if ($totalHppRiil == 0) {
-                $totalHppRiil = round(floatval($pesanan->total_pesanan) * 0.75, 2);
+                $totalHppRiil = round($totalDppPenjualan * 0.75, 2);
             }
-
-            $totalDppPenjualan = floatval($pesanan->total_pesanan);
 
             // 1. Pengakuan Omzet komersial bersih: Balik Uang Muka Penjualan (Debet) vs Penjualan B2B (Kredit)
             $defaultDetails[] = ['account_id' => $idUangMuka, 'debit' => $totalDppPenjualan, 'kredit' => 0];
@@ -1478,7 +1509,6 @@ class JurnalController extends Controller
             $defaultDetails[] = ['account_id' => $idHPP, 'debit' => $totalHppRiil, 'kredit' => 0];
             $defaultDetails[] = ['account_id' => $idPersediaanJadi, 'debit' => 0, 'kredit' => $totalHppRiil];
 
-            // PERBAIKAN 4: Pastikan variabel 'statusPesanan' ikut dilempar ke view
             return view('jurnal-penjualanb2b.create', compact('pengiriman', 'pesanan', 'coas', 'defaultDetails', 'type', 'statusPesanan'));
         }
     }
@@ -1574,11 +1604,11 @@ class JurnalController extends Controller
         // 1. Tangkap jenis laporan dari parameter URL (default: 'utang')
         $jenis = $request->query('jenis', 'utang');
 
-        // 2. Ambil ID COA secara dinamis berdasarkan kode resmi di sistem kamu
-        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 2;
-        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
-        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 1;
-        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 8;
+        // 2. Ambil ID COA secara dinamis berdasarkan kode resmi di sistem
+        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 16;
+        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 17;
+        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 28;
+        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 29;
 
         $entities = collect();
 
@@ -1589,29 +1619,28 @@ class JurnalController extends Controller
             case 'um-pembelian':
                 $targetAccountId = ($jenis === 'utang') ? $idUtang : $idUangMukaPemb;
 
-                $entities = DB::table('pembelian')
-                    ->join('suppliers', 'pembelian.supplier_id', '=', 'suppliers.id')
+                $entities = DB::table('suppliers')
+                    ->leftJoin('pembelian', 'suppliers.id', '=', 'pembelian.supplier_id')
                     ->leftJoin('jurnal_pembelian', function ($join) {
                         $join->on('jurnal_pembelian.source_id', '=', 'pembelian.id')
                             ->where('jurnal_pembelian.source_type', '=', 'pembelian');
                     })
-                    ->leftJoin('journal_items', function ($join) {
+                    ->leftJoin('journal_items', function ($join) use ($targetAccountId) {
                         $join->on('journal_items.journal_id', '=', 'jurnal_pembelian.id')
-                            ->where('journal_items.journal_type', '=', 'jurnal_pembelian');
+                            ->where('journal_items.journal_type', '=', 'jurnal_pembelian')
+                            ->where('journal_items.account_id', '=', $targetAccountId);
                     })
                     ->select(
                         'suppliers.id as entity_id',
                         'suppliers.nama as nama',
                         DB::raw("CONCAT('NO. ', suppliers.id) as kode_akun"),
-                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.debit ELSE 0 END) as total_debit"),
-                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.kredit ELSE 0 END) as total_kredit"),
+                        DB::raw("COALESCE(SUM(journal_items.debit), 0) as total_debit"),
+                        DB::raw("COALESCE(SUM(journal_items.kredit), 0) as total_kredit"),
                         // Perhitungan Saldo Normal: Utang (Kredit - Debit), UM Pembelian (Debit - Kredit)
                         DB::raw("
-                            SUM(
-                                CASE WHEN journal_items.account_id = {$targetAccountId} 
-                                THEN " . ($jenis === 'utang' ? "(journal_items.kredit - journal_items.debit)" : "(journal_items.debit - journal_items.kredit)") . "
-                                ELSE 0 END
-                            ) as saldo
+                            COALESCE(SUM(
+                                " . ($jenis === 'utang' ? "(journal_items.kredit - journal_items.debit)" : "(journal_items.debit - journal_items.kredit)") . "
+                            ), 0) as saldo
                         ")
                     )
                     ->groupBy('suppliers.id', 'suppliers.nama')
@@ -1624,29 +1653,28 @@ class JurnalController extends Controller
             case 'um-penjualan':
                 $targetAccountId = ($jenis === 'piutang') ? $idPiutang : $idUangMukaPenj;
 
-                $entities = DB::table('pesanan')
-                    ->join('customers', 'pesanan.customer_id', '=', 'customers.id')
+                $entities = DB::table('customers')
+                    ->leftJoin('pesanan', 'customers.id', '=', 'pesanan.customer_id')
                     ->leftJoin('jurnal_penjualan_b2b', function ($join) {
                         $join->on('jurnal_penjualan_b2b.source_id', '=', 'pesanan.id')
                             ->whereIn('jurnal_penjualan_b2b.source_type', ['pembayaran', 'pengiriman']);
                     })
-                    ->leftJoin('journal_items', function ($join) {
+                    ->leftJoin('journal_items', function ($join) use ($targetAccountId) {
                         $join->on('journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
-                            ->where('journal_items.journal_type', '=', 'penjualan_b2b');
+                            ->whereIn('journal_items.journal_type', ['penjualan_b2b', 'jurnal_penjualan_b2b'])
+                            ->where('journal_items.account_id', '=', $targetAccountId);
                     })
                     ->select(
                         'customers.id as entity_id',
                         'customers.nama as nama',
                         DB::raw("CONCAT('NO. ', customers.id) as kode_akun"),
-                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.debit ELSE 0 END) as total_debit"),
-                        DB::raw("SUM(CASE WHEN journal_items.account_id = {$targetAccountId} THEN journal_items.kredit ELSE 0 END) as total_kredit"),
+                        DB::raw("COALESCE(SUM(journal_items.debit), 0) as total_debit"),
+                        DB::raw("COALESCE(SUM(journal_items.kredit), 0) as total_kredit"),
                         // Perhitungan Saldo Normal: Piutang (Debit - Kredit), UM Penjualan (Kredit - Debit)
                         DB::raw("
-                            SUM(
-                                CASE WHEN journal_items.account_id = {$targetAccountId} 
-                                THEN " . ($jenis === 'piutang' ? "(journal_items.debit - journal_items.kredit)" : "(journal_items.kredit - journal_items.debit)") . "
-                                ELSE 0 END
-                            ) as saldo
+                            COALESCE(SUM(
+                                " . ($jenis === 'piutang' ? "(journal_items.debit - journal_items.kredit)" : "(journal_items.kredit - journal_items.debit)") . "
+                            ), 0) as saldo
                         ")
                     )
                     ->groupBy('customers.id', 'customers.nama')
@@ -1672,14 +1700,14 @@ class JurnalController extends Controller
         ];
 
         return view('buku-pembantu.index', compact('jenis', 'entities', 'summary'));
-}
+    }
 
-public function bukuPembantuShow(Request $request, $jenis, $id)
+    public function bukuPembantuShow(Request $request, $jenis, $id)
     {
-        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 2;
-        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 7;
-        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 1;
-        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 8;
+        $idPiutang      = DB::table('chart_of_accounts')->where('kode', '1201')->value('id') ?? 16;
+        $idUangMukaPemb = DB::table('chart_of_accounts')->where('kode', '1202')->value('id') ?? 17;
+        $idUtang        = DB::table('chart_of_accounts')->where('kode', '2101')->value('id') ?? 28;
+        $idUangMukaPenj = DB::table('chart_of_accounts')->where('kode', '2102')->value('id') ?? 29;
 
         $entity = null;
         $mutasi = collect();
@@ -1720,7 +1748,7 @@ public function bukuPembantuShow(Request $request, $jenis, $id)
                 $mutasi = DB::table('journal_items')
                     ->join('jurnal_penjualan_b2b', 'journal_items.journal_id', '=', 'jurnal_penjualan_b2b.id')
                     ->join('pesanan', 'jurnal_penjualan_b2b.source_id', '=', 'pesanan.id')
-                    ->where('journal_items.journal_type', '=', 'penjualan_b2b')
+                    ->whereIn('journal_items.journal_type', ['penjualan_b2b', 'jurnal_penjualan_b2b'])
                     ->where('journal_items.account_id', '=', $targetAccountId)
                     ->where('pesanan.customer_id', '=', $id)
                     ->select(

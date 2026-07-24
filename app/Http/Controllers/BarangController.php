@@ -40,8 +40,12 @@ class BarangController extends Controller
     public function checkNama(Request $request)
     {
         $nama = $request->query('nama');
-        $exists = MasterBarang::whereRaw('LOWER(nama) = ?', [strtolower($nama)])->exists();
-        return response()->json(['exists' => $exists]);
+        $excludeId = $request->query('exclude_id');
+        $query = MasterBarang::whereRaw('LOWER(nama) = ?', [strtolower($nama)]);
+        if ($excludeId) {
+            $query->where('id', '!=', $excludeId);
+        }
+        return response()->json(['exists' => $query->exists()]);
     }
 
     public function show($id)
@@ -53,33 +57,35 @@ class BarangController extends Controller
     public function create()
     {
         // Fungsi ini sekarang opsional karena sudah pakai popup di index
-        $kategori = Kategori::all();
-        $reseps = ResepBtklBop::all(); 
-        return view('barang.create', compact('kategori', 'reseps'));
+        return redirect()->route('barang.index');
     }
 
     public function generateKode($kategoriId)
     {
-        $kategori = Kategori::findOrFail($kategoriId);
+        $kategori = Kategori::find($kategoriId);
 
-        // Ambil prefix kategori, jika kosong gunakan 3 huruf depan nama kategori
-        $prefix = $kategori->prefix ?: strtoupper(substr($kategori->nama, 0, 3));
-        $prefix = strtoupper(trim($prefix));
+        if (!$kategori) {
+            return response()->json([
+                'error' => 'Kategori tidak ditemukan'
+            ], 404);
+        }
+
+        // Ambil prefix dari tabel kategori
+        $prefix = strtoupper($kategori->prefix);
 
         // Cari kode terakhir berdasarkan prefix
         $lastBarang = MasterBarang::where('kode_barang', 'like', $prefix . '%')
-            ->orderBy('kode_barang', 'desc')
+            ->orderByRaw('CAST(SUBSTRING(kode_barang, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
             ->first();
 
         if ($lastBarang) {
-            // Ambil angka terakhir berdasarkan panjang prefix dinamis
+            // Ambil angka setelah prefix
             $lastNumber = (int) substr($lastBarang->kode_barang, strlen($prefix));
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;
         }
 
-        // Format jadi COF001
         $kodeBarang = $prefix . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
 
         return response()->json([
@@ -92,9 +98,12 @@ class BarangController extends Controller
         $request->validate([
             'kategori_id' => 'required',
             'kode_barang' => 'required|unique:master_barang,kode_barang',
-            'nama'        => 'required',
+            'nama'        => 'required|unique:master_barang,nama',
             'jenis_utama' => 'required',
             'tipe_penjualan' => 'required_if:jenis_utama,BARANG_JADI|nullable|in:POS Kejingga,POS Gaharu,B2B',
+        ], [
+            'kode_barang.unique' => 'Kode barang sudah digunakan, harap gunakan kode barang yang unik.',
+            'nama.unique'        => 'Nama barang sudah ada di sistem. Nama barang harus unik.'
         ]);
 
         $user = auth()->user();
@@ -167,9 +176,12 @@ class BarangController extends Controller
         $request->validate([
             'kategori_id' => 'required',
             'kode_barang' => 'required|unique:master_barang,kode_barang,' . $id,
-            'nama'        => 'required',
+            'nama'        => 'required|unique:master_barang,nama,' . $id,
             'jenis_utama' => 'required',
             'tipe_penjualan' => 'required_if:jenis_utama,BARANG_JADI|nullable|in:POS Kejingga,POS Gaharu,B2B',
+        ], [
+            'kode_barang.unique' => 'Kode barang sudah digunakan, harap gunakan kode barang yang unik.',
+            'nama.unique'        => 'Nama barang sudah ada di sistem. Nama barang harus unik.'
         ]);
 
         $user = auth()->user();

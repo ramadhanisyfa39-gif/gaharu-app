@@ -16,10 +16,18 @@ class Pesanan extends Model
         'estimasi_kirim',
         'estimasi_produksi',
         'total_pesanan',
+        'tax_percentage',
+        'tax_service',
         'status_pesanan',
         'status_pembayaran',
         'created_by',
         'gudang_id'
+    ];
+
+    protected $casts = [
+        'total_pesanan'  => 'decimal:2',
+        'tax_percentage' => 'decimal:2',
+        'tax_service'    => 'decimal:2',
     ];
 
     // Hubungkan ke tabel pembayaran yang akan kita buat nanti

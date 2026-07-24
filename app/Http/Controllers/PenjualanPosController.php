@@ -35,7 +35,7 @@ class PenjualanPosController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $queryProduk = MasterBarang::where('is_barang_jadi', 1);
+        $queryProduk = MasterBarang::where('is_barang_jadi', 1)->where('is_active', true);
         $queryGudang = MasterGudang::query();
 
         if ($user->gudang_id) {
@@ -87,7 +87,10 @@ class PenjualanPosController extends Controller
         // Validasi Resep & Harga Jual
         foreach ($request->produk_id as $key => $produkId) {
             $barang = MasterBarang::find($produkId);
-            if (!$barang) continue;
+            if (!$barang || !$barang->is_active) {
+                return back()->with('error', "Gagal! Produk '" . ($barang->nama ?? 'pilihan') . "' sedang tidak aktif dan tidak dapat digunakan dalam transaksi.")
+                    ->withInput();
+            }
 
             if (is_null($barang->resep_id)) {
                 return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki resep.")
@@ -160,9 +163,11 @@ class PenjualanPosController extends Controller
 
     public function show($id) 
     {
-        $penjualan = PenjualanPos::with('details.produk')->findOrFail($id);
+        $penjualan = PenjualanPos::with(['details.produk', 'creator', 'pembayaran'])->findOrFail($id);
         return view('penjualan_pos.show', compact('penjualan'));
     }
+
+
 
     /**
      * 2. TRANSAKSI HANYA BISA DIEDIT JIKA STATUSNYA Draft
@@ -176,7 +181,7 @@ class PenjualanPosController extends Controller
         }
         
         $user = auth()->user();
-        $queryProduk = MasterBarang::where('is_barang_jadi', 1);
+        $queryProduk = MasterBarang::where('is_barang_jadi', 1)->where('is_active', true);
         $queryGudang = MasterGudang::query();
 
         if ($user->gudang_id) {
@@ -224,7 +229,10 @@ class PenjualanPosController extends Controller
         // Validasi Resep & Harga Jual
         foreach ($request->produk_id as $key => $produkId) {
             $barang = MasterBarang::find($produkId);
-            if (!$barang) continue;
+            if (!$barang || !$barang->is_active) {
+                return back()->with('error', "Gagal! Produk '" . ($barang->nama ?? 'pilihan') . "' sedang tidak aktif dan tidak dapat digunakan dalam transaksi.")
+                    ->withInput();
+            }
 
             if (is_null($barang->resep_id)) {
                 return back()->with('error', "Gagal! Produk '{$barang->nama}' belum memiliki resep.")

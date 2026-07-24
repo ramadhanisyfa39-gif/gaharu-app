@@ -5,59 +5,188 @@
             max-width: 1100px;
             margin: 0 auto;
             font-family: Arial, sans-serif;
+            color: #1f2937;
         }
 
         .card {
             background: white;
             padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             margin-bottom: 20px;
         }
 
         .filter-group {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             align-items: flex-end;
-            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
-        .t-account-table {
-            width: 100%;
-            border-collapse: collapse;
-            border: 2px solid #000;
-            table-layout: fixed;
+        .filter-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 4px;
         }
 
-        .t-account-table td {
-            vertical-align: top;
-            padding: 15px;
-            border: 1px solid #000;
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-primary   { background: #1a56db; }
+        .btn-success   { background: #198754; }
+        .btn-danger    { background: #dc3545; }
+        .btn-dark      { background: #333; }
+
+        .laporan-header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .laporan-header h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        .laporan-header h2 {
+            margin: 6px 0 4px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .laporan-header p {
+            margin: 0;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .neraca-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 720px) {
+            .neraca-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sisi-panel {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 18px 20px;
         }
 
         .judul-sisi {
             text-align: center;
-            font-weight: bold;
+            font-weight: 700;
             text-transform: uppercase;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            background: #f4f4f4;
+            letter-spacing: 0.5px;
+            font-size: 14px;
+            color: #374151;
+            background: #f4f4f5;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 16px;
         }
 
-        .text-right {
-            text-align: right;
+        .sub-judul {
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #6b7280;
+            margin: 16px 0 6px;
+        }
+
+        .sub-judul:first-of-type {
+            margin-top: 0;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 4px 0;
+            font-size: 14px;
+        }
+
+        .item-row.muted {
+            font-style: italic;
+            color: #9ca3af;
+        }
+
+        .item-row.pengurang span:last-child {
+            color: #b91c1c;
+        }
+
+        .item-row.info span:last-child {
+            color: #1d4ed8;
+        }
+
+        .subtotal-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 14px;
+            border-top: 1px solid #d1d5db;
+            margin-top: 6px;
+            padding-top: 6px;
         }
 
         .total-box {
-            margin-top: 30px;
-            padding: 10px;
-            border-top: 4px double #000;
-            font-weight: bold;
-            background: #eee;
+            margin-top: 18px;
+            padding: 12px 14px;
+            border-top: 3px double #111827;
+            font-weight: 700;
+            font-size: 15px;
+            background: #f4f4f5;
+            border-radius: 6px;
             display: flex;
             justify-content: space-between;
+        }
+
+        .balance-check {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        .balance-check.ok {
+            color: #15803d;
+            background: #f0fdf4;
+        }
+
+        .balance-check.warn {
+            color: #b91c1c;
+            background: #fef2f2;
         }
 
         @media print {
@@ -76,123 +205,155 @@
         <div class="container-laporan">
 
             <div class="card no-print">
-                <h3 style="margin-bottom: 15px; font-weight: bold;">Filter Laporan Neraca</h3>
+                <h3 style="margin-bottom: 15px; font-weight: 700;">Filter laporan neraca</h3>
                 <form action="{{ route('laporan.neraca.index') }}" method="GET" class="filter-group">
                     <div>
-                        <label>Bulan</label><br>
-                        <select name="bulan" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                        <label>Bulan</label>
+                        <select name="bulan">
                             @foreach(range(1, 12) as $m)
-                            <option value="{{ sprintf('%02d', $m) }}" {{ $bulan == $m ? 'selected' : '' }}>
-                                {{ date('F', mktime(0, 0, 0, $m, 1)) }}
-                            </option>
+                                <option value="{{ sprintf('%02d', $m) }}" {{ $bulan == $m ? 'selected' : '' }}>
+                                    {{ date('F', mktime(0, 0, 0, $m, 1)) }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
                     <div>
-                        <label>Tahun</label><br>
-                        <input type="number" name="tahun" value="{{ $tahun }}" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                        <label>Tahun</label>
+                        <input type="number" name="tahun" value="{{ $tahun }}" style="width: 100px;">
                     </div>
-                    <button type="submit" style="background: #1a56db; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer;">
-                        Tampilkan Neraca
-                    </button>
-                    <a href="{{ route('laporan.neraca.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #198754; border: none; cursor: pointer;">
-                        📊 Export Excel
+                    <button type="submit" class="btn btn-primary">Tampilkan neraca</button>
+                    <a href="{{ route('laporan.neraca.index', array_merge(request()->all(), ['format' => 'excel'])) }}" class="btn btn-success">
+                        Export excel
                     </a>
-                    <a href="{{ route('laporan.neraca.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger text-white" style="padding: 9px 20px; border-radius: 4px; font-weight: bold; text-decoration: none; background-color: #dc3545; border: none; cursor: pointer;">
-                        📕 Export PDF
+                    <a href="{{ route('laporan.neraca.index', array_merge(request()->all(), ['format' => 'pdf'])) }}" class="btn btn-danger">
+                        Export pdf
                     </a>
-                    <button type="button" onclick="window.print()" style="background: #333; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer;">
-                        Cetak
-                    </button>
+                    <button type="button" onclick="window.print()" class="btn btn-dark">Cetak</button>
                 </form>
             </div>
 
             <div class="card">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h1 style="margin:0;">CV GAHARU AGUNG SEJAHTERA</h1>
-                    <h2 style="margin:5px 0;">LAPORAN NERACA</h2>
-                    <p>Periode: {{ date('F', mktime(0, 0, 0, $bulan, 1)) }} {{ $tahun }}</p>
+                <div class="laporan-header">
+                    <h1>CV Gaharu Agung Sejahtera</h1>
+                    <h2>Laporan Neraca</h2>
+                    <p>Periode: {{ date('F', mktime(0, 0, 0, $bulan, 1)) }} {{ $tahun }} &middot; per {{ \Carbon\Carbon::parse($tanggalCutoff)->translatedFormat('d F Y') }}</p>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="t-account-table" style="min-width: 800px;">
-                        <tr>
-                            <td>
-                                <div class="judul-sisi">Aktiva</div>
-                                <table width="100%">
-                                    @foreach($aktiva as $item)
-                                    <tr>
-                                        <td style="border:none; padding: 5px 0;">{{ $item->nama }}</td>
-                                        <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
-                                    </tr>
-                                    @endforeach
-                                </table>
-                                <div class="total-box">
-                                    <span>TOTAL AKTIVA</span>
-                                    <span>Rp {{ number_format($aktiva->sum('saldo'), 0, ',', '.') }}</span>
-                                </div>
-                            </td>
-    
-                            <td>
-                                <div class="judul-sisi">Passiva</div>
-                                
-                                <!-- Sub-bagian Kewajiban -->
-                                <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">KEWAJIBAN (LIABILITAS)</div>
-                                <table width="100%" style="margin-bottom: 15px;">
-                                    @php $totalKewajiban = 0; @endphp
-                                    @foreach($passiva->where('tipe', 'Liabilitas') as $item)
-                                        @php $totalKewajiban += $item->saldo; @endphp
-                                        <tr>
-                                            <td style="border:none; padding: 3px 0;">{{ $item->nama }}</td>
-                                            <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    @if($passiva->where('tipe', 'Liabilitas')->count() == 0)
-                                        <tr>
-                                            <td style="border:none; padding: 3px 0; font-style: italic;" class="text-muted">Tidak ada kewajiban</td>
-                                            <td style="border:none; text-align: right;">Rp 0</td>
-                                        </tr>
+                <div class="neraca-grid">
+
+                    {{-- AKTIVA --}}
+                    <div class="sisi-panel">
+                        <div class="judul-sisi">Aktiva</div>
+
+                        <div class="sub-judul">Aset lancar</div>
+                        @forelse($asetLancar as $item)
+                            <div class="item-row">
+                                <span>{{ $item->nama }}</span>
+                                <span>Rp {{ number_format($item->saldo, 0, ',', '.') }}</span>
+                            </div>
+                        @empty
+                            <div class="item-row muted">
+                                <span>Tidak ada aset lancar</span>
+                                <span>Rp 0</span>
+                            </div>
+                        @endforelse
+                        <div class="subtotal-row">
+                            <span>Total aset lancar</span>
+                            <span>Rp {{ number_format($totalAsetLancar, 0, ',', '.') }}</span>
+                        </div>
+
+                        <div class="sub-judul">Aset tetap</div>
+                        @forelse($asetTetap as $item)
+                            <div class="item-row {{ strtoupper($item->saldo_normal) === 'KREDIT' ? 'pengurang' : '' }}">
+                                <span>{{ $item->nama }}</span>
+                                <span>
+                                    @if(strtoupper($item->saldo_normal) === 'KREDIT')
+                                        (Rp {{ number_format($item->saldo, 0, ',', '.') }})
+                                    @else
+                                        Rp {{ number_format($item->saldo, 0, ',', '.') }}
                                     @endif
-                                    <tr style="border-top: 1px solid #ccc; font-weight: bold;">
-                                        <td style="border:none; padding: 5px 0;">Total Kewajiban</td>
-                                        <td style="border:none; text-align: right;">Rp {{ number_format($totalKewajiban, 0, ',', '.') }}</td>
-                                    </tr>
-                                </table>
-    
-                                <!-- Sub-bagian Ekuitas -->
-                                <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">EKUITAS (MODAL)</div>
-                                <table width="100%">
-                                    @php $totalEkuitasTabel = 0; @endphp
-                                    @foreach($passiva->where('tipe', 'Ekuitas') as $item)
-                                        @php $totalEkuitasTabel += $item->saldo; @endphp
-                                        <tr>
-                                            <td style="border:none; padding: 3px 0;">{{ $item->nama }}</td>
-                                            <td style="border:none; text-align: right;">Rp {{ number_format($item->saldo, 0, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    <tr>
-                                        <td style="border:none; padding: 3px 0; font-style: italic; color: blue;">Laba Tahun Berjalan</td>
-                                        <td style="border:none; text-align: right; color: blue;">Rp {{ number_format($labaBerjalan, 0, ',', '.') }}</td>
-                                    </tr>
-                                    @if(isset($totalPrive) && $totalPrive != 0)
-                                    <tr>
-                                        <td style="border:none; padding: 3px 0; font-style: italic; color: red;">Prive (Pengurangan Modal)</td>
-                                        <td style="border:none; text-align: right; color: red;">(Rp {{ number_format($totalPrive, 0, ',', '.') }})</td>
-                                    </tr>
-                                    @endif
-                                    <tr style="border-top: 1px solid #ccc; font-weight: bold;">
-                                        <td style="border:none; padding: 5px 0;">Total Ekuitas</td>
-                                        <td style="border:none; text-align: right;">Rp {{ number_format($totalEkuitasTabel + $labaBerjalan - $totalPrive, 0, ',', '.') }}</td>
-                                    </tr>
-                                </table>
-    
-                                <div class="total-box" style="margin-top: 20px;">
-                                    <span>TOTAL PASSIVA</span>
-                                    <span>Rp {{ number_format($totalKewajiban + $totalEkuitasTabel + $labaBerjalan - $totalPrive, 0, ',', '.') }}</span>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
+                                </span>
+                            </div>
+                        @empty
+                            <div class="item-row muted">
+                                <span>Tidak ada aset tetap</span>
+                                <span>Rp 0</span>
+                            </div>
+                        @endforelse
+                        <div class="subtotal-row">
+                            <span>Total aset tetap</span>
+                            <span>Rp {{ number_format($totalAsetTetap, 0, ',', '.') }}</span>
+                        </div>
+
+                        <div class="total-box">
+                            <span>Total aktiva</span>
+                            <span>Rp {{ number_format($totalAktiva, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+
+                    {{-- PASSIVA --}}
+                    <div class="sisi-panel">
+                        <div class="judul-sisi">Passiva</div>
+
+                        <div class="sub-judul">Kewajiban (liabilitas)</div>
+                        @forelse($passiva->where('tipe', 'Liabilitas') as $item)
+                            <div class="item-row">
+                                <span>{{ $item->nama }}</span>
+                                <span>Rp {{ number_format($item->saldo, 0, ',', '.') }}</span>
+                            </div>
+                        @empty
+                            <div class="item-row muted">
+                                <span>Tidak ada kewajiban</span>
+                                <span>Rp 0</span>
+                            </div>
+                        @endforelse
+                        <div class="subtotal-row">
+                            <span>Total kewajiban</span>
+                            <span>Rp {{ number_format($totalKewajiban, 0, ',', '.') }}</span>
+                        </div>
+
+                        <div class="sub-judul">Ekuitas (modal)</div>
+                        @forelse($passiva->where('tipe', 'Ekuitas') as $item)
+                            <div class="item-row">
+                                <span>{{ $item->nama }}</span>
+                                <span>Rp {{ number_format($item->saldo, 0, ',', '.') }}</span>
+                            </div>
+                        @empty
+                            <div class="item-row muted">
+                                <span>Tidak ada modal awal</span>
+                                <span>Rp 0</span>
+                            </div>
+                        @endforelse
+                        <div class="item-row info">
+                            <span>Laba tahun berjalan (YTD)</span>
+                            <span>Rp {{ number_format($labaBerjalan, 0, ',', '.') }}</span>
+                        </div>
+                        @if($totalPrive != 0)
+                            <div class="item-row pengurang">
+                                <span>Prive (pengurang modal)</span>
+                                <span>(Rp {{ number_format($totalPrive, 0, ',', '.') }})</span>
+                            </div>
+                        @endif
+                        <div class="subtotal-row">
+                            <span>Total ekuitas</span>
+                            <span>Rp {{ number_format($modalAkhir, 0, ',', '.') }}</span>
+                        </div>
+
+                        <div class="total-box">
+                            <span>Total passiva</span>
+                            <span>Rp {{ number_format($totalPassiva, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                @php $selisih = $totalAktiva - $totalPassiva; @endphp
+                <div class="balance-check {{ abs($selisih) < 1 ? 'ok' : 'warn' }}">
+                    @if(abs($selisih) < 1)
+                        Neraca seimbang &mdash; total aktiva sama dengan total passiva.
+                    @else
+                        Neraca tidak seimbang, selisih Rp {{ number_format($selisih, 0, ',', '.') }}. Periksa kembali jurnal pada periode ini.
+                    @endif
                 </div>
             </div>
 

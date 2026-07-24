@@ -76,7 +76,7 @@ class PembelianController extends Controller
                         'nama'          => $d->barang->nama ?? 'Barang',
                         'satuan'        => $d->barang->satuan ?? 'Pcs',
                         'qty'           => floatval($d->qty),
-                        'qty_diterima'  => floatval($d->qty_diterima ?? $d->qty),
+                        'qty_diterima'  => floatval($d->qty_diterima ?? 0),
                         'harga_per_qty' => floatval($d->harga_per_qty),
                     ];
                 })->values()->toArray(),
@@ -97,9 +97,12 @@ class PembelianController extends Controller
         $suppliers = Supplier::orderBy('nama')->get();
         $gudangs   = MasterGudang::orderBy('nama')->get();
         $barangs   = MasterBarang::query()
-            ->where('is_bahan_baku', true)
-            ->orWhere('is_operational', true)
-            ->orWhere('is_direct_consumption', true)
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->where('is_bahan_baku', true)
+                  ->orWhere('is_operational', true)
+                  ->orWhere('is_direct_consumption', true);
+            })
             ->orderBy('nama')
             ->get();
 
@@ -120,9 +123,14 @@ class PembelianController extends Controller
             return back()->withErrors(['error' => 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($data['tanggal'])) . ' sudah ditutup buku. Tidak dapat menambah transaksi pembelian pada periode yang sudah ditutup.'])->withInput();
         }
 
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, $request) {
 
-            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']);
+            $taxService = 0;
+            if (!empty($request->tax_service)) {
+                $taxService = (float) str_replace('.', '', $request->tax_service);
+            }
+
+            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']) + $taxService;
 
             $pembelian = Pembelian::create([
                 'kode_pembelian' => $this->generateKodePembelian($data['tanggal']),
@@ -130,6 +138,7 @@ class PembelianController extends Controller
                 'gudang_id'      => $data['gudang_id'],
                 'tanggal'        => $data['tanggal'],
                 'total'          => $total,
+                'tax_service'    => $taxService,
                 'created_by'     => auth()->id(),
                 'is_diterima'    => false,
                 'is_lunas'       => false,
@@ -173,38 +182,93 @@ class PembelianController extends Controller
             return back()->with('error', 'Gagal memproses penerimaan barang: Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu.');
         }
 
-        if ($pembelian->is_diterima) {
-            return back()->with('error', 'Barang sudah pernah diterima.');
-        }
-
         $request->validate([
-            'qty_diterima'   => 'nullable|array',
+            'qty_diterima'   => 'required|array',
             'qty_diterima.*' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $pembelian) {
+        $pembelian->load('details.barang');
 
-            $pembelian->load('details');
+        // Check if there is at least one item with newly received qty > 0
+        $anyQty = false;
+        foreach ($pembelian->details as $detail) {
+            $qtyBaruInput = floatval($request->qty_diterima[$detail->id] ?? 0);
+            if ($qtyBaruInput < 0) {
+                return back()->with('error', 'Quantity tidak boleh negatif.');
+            }
+            if ($qtyBaruInput > 0) {
+                $anyQty = true;
+            }
+
+            // Check if accumulated received + new received exceeds ordered qty
+            $accReceived = floatval($detail->qty_diterima ?? 0);
+            if ($accReceived + $qtyBaruInput > floatval($detail->qty)) {
+                return back()->with('error', "Gagal! Qty yang diterima untuk '" . ($detail->barang->nama ?? 'Barang') . "' melebihi sisa pesanan (Ordered: " . floatval($detail->qty) . ", Received: " . $accReceived . ", Input: " . $qtyBaruInput . ").");
+            }
+        }
+
+        if (!$anyQty) {
+            return back()->with('error', 'Gagal! Tidak ada quantity barang yang diinputkan untuk diterima.');
+        }
+
+        DB::transaction(function () use ($request, $pembelian) {
+            // Create PenerimaanPembelian header
+            $noPenerimaan = 'RCV-' . strtoupper($pembelian->supplier->prefix ?? 'SUP') . '-' . date('Ymd') . '-' . rand(100, 999);
+            // Ensure uniqueness of no_penerimaan
+            while (DB::table('penerimaan_pembelian')->where('no_penerimaan', $noPenerimaan)->exists()) {
+                $noPenerimaan = 'RCV-' . strtoupper($pembelian->supplier->prefix ?? 'SUP') . '-' . date('Ymd') . '-' . rand(100, 999);
+            }
+
+            $penerimaan = \App\Models\PenerimaanPembelian::create([
+                'pembelian_id' => $pembelian->id,
+                'no_penerimaan' => $noPenerimaan,
+                'tanggal' => now(),
+                'created_by' => auth()->id()
+            ]);
 
             foreach ($pembelian->details as $detail) {
-                $qtyDiterima = isset($request->qty_diterima[$detail->id]) 
-                    ? floatval($request->qty_diterima[$detail->id]) 
-                    : floatval($detail->qty);
+                $qtyBaruInput = floatval($request->qty_diterima[$detail->id] ?? 0);
+                if ($qtyBaruInput <= 0) {
+                    continue;
+                }
 
+                // Update accumulated qty_diterima
+                $accReceived = floatval($detail->qty_diterima ?? 0);
                 $detail->update([
-                    'qty_diterima' => $qtyDiterima,
+                    'qty_diterima' => $accReceived + $qtyBaruInput
                 ]);
 
-                $totalHargaDiterima = round($qtyDiterima * floatval($detail->harga_per_qty), 2);
+                // Create PenerimaanPembelianDetail
+                $penerimaan->details()->create([
+                    'pembelian_detail_id' => $detail->id,
+                    'barang_id' => $detail->barang_id,
+                    'qty' => $qtyBaruInput,
+                    'harga_per_qty' => floatval($detail->harga_per_qty)
+                ]);
 
-                // Buat FIFO batch (akan menggunakan qty_diterima)
-                $this->fifoService->createBatchStock($pembelian, $detail);
+                $totalHargaDiterima = round($qtyBaruInput * floatval($detail->harga_per_qty), 2);
+
+                // Create StokGudangBatch
+                $suffix = rand(10, 99) . '-' . date('His');
+                \App\Models\StokGudangBatch::create([
+                    'gudang_id' => $pembelian->gudang_id,
+                    'supplier_id' => $pembelian->supplier_id,
+                    'barang_id' => $detail->barang_id,
+                    'pembelian_id' => $pembelian->id,
+                    'pembelian_detail_id' => $detail->id,
+                    'batch_number' => $detail->batch_number . '-RCV-' . $suffix,
+                    'qty_masuk' => $qtyBaruInput,
+                    'qty_keluar' => 0,
+                    'qty_sisa' => $qtyBaruInput,
+                    'harga_per_qty' => $detail->harga_per_qty,
+                    'is_habis' => false,
+                ]);
 
                 // Tambah stok gudang
                 $this->stockService->stockIn([
                     'barang_id'       => $detail->barang_id,
                     'gudang_tujuan_id'=> $pembelian->gudang_id,
-                    'qty'             => $qtyDiterima,
+                    'qty'             => $qtyBaruInput,
                     'total_harga'     => $totalHargaDiterima,
                     'source_type'     => 'pembelian',
                     'source_id'       => $pembelian->id,
@@ -212,14 +276,24 @@ class PembelianController extends Controller
                 ]);
             }
 
+            // Check if all items are fully received
+            $allFullyReceived = true;
+            foreach ($pembelian->details()->get() as $det) {
+                if (floatval($det->qty_diterima) < floatval($det->qty)) {
+                    $allFullyReceived = false;
+                    break;
+                }
+            }
+
+            // Update status pembelian. Jika sudah semua diterima, is_diterima = true
             $pembelian->update([
-                'is_diterima'  => true,
-                'diterima_at'  => now(),
-                'diterima_oleh'=> auth()->id(),
+                'is_diterima' => $allFullyReceived,
+                'diterima_at' => now(),
+                'diterima_oleh' => auth()->id()
             ]);
         });
 
-        return back()->with('success', 'Barang berhasil diterima dan stok sudah diperbarui.');
+        return back()->with('success', 'Barang berhasil diterima secara parsial dan stok sudah diperbarui.');
     }
 
     /*
@@ -241,14 +315,37 @@ class PembelianController extends Controller
         $request->validate([
             'nominal_pelunasan' => 'required|numeric|min:1',
             'catatan_pelunasan' => 'nullable|string|max:500',
+            'bukti_file'        => 'nullable|array',
+            'bukti_file.*'      => 'file|image|max:2048'
         ]);
 
-        $pembelian->update([
-            'is_lunas'          => true,
-            'lunas_at'          => now(),
-            'nominal_pelunasan' => $request->nominal_pelunasan,
-            'catatan_pelunasan' => $request->catatan_pelunasan,
-        ]);
+        $buktiFiles = [];
+        if ($request->hasFile('bukti_file')) {
+            foreach ($request->file('bukti_file') as $file) {
+                $path = $file->store('pembayaran_bukti', 'public');
+                $buktiFiles[] = $path;
+            }
+        }
+
+        DB::transaction(function() use ($request, $pembelian, $buktiFiles) {
+            $pembelian->update([
+                'is_lunas'          => true,
+                'lunas_at'          => now(),
+                'nominal_pelunasan' => $request->nominal_pelunasan,
+                'catatan_pelunasan' => $request->catatan_pelunasan,
+            ]);
+
+            \App\Models\Pembayaran::create([
+                'pembelian_id' => $pembelian->id,
+                'kategori_pembayaran' => 'pembelian',
+                'tanggal_bayar' => now(),
+                'jumlah_bayar' => floatval($request->nominal_pelunasan),
+                'metode_pembayaran' => 'Pelunasan',
+                'catatan' => $request->catatan_pelunasan,
+                'bukti_pembayaran' => $buktiFiles,
+                'created_by' => auth()->id()
+            ]);
+        });
 
         return back()->with('success', 'Pembayaran lunas berhasil dicatat.');
     }
@@ -268,6 +365,8 @@ class PembelianController extends Controller
             'nominal_dp'          => 'nullable|numeric|min:0',
             'tanggal_pelunasan'   => 'required_if:metode_pembayaran,dp|nullable|date',
             'catatan_pembayaran'  => 'nullable|string|max:500',
+            'bukti_file'          => 'nullable|array',
+            'bukti_file.*'        => 'file|image|max:2048'
         ], [
             'tanggal_pelunasan.required_if' => 'Tanggal pelunasan wajib diisi untuk metode DP.'
         ]);
@@ -288,13 +387,38 @@ class PembelianController extends Controller
         // COD langsung lunas
         $isLunas = $validated['metode_pembayaran'] === 'cod';
 
-        $pembelian->update([
-            ...$validated,
-            'dicatat_oleh' => auth()->id(),
-            'dicatat_pada' => now(),
-            'is_lunas'     => $isLunas,
-            'lunas_at'     => $isLunas ? now() : null,
-        ]);
+        $buktiFiles = [];
+        if ($request->hasFile('bukti_file')) {
+            foreach ($request->file('bukti_file') as $file) {
+                $path = $file->store('pembayaran_bukti', 'public');
+                $buktiFiles[] = $path;
+            }
+        }
+
+        DB::transaction(function () use ($validated, $pembelian, $isLunas, $buktiFiles) {
+            $pembelianData = collect($validated)->except(['bukti_file'])->toArray();
+
+            $pembelian->update([
+                ...$pembelianData,
+                'dicatat_oleh' => auth()->id(),
+                'dicatat_pada' => now(),
+                'is_lunas'     => $isLunas,
+                'lunas_at'     => $isLunas ? now() : null,
+            ]);
+
+            $jumlahBayar = $isLunas ? floatval($pembelian->total) : floatval($validated['nominal_dp']);
+
+            \App\Models\Pembayaran::create([
+                'pembelian_id' => $pembelian->id,
+                'kategori_pembayaran' => 'pembelian',
+                'tanggal_bayar' => now(),
+                'jumlah_bayar' => $jumlahBayar,
+                'metode_pembayaran' => $isLunas ? 'COD' : 'DP',
+                'catatan' => $validated['catatan_pembayaran'] ?? null,
+                'bukti_pembayaran' => $buktiFiles,
+                'created_by' => auth()->id()
+            ]);
+        });
 
         return redirect()
             ->route('pembelian.index')
@@ -309,7 +433,7 @@ class PembelianController extends Controller
 
     public function show(Pembelian $pembelian)
     {
-        $pembelian->load(['supplier', 'gudang', 'details.barang', 'user']);
+        $pembelian->load(['supplier', 'gudang', 'details.barang', 'user', 'pembayaran']);
         return view('pembelian.show', compact('pembelian'));
     }
 
@@ -330,9 +454,12 @@ class PembelianController extends Controller
         $suppliers = Supplier::orderBy('nama')->get();
         $gudangs   = MasterGudang::orderBy('nama')->get();
         $barangs   = MasterBarang::query()
-            ->where('is_bahan_baku', true)
-            ->orWhere('is_operational', true)
-            ->orWhere('is_direct_consumption', true)
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->where('is_bahan_baku', true)
+                  ->orWhere('is_operational', true)
+                  ->orWhere('is_direct_consumption', true);
+            })
             ->orderBy('nama')
             ->get();
 
@@ -354,20 +481,26 @@ class PembelianController extends Controller
 
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $pembelian) {
+        DB::transaction(function () use ($data, $pembelian, $request) {
 
             $pembelian->load('details');
 
             // Hapus detail lama (belum ada stok karena belum diterima)
             $pembelian->details()->delete();
 
-            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']);
+            $taxService = 0;
+            if (!empty($request->tax_service)) {
+                $taxService = (float) str_replace('.', '', $request->tax_service);
+            }
+
+            $total = collect($data['items'])->sum(fn($item) => (float) $item['harga']) + $taxService;
 
             $pembelian->update([
                 'supplier_id' => $data['supplier_id'],
                 'gudang_id'   => $data['gudang_id'],
                 'tanggal'     => $data['tanggal'],
                 'total'       => $total,
+                'tax_service' => $taxService,
             ]);
 
             foreach ($data['items'] as $item) {

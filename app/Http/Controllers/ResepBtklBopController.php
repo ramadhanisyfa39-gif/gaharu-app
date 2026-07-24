@@ -14,8 +14,8 @@ class ResepBtklBopController extends Controller
         // 1. Mengambil data utama resep beserta relasinya untuk tabel list
         $data = ResepBtklBop::with(['produk', 'bahanbaku'])->get();
 
-        $produk = MasterBarang::where('is_barang_jadi', '1')->orderBy('nama')->get();
-        $bahan  = MasterBarang::where('is_bahan_baku', '1')->orderBy('nama')->get();
+        $produk = MasterBarang::where('is_barang_jadi', '1')->where('is_active', true)->orderBy('nama')->get();
+        $bahan  = MasterBarang::where('is_bahan_baku', '1')->where('is_active', true)->orderBy('nama')->get();
 
         // 3. Mengirimkan ketiga variabel ke view resep.index
         return view('resep.index', compact('data', 'produk', 'bahan'));
@@ -32,8 +32,8 @@ class ResepBtklBopController extends Controller
     public function create()
     {
         // Fungsi ini sudah tidak terpakai karena beralih ke popup, tapi biarkan saja agar tidak merusak route yang ada
-        $produk = MasterBarang::where('is_barang_jadi', '1')->get();
-        $bahan  = MasterBarang::where('is_bahan_baku', '1')->get();
+        $produk = MasterBarang::where('is_barang_jadi', '1')->where('is_active', true)->get();
+        $bahan  = MasterBarang::where('is_bahan_baku', '1')->where('is_active', true)->get();
 
         return view('resep.create', compact('produk', 'bahan'));
     }
@@ -104,8 +104,8 @@ class ResepBtklBopController extends Controller
     public function edit($id)
     {
         $data = ResepBtklBop::with('bahanbaku.bahan')->findOrFail($id);
-        $produk = MasterBarang::where('is_barang_jadi', 1)->orderBy('nama')->get();
-        $bahan  = MasterBarang::where('is_bahan_baku', 1)->orderBy('nama')->get();
+        $produk = MasterBarang::where('is_barang_jadi', 1)->where('is_active', true)->orderBy('nama')->get();
+        $bahan  = MasterBarang::where('is_bahan_baku', 1)->where('is_active', true)->orderBy('nama')->get();
     
         return view('resep.edit', compact('data', 'produk', 'bahan'));
     }

@@ -144,6 +144,12 @@
     
                             {{-- BARANG DITERIMA --}}
                             <td class="text-center">
+                                @php
+                                    $totalQty = $item->details->sum('qty');
+                                    $totalReceived = $item->details->sum('qty_diterima');
+                                    $isPartiallyReceived = $totalReceived > 0 && $totalReceived < $totalQty;
+                                @endphp
+
                                 @if($item->is_diterima)
                                     <div class="d-flex flex-column align-items-center">
                                         <span class="badge bg-success">✓ Diterima</span>
@@ -151,21 +157,29 @@
                                             {{ \Carbon\Carbon::parse($item->diterima_at)->format('d M Y') }}
                                         </small>
                                     </div>
-                                @elseif(!$item->is_lunas)
-                                    <button type="button"
-                                            class="btn btn-sm"
-                                            disabled
-                                            title="Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu."
-                                            style="background:#d0d0d0; color:#888; font-size:11px; padding:2px 10px; cursor:not-allowed;">
-                                        Terima Barang
-                                    </button>
                                 @else
-                                    <button type="button"
-                                            class="btn btn-sm"
-                                            style="background:#606060; color:#fff; font-size:11px; padding:2px 10px;"
-                                            onclick="bukaModalTerimaBarang({{ $item->id }})">
-                                        Terima Barang
-                                    </button>
+                                    @if($isPartiallyReceived)
+                                        <div class="mb-1">
+                                            <span class="badge bg-info text-white">Parsial ({{ number_format($totalReceived, 0) }}/{{ number_format($totalQty, 0) }})</span>
+                                        </div>
+                                    @endif
+
+                                    @if(!$item->is_lunas)
+                                        <button type="button"
+                                                class="btn btn-sm"
+                                                disabled
+                                                title="Pembayaran belum lunas. Silakan lunasi pembayaran terlebih dahulu."
+                                                style="background:#d0d0d0; color:#888; font-size:11px; padding:2px 10px; cursor:not-allowed;">
+                                            Terima Barang
+                                        </button>
+                                    @else
+                                        <button type="button"
+                                                class="btn btn-sm text-white"
+                                                style="background:#0284c7; font-size:11px; padding:2px 10px;"
+                                                onclick="bukaModalTerimaBarang({{ $item->id }})">
+                                            Terima Barang
+                                        </button>
+                                    @endif
                                 @endif
                             </td>
     
@@ -258,7 +272,7 @@
                     <h5 class="modal-title">Catat Pembayaran</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form id="formPembayaran" method="POST" action="">
+                <form id="formPembayaran" method="POST" action="" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
                         <p class="text-muted small" id="infoPembelian"></p>
@@ -296,9 +310,13 @@
                                 <input type="date" name="tanggal_pelunasan" class="form-control">
                             </div>
                         </div>
-                        <div class="mb-1">
+                        <div class="mb-3">
                             <label class="form-label">Catatan <span class="text-muted">(opsional)</span></label>
                             <textarea name="catatan_pembayaran" class="form-control" rows="2" placeholder="Mis: Transfer ke BCA 1234567..."></textarea>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold">Upload Bukti Pembayaran <span class="text-muted">(bisa >1 gambar)</span></label>
+                            <input type="file" name="bukti_file[]" class="form-control" accept="image/*" multiple>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -320,7 +338,7 @@
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form id="formLunasi" method="POST" action="">
+                <form id="formLunasi" method="POST" action="" enctype="multipart/form-data">
                     @csrf
                     <div class="modal-body">
 
@@ -352,10 +370,15 @@
                             <small class="text-muted">Masukkan jumlah yang dibayarkan untuk pelunasan</small>
                         </div>
 
-                        <div class="mb-1">
+                        <div class="mb-3">
                             <label class="form-label">Catatan <span class="text-muted">(opsional)</span></label>
                             <textarea name="catatan_pelunasan" class="form-control" rows="2"
                                       placeholder="Mis: Transfer BCA tgl 29 Jun..."></textarea>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold">Upload Bukti Pembayaran <span class="text-muted">(bisa >1 gambar)</span></label>
+                            <input type="file" name="bukti_file[]" class="form-control" accept="image/*" multiple>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -391,9 +414,11 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Nama Barang</th>
-                                    <th class="text-center" style="width:130px;">Qty Dipesan</th>
-                                    <th class="text-center" style="width:170px;">Qty Diterima</th>
-                                    <th class="text-end" style="width:140px;">Harga/Unit</th>
+                                    <th class="text-center" style="width:110px;">Qty Dipesan</th>
+                                    <th class="text-center" style="width:110px;">Diterima Seb.</th>
+                                    <th class="text-center" style="width:110px;">Sisa</th>
+                                    <th class="text-center" style="width:150px;">Qty Diterima Baru</th>
+                                    <th class="text-end" style="width:120px;">Harga/Unit</th>
                                 </tr>
                             </thead>
                             <tbody id="tbodyTerimaBarang">
@@ -534,16 +559,21 @@
 
             data.details.forEach(det => {
                 const tr = document.createElement('tr');
-                const qtyVal = det.qty_diterima !== undefined && det.qty_diterima !== null ? det.qty_diterima : det.qty;
+                const qtyOrdered = Number(det.qty);
+                const qtyReceivedSoFar = Number(det.qty_diterima || 0);
+                const qtyRemaining = Math.max(0, qtyOrdered - qtyReceivedSoFar);
+                
                 tr.innerHTML = `
                     <td><strong>${det.nama}</strong></td>
-                    <td class="text-center">${det.qty} ${det.satuan}</td>
+                    <td class="text-center">${qtyOrdered} ${det.satuan}</td>
+                    <td class="text-center text-success fw-semibold">${qtyReceivedSoFar} ${det.satuan}</td>
+                    <td class="text-center text-danger fw-semibold">${qtyRemaining} ${det.satuan}</td>
                     <td>
                         <div class="input-group input-group-sm">
-                            <input type="number" step="0.01" min="0" 
+                            <input type="number" step="0.01" min="0" max="${qtyRemaining}" 
                                    class="form-control text-center fw-bold" 
                                    name="qty_diterima[${det.id}]" 
-                                   value="${qtyVal}" 
+                                   value="${qtyRemaining}" 
                                    required>
                             <span class="input-group-text">${det.satuan}</span>
                         </div>

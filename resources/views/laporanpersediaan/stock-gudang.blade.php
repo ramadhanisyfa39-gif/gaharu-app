@@ -72,9 +72,14 @@
                         <div class="text-danger fw-bold d-flex align-items-center">
                             <i class="bi bi-exclamation-triangle-fill me-2"></i> Stok Kritis (Maksimal 5)
                         </div>
-                        <a href="{{ route('pembelian.index') }}" class="btn btn-sm text-white shadow-sm" style="background-color: #d88656; border: none;">
-                            <i class="bi bi-cart-plus me-1"></i> Buat Pesanan Pembelian
-                        </a>
+                        @if($hasPurchaseAccess)
+                            <a href="{{ route('pembelian.index') }}"
+                            class="btn btn-sm text-white shadow-sm"
+                            style="background-color: #d88656; border: none;"
+                            id="buatPesananBtn">
+                                <i class="bi bi-cart-plus me-1"></i> Buat Pesanan Pembelian
+                            </a>
+                        @endif
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -168,4 +173,11 @@
         </div>
 
     </div>
+
+    <script>
+        @if($hasPurchaseAccess)
+            const buatPesananBtn = document.getElementById('buatPesananBtn');
+            buatPesananBtn.style.display = 'block';
+        @endif
+    </script>
 </x-app-layout>

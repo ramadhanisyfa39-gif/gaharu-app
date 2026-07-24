@@ -73,13 +73,17 @@
 
             <div class="card-body">
 
-                <small class="text-muted">
+                <label for="tanggal" class="small text-muted fw-bold mb-1">
                     Tanggal Opname
-                </small>
+                </label>
 
-                <h5 class="fw-bold mb-0">
-                    {{ now()->format('d M Y') }}
-                </h5>
+                <input
+                    type="date"
+                    id="tanggal"
+                    name="tanggal"
+                    class="form-control form-control-sm fw-bold"
+                    value="{{ old('tanggal', date('Y-m-d')) }}"
+                    required>
 
             </div>
 

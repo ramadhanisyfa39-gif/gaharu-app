@@ -167,20 +167,28 @@ class LaporanProduksiController extends Controller
      */
     public function dashboard(Request $request)
     {
+        $startDate = $request->query('tgl_mulai', \Carbon\Carbon::now()->startOfMonth()->toDateString());
+        $endDate   = $request->query('tgl_selesai', \Carbon\Carbon::now()->endOfMonth()->toDateString());
+
         // 1. Mini Summary Cards
-        $woAktif = WorkOrder::where('status_wo', 'Diproses')->count();
+        $woAktif = WorkOrder::where('status_wo', 'Diproses')
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->count();
         
         $produksiSelesaiTahunIni = Produksi::where('status_produksi', 'Selesai')
-            ->whereYear('tanggal_selesai', date('Y'))
+            ->whereBetween('tanggal_selesai', [$startDate, $endDate])
             ->count();
 
         $totalQtyHasil = DB::table('produksi_detail')
             ->join('produksi', 'produksi_detail.produksi_id', '=', 'produksi.id')
             ->where('produksi.status_produksi', 'Selesai')
+            ->whereBetween('produksi.tanggal_selesai', [$startDate, $endDate])
             ->sum('produksi_detail.qty');
 
         // Target Achievement Calculation
-        $workOrders = WorkOrder::whereIn('status_wo', ['Draft', 'Diproses', 'Selesai'])->get();
+        $workOrders = WorkOrder::whereIn('status_wo', ['Draft', 'Diproses', 'Selesai'])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->get();
         $achievements = [];
 
         foreach ($workOrders as $wo) {
@@ -204,23 +212,20 @@ class LaporanProduksiController extends Controller
 
         $rataRataCapaian = count($achievements) > 0 ? (array_sum($achievements) / count($achievements)) : 0;
 
-        // 2. Grafik Tren Produksi 7 Hari Terakhir
+        // 2. Grafik Tren Produksi Dalam Periode
         $labelsProduksi = [];
         $dataProduksi = [];
 
         $chartData = DB::table('produksi')
             ->join('produksi_detail', 'produksi.id', '=', 'produksi_detail.produksi_id')
             ->where('produksi.status_produksi', 'Selesai')
-            ->where('produksi.tanggal_selesai', '>=', now()->subDays(6)->startOfDay())
+            ->whereBetween('produksi.tanggal_selesai', [$startDate, $endDate])
             ->selectRaw('DATE(produksi.tanggal_selesai) as date_label, SUM(produksi_detail.qty) as daily_qty')
             ->groupBy('date_label')
             ->get()
             ->pluck('daily_qty', 'date_label');
 
-        $periode = \Carbon\CarbonPeriod::create(
-            now()->subDays(6),
-            now()
-        );
+        $periode = \Carbon\CarbonPeriod::create($startDate, $endDate);
 
         foreach ($periode as $tanggal) {
             $dateStr = $tanggal->format('Y-m-d');
@@ -232,6 +237,7 @@ class LaporanProduksiController extends Controller
         $bahanBakuMinimum = DB::table('master_barang')
             ->leftJoin('stok_gudang', 'master_barang.id', '=', 'stok_gudang.barang_id')
             ->where('master_barang.is_bahan_baku', 1)
+            ->where('master_barang.is_active', true)
             ->select(
                 'master_barang.nama',
                 'master_barang.satuan',
@@ -247,6 +253,7 @@ class LaporanProduksiController extends Controller
             ->join('produksi', 'produksi_detail.produksi_id', '=', 'produksi.id')
             ->join('master_barang', 'produksi_detail.produk_id', '=', 'master_barang.id')
             ->where('produksi.status_produksi', 'Selesai')
+            ->whereBetween('produksi.tanggal_selesai', [$startDate, $endDate])
             ->select('master_barang.nama', 'master_barang.satuan', DB::raw('SUM(produksi_detail.qty) as total_qty'))
             ->groupBy('master_barang.id', 'master_barang.nama', 'master_barang.satuan')
             ->orderByDesc('total_qty')
@@ -254,7 +261,9 @@ class LaporanProduksiController extends Controller
             ->get();
 
         // 5. Status Work Order
-        $workOrderStatusQuery = WorkOrder::with('pembuat')->latest();
+        $workOrderStatusQuery = WorkOrder::with('pembuat')
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->latest();
         
         // If exporting, get all instead of limit 5
         if ($request->format === 'pdf' || $request->format === 'excel') {
@@ -294,6 +303,8 @@ class LaporanProduksiController extends Controller
         }
 
         return view('laporanproduksi.dashboard', compact(
+            'startDate',
+            'endDate',
             'woAktif',
             'produksiSelesaiTahunIni',
             'totalQtyHasil',

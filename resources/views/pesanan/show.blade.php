@@ -104,12 +104,70 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="3" class="text-end">Total</th>
-                                <th>Rp {{ number_format($pesanan->total_pesanan, 0, ',', '.') }}</th>
+                                <th colspan="3" class="text-end text-secondary fw-normal">Subtotal (DPP)</th>
+                                <th class="text-secondary fw-normal">Rp {{ number_format($pesanan->total_pesanan - $pesanan->tax_service, 0, ',', '.') }}</th>
+                            </tr>
+                            <tr>
+                                <th colspan="3" class="text-end text-secondary fw-normal">Tax/Service ({{ number_format($pesanan->tax_percentage, 2) }}%)</th>
+                                <th class="text-secondary fw-normal">Rp {{ number_format($pesanan->tax_service, 0, ',', '.') }}</th>
+                            </tr>
+                            <tr>
+                                <th colspan="3" class="text-end text-primary fw-bold">Total (Nett)</th>
+                                <th class="text-primary fw-bold">Rp {{ number_format($pesanan->total_pesanan, 0, ',', '.') }}</th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
+            </div>
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold">Bukti Pembayaran</h5>
+            </div>
+            <div class="card-body">
+                @php
+                    $pembayaranList = $pesanan->pembayaran ?? collect();
+                @endphp
+
+                @if($pembayaranList->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Nominal</th>
+                                    <th>Metode</th>
+                                    <th>Catatan</th>
+                                    <th>Bukti Upload</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($pembayaranList as $p)
+                                    <tr>
+                                        <td>{{ \Carbon\Carbon::parse($p->tanggal_bayar)->format('d M Y') }}</td>
+                                        <td class="fw-semibold text-success">Rp {{ number_format($p->jumlah_bayar, 0, ',', '.') }}</td>
+                                        <td>{{ $p->metode_pembayaran }}</td>
+                                        <td>{{ $p->catatan ?? '-' }}</td>
+                                        <td>
+                                            @if($p->bukti_pembayaran && is_array($p->bukti_pembayaran))
+                                                <div class="d-flex gap-2 flex-wrap">
+                                                    @foreach($p->bukti_pembayaran as $img)
+                                                        <a href="{{ asset('storage/' . $img) }}" target="_blank">
+                                                            <img src="{{ asset('storage/' . $img) }}" class="img-thumbnail" style="width: 70px; height: 70px; object-fit: cover;" alt="Bukti">
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <p class="text-muted mb-0">Belum ada bukti pembayaran yang diupload.</p>
+                @endif
             </div>
         </div>
     </div>

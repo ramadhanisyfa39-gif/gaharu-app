@@ -119,17 +119,24 @@ class StockOpnameController extends Controller
     {
         $request->validate([
             'gudang_id'   => 'required',
+            'tanggal'     => 'nullable|date',
             'barang_id'   => 'required|array',
             'stok_sistem' => 'required|array',
             'stok_fisik'  => 'required|array',
         ]);
+
+        $tanggal = $request->tanggal ? date('Y-m-d', strtotime($request->tanggal)) : date('Y-m-d');
+
+        if (\App\Models\Journal::isPeriodClosed($tanggal)) {
+            return back()->withErrors(['tanggal' => 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($tanggal)) . ' sudah ditutup buku. Tidak dapat membuat Stock Opname pada periode yang sudah ditutup.'])->withInput();
+        }
 
         DB::beginTransaction();
 
         try {
             $opname = StockOpname::create([
                 'kode_opname' => 'SO-' . now()->format('YmdHis'),
-                'tanggal'     => now(),
+                'tanggal'     => $tanggal,
                 'gudang_id'   => $request->gudang_id,
                 'status'      => 'draft',
                 'keterangan'  => $request->keterangan,
@@ -329,7 +336,7 @@ public function detailJson(string $id)
 
             if ($totalSurplusKredit > 0) {
                 $jp = \App\Models\JurnalPenyesuaian::create([
-                    'tanggal'     => now(),
+                    'tanggal'     => $opname->tanggal,
                     'deskripsi'   => "[AJP] Penyesuaian Lebih (Surplus) Stock Opname: " . $opname->kode_opname,
                     'no_ref'      => 'AJP-SO-SURPLUS-' . $opname->kode_opname . '-' . rand(100, 999),
                     'source_type' => 'stock_opname',
@@ -363,7 +370,7 @@ public function detailJson(string $id)
 
                 $pengeluaran = PengeluaranBahanBaku::create([
                     'kode_pengeluaran' => $kode,
-                    'tanggal'          => now(),
+                    'tanggal'          => $opname->tanggal,
                     'gudang_id'        => $opname->gudang_id,
                     'status'           => 'draft',
                     'keterangan'       => 'Auto dari Stock Opname: ' . $opname->kode_opname,
@@ -438,7 +445,31 @@ public function detailJson(string $id)
 
     public function edit(string $id) {}
 
-    public function update(Request $request, string $id) {}
+    public function update(Request $request, string $id)
+    {
+        $opname = StockOpname::findOrFail($id);
+
+        if ($opname->status !== 'draft') {
+            return back()->with('error', 'Stock Opname yang sudah diapprove tidak dapat diubah.');
+        }
+
+        $request->validate([
+            'tanggal' => 'required|date',
+        ]);
+
+        $tanggal = date('Y-m-d', strtotime($request->tanggal));
+
+        if (\App\Models\Journal::isPeriodClosed($tanggal)) {
+            return back()->with('error', 'Periode akuntansi tanggal ' . date('d/m/Y', strtotime($tanggal)) . ' sudah ditutup buku.');
+        }
+
+        $opname->update([
+            'tanggal'    => $tanggal,
+            'keterangan' => $request->keterangan ?? $opname->keterangan,
+        ]);
+
+        return back()->with('success', 'Tanggal Stock Opname berhasil diperbarui.');
+    }
 
     /*
     |==========================================================================

@@ -40,6 +40,7 @@ class Pembelian extends Model
     'catatan_pelunasan',
       'diterima_at',    
     'diterima_oleh',
+        'tax_service',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class Pembelian extends Model
         'diterima_at'       => 'datetime',
         'nominal_pelunasan' => 'decimal:2',
         'nominal_dp'        => 'decimal:2',
+        'tax_service'       => 'decimal:2',
     ];
 
     public $timestamps = false;
@@ -74,6 +76,11 @@ class Pembelian extends Model
     public function details()
     {
         return $this->hasMany(PembelianDetail::class, 'pembelian_id');
+    }
+
+    public function pembayaran()
+    {
+        return $this->hasMany(Pembayaran::class, 'pembelian_id');
     }
 
     public function user()

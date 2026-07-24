@@ -20,7 +20,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('jurnal-pembelian.store', $pembelian->id) }}" method="POST" id="form-jurnal">
+                <form action="{{ route('jurnal-pembelian.store', $id) }}" method="POST" id="form-jurnal">
                     @csrf
 
                     <input type="hidden" name="tahap" value="{{ $tahap }}">
@@ -35,12 +35,12 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold">No. Referensi</label>
                             <input type="text" name="no_ref" class="form-control font-monospace fw-bold"
-                                value="{{ isset($pembelian) ? 'JV-PEMB-' . $pembelian->kode_pembelian : '' }}" required>
+                                value="{{ isset($labelRef) ? $labelRef : 'JV-PEMB-' . $pembelian->kode_pembelian }}" required>
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Deskripsi Jurnal</label>
-                            <textarea name="deskripsi" class="form-control" rows="1" required>{{ isset($pembelian) ? 'Pembukuan jurnal khusus pembelian bahan baku atas No. Invoice: ' . $pembelian->kode_pembelian . ' [Supplier: ' . ($pembelian->supplier->nama ?? '-') . ']' : '' }}</textarea>
+                            <textarea name="deskripsi" class="form-control" rows="1" required>{{ isset($descJurnal) ? $descJurnal : ('Pembukuan jurnal khusus pembelian bahan baku atas No. Invoice: ' . $pembelian->kode_pembelian . ' [Supplier: ' . ($pembelian->supplier->nama ?? '-') . ']') }}</textarea>
                         </div>
                     </div>
 

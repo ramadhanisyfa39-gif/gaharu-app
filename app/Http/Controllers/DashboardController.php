@@ -18,10 +18,13 @@ use Carbon\CarbonPeriod;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
         $user = auth()->user();
         $roleName = $user->role->nama ?? '';
+
+        $startDate = $request->query('tgl_mulai', Carbon::now()->startOfMonth()->toDateString());
+        $endDate   = $request->query('tgl_selesai', Carbon::now()->endOfMonth()->toDateString());
 
         /*
         |--------------------------------------------------------------------------
@@ -37,8 +40,8 @@ class DashboardController extends Controller
         $hasProductionAccess = in_array($roleName, ['Kepala Outlet Gaharu', 'Bagian Produksi', 'Direktur Keuangan', 'Super Admin', 'Administrator']);
         $hasPurchaseAccess = in_array($roleName, ['Kepala Outlet Gaharu', 'Kepala Gudang', 'Direktur Keuangan', 'Super Admin', 'Administrator']);
 
-        $totalPesanan = $hasB2bAccess ? Pesanan::count() : 0;
-        $totalWO = $hasProductionAccess ? WorkOrder::count() : 0;
+        $totalPesanan = $hasB2bAccess ? Pesanan::whereBetween('tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->count() : 0;
+        $totalWO = $hasProductionAccess ? WorkOrder::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])->count() : 0;
         $totalSupplier = $hasPurchaseAccess ? Supplier::count() : 0;
         $totalProduk = MasterBarang::count(); // Global query scope will automatically restrict what items they see!
 
@@ -62,11 +65,10 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | PEMBELIAN BULAN INI (Role-Based Filter)
+        | PEMBELIAN PERIODE INI (Role-Based Filter)
         |--------------------------------------------------------------------------
         */
-        $pembelianQuery = Pembelian::whereMonth('tanggal', Carbon::now()->month)
-            ->whereYear('tanggal', Carbon::now()->year);
+        $pembelianQuery = Pembelian::whereBetween('tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
         if ($roleName === 'Kepala Outlet Gaharu') {
             $pembelianQuery->where('gudang_id', 2);
@@ -108,13 +110,13 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | TREN PEMBELIAN 7 HARI TERAKHIR (Role-Based)
+        | TREN PEMBELIAN DALAM PERIODE (Role-Based)
         |--------------------------------------------------------------------------
         */
         $labelsPembelian = [];
         $dataPembelian = [];
         if ($hasPurchaseAccess) {
-            $chartPembelianQuery = Pembelian::where('tanggal', '>=', now()->subDays(6)->startOfDay());
+            $chartPembelianQuery = Pembelian::whereBetween('tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
             if ($roleName === 'Kepala Outlet Gaharu') {
                 $chartPembelianQuery->where('gudang_id', 2);
             } elseif ($roleName === 'Kepala Gudang') {
@@ -126,7 +128,7 @@ class DashboardController extends Controller
                 ->get()
                 ->pluck('daily_total', 'date_label');
 
-            $periode = CarbonPeriod::create(now()->subDays(6), now());
+            $periode = CarbonPeriod::create($startDate, $endDate);
             foreach ($periode as $tanggal) {
                 $dateStr = $tanggal->format('Y-m-d');
                 $labelsPembelian[] = $tanggal->format('d M');
@@ -136,12 +138,12 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | TREN PENJUALAN POS 7 HARI TERAKHIR (Role-Based)
+        | TREN PENJUALAN POS DALAM PERIODE (Role-Based)
         |--------------------------------------------------------------------------
         */
         $labelsPos = [];
         $dataPos = [];
-        $chartPosQuery = PenjualanPos::where('tanggal', '>=', now()->subDays(6)->startOfDay())
+        $chartPosQuery = PenjualanPos::whereBetween('tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->whereIn('status', ['SUKSES', 'Approved', 'Completed']);
 
         if ($roleName === 'Kepala Outlet Gaharu') {
@@ -156,7 +158,7 @@ class DashboardController extends Controller
             ->get()
             ->pluck('daily_total', 'date_label');
 
-        $periode = CarbonPeriod::create(now()->subDays(6), now());
+        $periode = CarbonPeriod::create($startDate, $endDate);
         foreach ($periode as $tanggal) {
             $dateStr = $tanggal->format('Y-m-d');
             $labelsPos[] = $tanggal->format('d M');
@@ -165,19 +167,19 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | TREN PENJUALAN B2B 7 HARI TERAKHIR (Role-Based)
+        | TREN PENJUALAN B2B DALAM PERIODE (Role-Based)
         |--------------------------------------------------------------------------
         */
         $labelsB2b = [];
         $dataB2b = [];
         if ($hasB2bAccess) {
-            $chartB2bData = Pesanan::where('tanggal', '>=', now()->subDays(6)->startOfDay())
+            $chartB2bData = Pesanan::whereBetween('tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->selectRaw('DATE(tanggal) as date_label, SUM(total_pesanan) as daily_total')
                 ->groupBy('date_label')
                 ->get()
                 ->pluck('daily_total', 'date_label');
 
-            $periode = CarbonPeriod::create(now()->subDays(6), now());
+            $periode = CarbonPeriod::create($startDate, $endDate);
             foreach ($periode as $tanggal) {
                 $dateStr = $tanggal->format('Y-m-d');
                 $labelsB2b[] = $tanggal->format('d M');
@@ -192,7 +194,8 @@ class DashboardController extends Controller
         */
         $productionStatus = [];
         if ($hasProductionAccess) {
-            $prodStatusData = Produksi::selectRaw('status_produksi, count(*) as total')
+            $prodStatusData = Produksi::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                ->selectRaw('status_produksi, count(*) as total')
                 ->groupBy('status_produksi')
                 ->pluck('total', 'status_produksi')
                 ->toArray();
@@ -211,6 +214,7 @@ class DashboardController extends Controller
         $bahanSeringDibeliQuery = DB::table('pembelian_detail')
             ->join('master_barang', 'pembelian_detail.barang_id', '=', 'master_barang.id')
             ->join('pembelian', 'pembelian_detail.pembelian_id', '=', 'pembelian.id')
+            ->whereBetween('pembelian.tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select('master_barang.nama', 'master_barang.satuan', DB::raw('SUM(pembelian_detail.qty) as total_qty'));
 
         if ($roleName === 'Kepala Outlet Gaharu') {
@@ -232,6 +236,7 @@ class DashboardController extends Controller
         */
         $supplierTeratasQuery = DB::table('pembelian')
             ->join('suppliers', 'pembelian.supplier_id', '=', 'suppliers.id')
+            ->whereBetween('pembelian.tanggal', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->select('suppliers.nama', DB::raw('SUM(pembelian.total) as total_nominal'));
 
         if ($roleName === 'Kepala Outlet Gaharu') {
@@ -247,6 +252,8 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard', compact(
+            'startDate',
+            'endDate',
             'totalPesanan', 
             'totalWO', 
             'totalSupplier', 
@@ -269,7 +276,7 @@ class DashboardController extends Controller
         ));
     }
 
-    public function keuangan()
+    public function keuangan(\Illuminate\Http\Request $request)
     {
         $user = auth()->user();
         $roleName = $user->role->nama ?? '';
@@ -278,6 +285,9 @@ class DashboardController extends Controller
         if (!in_array($roleName, ['Kepala Outlet Gaharu', 'Direktur Keuangan', 'Super Admin', 'Administrator'])) {
             abort(403, 'Anda tidak memiliki hak akses ke Dashboard Keuangan.');
         }
+
+        $startDate = $request->query('tgl_mulai', Carbon::now()->startOfMonth()->toDateString());
+        $endDate   = $request->query('tgl_selesai', Carbon::now()->endOfMonth()->toDateString());
 
         // Base helper query for joining journal_items with header tables
         $getBaseJournalItems = function() {
@@ -305,13 +315,16 @@ class DashboardController extends Controller
                 ->join('chart_of_accounts', 'journal_items.account_id', '=', 'chart_of_accounts.id');
         };
 
-        // 1. Profit & Loss trend for the last 6 months
+        // 1. Profit & Loss trend for the selected date range
         $months = [];
         $incomeData = [];
         $expenseData = [];
 
-        for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
+        $periodStart = Carbon::parse($startDate)->startOfMonth();
+        $periodEnd   = Carbon::parse($endDate)->endOfMonth();
+        $monthPeriod = CarbonPeriod::create($periodStart, '1 month', $periodEnd);
+
+        foreach ($monthPeriod as $date) {
             $year = $date->year;
             $month = $date->month;
             $months[] = $date->format('M Y');
@@ -348,7 +361,6 @@ class DashboardController extends Controller
         }
 
         // 2. Cash and Bank Balances
-        // Fetch accounts of type 'Kas' or 'Bank' or code starts with '11' (usually cash/bank)
         $cashAccounts = DB::table('chart_of_accounts')
             ->whereIn('tipe', ['Kas', 'Bank'])
             ->orWhere('kode', 'like', '11%')
@@ -358,6 +370,7 @@ class DashboardController extends Controller
         foreach ($cashAccounts as $acc) {
             $balance = $getBaseJournalItems()
                 ->where('journal_items.account_id', $acc->id)
+                ->whereRaw('COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) <= ?', [$endDate])
                 ->selectRaw('SUM(journal_items.debit - journal_items.kredit) as balance')
                 ->value('balance') ?? 0;
 
@@ -368,36 +381,37 @@ class DashboardController extends Controller
             ];
         }
 
-        // 3. Assets vs Liabilities/Equity
-        // Assets: code starts with '1'
+        // 3. Assets vs Liabilities/Equity as of endDate
         $totalAssets = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '1%')
+            ->whereRaw('COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) <= ?', [$endDate])
             ->selectRaw('SUM(journal_items.debit - journal_items.kredit) as total')
             ->value('total') ?? 0;
 
-        // Liabilities: code starts with '2'
         $totalLiabilities = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '2%')
+            ->whereRaw('COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) <= ?', [$endDate])
             ->selectRaw('SUM(journal_items.kredit - journal_items.debit) as total')
             ->value('total') ?? 0;
 
-        // Equity: code starts with '3'
         $totalEquity = $getBaseJournalItems()
             ->where('chart_of_accounts.kode', 'like', '3%')
+            ->whereRaw('COALESCE(journals.tanggal, jurnal_pembelian.tanggal, jurnal_penjualan_pos.tanggal, jurnal_penjualan_b2b.tanggal, jurnal_penyesuaian.tanggal) <= ?', [$endDate])
             ->selectRaw('SUM(journal_items.kredit - journal_items.debit) as total')
             ->value('total') ?? 0;
 
-        // 4. Recent Adjustments
+        // 4. Recent Adjustments within period
         $recentAdjustments = DB::table('jurnal_penyesuaian')
+            ->whereBetween('tanggal', [$startDate, $endDate])
             ->orderByDesc('tanggal')
             ->limit(5)
             ->get();
 
-        // 5. Recent Journals (Union across all journal types)
-        $qJournals = DB::table('journals')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("COALESCE(status, 'posted') as status"));
-        $qPembelian = DB::table('jurnal_pembelian')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
-        $qPos = DB::table('jurnal_penjualan_pos')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
-        $qB2b = DB::table('jurnal_penjualan_b2b')->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+        // 5. Recent Journals within period (Union across all journal types)
+        $qJournals = DB::table('journals')->whereBetween('tanggal', [$startDate, $endDate])->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("COALESCE(status, 'posted') as status"));
+        $qPembelian = DB::table('jurnal_pembelian')->whereBetween('tanggal', [$startDate, $endDate])->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+        $qPos = DB::table('jurnal_penjualan_pos')->whereBetween('tanggal', [$startDate, $endDate])->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
+        $qB2b = DB::table('jurnal_penjualan_b2b')->whereBetween('tanggal', [$startDate, $endDate])->select('id', 'tanggal', 'no_ref', 'deskripsi', DB::raw("'posted' as status"));
 
         $recentJournals = $qJournals
             ->unionAll($qPembelian)
@@ -409,6 +423,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard_keuangan', compact(
+            'startDate', 'endDate',
             'months', 'incomeData', 'expenseData',
             'balances', 'totalAssets', 'totalLiabilities', 'totalEquity',
             'recentAdjustments', 'recentJournals'

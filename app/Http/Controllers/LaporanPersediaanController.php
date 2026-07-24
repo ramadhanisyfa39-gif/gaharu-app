@@ -87,6 +87,8 @@ class LaporanPersediaanController extends Controller
     */
     public function stokGudang(Request $request)
     {
+        $user = auth()->user();
+        $roleName = $user->role->nama ?? '';
         $gudangs   = MasterGudang::orderBy('nama')->get();
         $kategoris = DB::table('kategori')->orderBy('nama')->get();
 
@@ -146,12 +148,14 @@ class LaporanPersediaanController extends Controller
             return $this->exportExcelStok($data, $request);
         }
 
+        $hasPurchaseAccess = in_array($roleName, ['Kepala Outlet Gaharu', 'Kepala Gudang', 'Direktur Keuangan', 'Super Admin', 'Administrator']);
+
         // --- PASSING DATA KE VIEW ---
         // Menghapus stokHabis & stokAda, memasukkan stokKritis
         return view('laporanpersediaan.stock-gudang', compact(
             'data', 'gudangs', 'kategoris',
             'totalItem', 'stokKritis',
-            'request'
+            'request', 'hasPurchaseAccess'
         ));
     }
 

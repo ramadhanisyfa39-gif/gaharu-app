@@ -239,76 +239,81 @@ class PenggajianController extends Controller
      */
     public function kirimJurnalUmum(Request $request)
     {
-        $periode = $request->periode;
+    $periode = $request->periode; // Asumsi format periode misal: "2026-07" atau "2026-07-01"
 
-        // 1. Ambil data penggajian yang statusnya sudah approved dan belum dijurnal
-        $payrolls = Penggajian::where('periode_bulan_tahun', $periode)
+    // 1. Ambil data penggajian
+    $payrolls = Penggajian::where('periode_bulan_tahun', $periode)
+        ->where('status', 'approved')
+        ->where('status_jurnal', false)
+        ->get();
+
+    if ($payrolls->isEmpty()) {
+        return redirect()->back()->with('error', 'Tidak ada data yang siap dijurnal atau periode sudah dijurnal.');
+    }
+
+    $totalGajiBersih = $payrolls->sum('total_gaji_bersih');
+
+    // 2. Pencarian akun COA
+    $akunBebanGaji = \App\Models\ChartOfAccount::where('nama', 'like', '%Beban Gaji%')
+        ->orWhere('nama', 'like', '%Gaji%')
+        ->first();
+
+    $akunKas = \App\Models\ChartOfAccount::where('nama', 'like', '%Kas%')
+        ->orWhere('nama', 'like', '%Bank%')
+        ->first();
+
+    if (!$akunBebanGaji || !$akunKas) {
+        return redirect()->back()->with('error', 'Gagal memposting. Akun Beban Gaji atau Kas tidak ditemukan di Chart of Accounts.');
+    }
+
+    // ====================================================================
+    // LOGIKA TANGGAL OTOMATIS TANGGAL 25
+    // ====================================================================
+    // Mengubah variabel $periode menjadi tanggal 25 di bulan dan tahun periode tersebut
+    // Contoh: jika $periode = "2026-07", maka $tanggalJurnal = "2026-07-25"
+    $tanggalJurnal = \Carbon\Carbon::parse($periode)->setDateFrom(\Carbon\Carbon::parse($periode))->day(25)->toDateString();
+
+    // 3. Eksekusi DB Transaction
+    DB::transaction(function () use ($periode, $totalGajiBersih, $akunBebanGaji, $akunKas, $tanggalJurnal) {
+
+        // Buat Header Jurnal
+        $journal = Journal::create([
+            'tanggal'     => $tanggalJurnal, // Menggunakan tanggal 25 yang sudah di-generate
+            'deskripsi'   => "Pencatatan beban gaji karyawan periode " . $periode,
+            'no_ref'      => 'JV-' . strtoupper(str_replace('-', '', $periode)) . '-' . rand(10, 99),
+            'source_type' => 'jurnal_umum',
+            'source_id'   => 0,
+            'created_by'  => auth()->id() ?? 1,
+        ]);
+
+        // Item baris DEBIT (Beban Gaji)
+        JournalItem::create([
+            'journal_id'   => $journal->id,
+            'account_id'   => $akunBebanGaji->id,
+            'debit'        => $totalGajiBersih,
+            'kredit'       => 0,
+            'journal_type' => 'jurnal_umum',
+        ]);
+
+        // Item baris KREDIT (Kas)
+        JournalItem::create([
+            'journal_id'   => $journal->id,
+            'account_id'   => $akunKas->id,
+            'debit'        => 0,
+            'kredit'       => $totalGajiBersih,
+            'journal_type' => 'jurnal_umum',
+        ]);
+
+        // Kunci status penggajian
+        Penggajian::where('periode_bulan_tahun', $periode)
             ->where('status', 'approved')
-            ->where('status_jurnal', false)
-            ->get();
-
-        if ($payrolls->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada data yang siap dijurnal atau periode sudah dijurnal.');
-        }
-
-        $totalGajiBersih = $payrolls->sum('total_gaji_bersih');
-
-        // 2. Pencarian akun COA secara spesifik berdasarkan kode akun resmi (atau fallback nama jika tidak ada)
-        $akunBebanGaji = \App\Models\ChartOfAccount::where('kode', '6101')->first()
-            ?? \App\Models\ChartOfAccount::where('nama', 'like', '%Beban Gaji%')
-                ->orWhere('nama', 'like', '%Gaji%')
-                ->first();
-
-        $akunKas = \App\Models\ChartOfAccount::where('kode', '1101')->first()
-            ?? \App\Models\ChartOfAccount::where('nama', 'like', '%Kas%')
-                ->orWhere('nama', 'like', '%Bank%')
-                ->first();
-
-        if (!$akunBebanGaji || !$akunKas) {
-            return redirect()->back()->with('error', 'Gagal memposting. Akun Beban Gaji atau Kas tidak ditemukan di Chart of Accounts.');
-        }
-
-        // 3. Eksekusi DB Transaction
-        DB::transaction(function () use ($periode, $totalGajiBersih, $akunBebanGaji, $akunKas) {
-
-            // Buat Header Jurnal - Samakan source_type jika ingin terdeteksi sebagai jurnal umum
-            $journal = Journal::create([
-                'tanggal'     => now()->toDateString(),
-                'deskripsi'   => "Pencatatan beban gaji karyawan periode " . $periode,
-                'no_ref'      => 'JV-' . strtoupper(str_replace('-', '', $periode)) . '-' . rand(10, 99),
-                'source_type' => 'jurnal_umum', // Menggunakan jurnal_umum agar selaras dengan menu jurnal umum
-                'source_id'   => 0,
-                'created_by'  => auth()->id() ?? 1,
+            ->update([
+                'status_jurnal' => true,
+                'journal_id'    => $journal->id
             ]);
+    });
 
-            // Item baris DEBIT (Beban Gaji)
-            JournalItem::create([
-                'journal_id'   => $journal->id,
-                'account_id'   => $akunBebanGaji->id,
-                'debit'        => $totalGajiBersih,
-                'kredit'       => 0,
-                'journal_type' => 'jurnal_umum', // DIPERBAIKI: Menggunakan underscore
-            ]);
-
-            // Item baris KREDIT (Kas)
-            JournalItem::create([
-                'journal_id'   => $journal->id,
-                'account_id'   => $akunKas->id,
-                'debit'        => 0,
-                'kredit'       => $totalGajiBersih,
-                'journal_type' => 'jurnal_umum', // DIPERBAIKI: Menggunakan underscore
-            ]);
-
-            // Kunci status penggajian agar berubah menjadi true (Sudah Dijurnal)
-            Penggajian::where('periode_bulan_tahun', $periode)
-                ->where('status', 'approved')
-                ->update([
-                    'status_jurnal' => true,
-                    'journal_id'    => $journal->id
-                ]);
-        });
-
-        return redirect()->back()->with('success', "Total gaji periode $periode berhasil diposting dan dikunci ke Jurnal Umum.");
+    return redirect()->back()->with('success', "Total gaji periode $periode berhasil diposting dengan tanggal 25 ke Jurnal Umum.");
     }
 
     public function destroy(Penggajian $penggajian): RedirectResponse

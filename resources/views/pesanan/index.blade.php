@@ -262,7 +262,7 @@
                                     @if(isset($item->status_pembayaran) && $item->status_pembayaran != 'Lunas' && strtolower($item->status_pesanan ?? '') != 'dibatalkan' && strtolower($item->status_pesanan ?? '') != 'batal')
                                     <div class="modal fade text-start" id="modalBayar{{ $item->id }}" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered">
-                                            <form action="{{ route('pesanan.bayar', $item->id) }}" method="POST" class="w-100">
+                                            <form action="{{ route('pesanan.bayar', $item->id) }}" method="POST" class="w-100" enctype="multipart/form-data">
                                                 @csrf
                                                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                                                     <div class="modal-header text-white border-0 p-4" style="background-color: #6a4126;">
@@ -312,14 +312,19 @@
                                                             </div>
                                                         </div>
 
-                                                        <div class="mb-0">
+                                                        <div class="mb-3">
                                                             <label class="form-label fw-semibold small text-secondary">Catatan Tambahan</label>
                                                             <textarea name="catatan" class="form-control" rows="2" placeholder="Nama bank pengirim, nomor referensi..."></textarea>
+                                                        </div>
+
+                                                        <div class="mb-0">
+                                                            <label class="form-label fw-semibold small text-secondary">Upload Bukti Pembayaran <span class="text-muted">(bisa >1 gambar)</span></label>
+                                                            <input type="file" name="bukti_file[]" class="form-control" accept="image/*" multiple>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer border-0 p-4 pt-0 bg-white">
                                                         <button type="button" class="btn btn-light px-4 rounded-3 text-secondary" data-bs-dismiss="modal" style="font-size:0.85rem; font-weight:600;">Kembali</button>
-                                                        <button type="submit" class="btn btn-custom-orange px-4 rounded-3 fw-semibold border-0">Simpan Bayar</button>
+                                                        <button type="submit" class="btn btn-custom-orange px-4 rounded-3 fw-semibold border-0" style="background-color: #6a4126; color: white;">Simpan Bayar</button>
                                                     </div>
                                                 </div>
                                             </form>

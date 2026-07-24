@@ -41,7 +41,7 @@
                             @forelse($pembeliansBelum as $p)
                             <tr>
                                 <td class="py-3 ps-4 text-secondary">{{ \Carbon\Carbon::parse($p->tanggal)->format('d/m/Y') }}</td>
-                                <td><span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5 fs-6">{{ $p->kode_pembelian }}</span></td>
+                                <td><span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5 fs-6">{{ $p->label_no_invoice ?? $p->kode_pembelian }}</span></td>
                                 <td class="fw-semibold text-dark">{{ $p->supplier->nama ?? 'Supplier Tidak Terdaftar' }}</td>
                                 <td>
                                     @php

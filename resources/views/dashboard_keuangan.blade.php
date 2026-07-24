@@ -13,6 +13,33 @@
 
     <div class="container-fluid px-3 py-2">
 
+        {{-- FILTER TANGGAL PERIODE --}}
+        <div class="card border-0 shadow-sm mb-3" style="background: #fff; border-radius: 8px;">
+            <div class="card-body p-2 px-3">
+                <form method="GET" action="{{ route('dashboard.keuangan') }}" class="row g-2 align-items-center">
+                    <div class="col-auto d-flex align-items-center gap-1 text-secondary fw-bold" style="font-size: 0.75rem;">
+                        <i class="bi bi-funnel-fill text-success"></i> Filter Periode Keuangan:
+                    </div>
+                    <div class="col-auto d-flex align-items-center gap-1">
+                        <label for="tgl_mulai" class="form-label m-0 text-muted" style="font-size: 0.7rem;">Dari:</label>
+                        <input type="date" id="tgl_mulai" name="tgl_mulai" class="form-control form-control-sm" value="{{ $startDate }}" style="font-size: 0.75rem; width: 140px;">
+                    </div>
+                    <div class="col-auto d-flex align-items-center gap-1">
+                        <label for="tgl_selesai" class="form-label m-0 text-muted" style="font-size: 0.7rem;">Sampai:</label>
+                        <input type="date" id="tgl_selesai" name="tgl_selesai" class="form-control form-control-sm" value="{{ $endDate }}" style="font-size: 0.75rem; width: 140px;">
+                    </div>
+                    <div class="col-auto d-flex gap-1">
+                        <button type="submit" class="btn btn-sm text-white fw-bold" style="background:#1a5c32; font-size: 0.75rem; padding: 4px 12px;">
+                            <i class="bi bi-search me-1"></i> Terapkan
+                        </button>
+                        <a href="{{ route('dashboard.keuangan') }}" class="btn btn-sm btn-outline-secondary" style="font-size: 0.75rem; padding: 4px 10px;" title="Reset Filter">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         {{-- BARIS 1: FINANCIAL CARD SUMMARY --}}
         <div class="row gx-3 mb-3">
             <div class="col-md-3 mb-2 mb-md-0">

@@ -108,10 +108,24 @@
                         + Tambah Baris
                     </button>
 
+                    <div class="row justify-content-end mb-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold text-secondary">Subtotal (DPP)</label>
+                            <input type="number" id="subtotal_pesanan" class="form-control fw-semibold" readonly value="0">
+                        </div>
+                    </div>
+
+                    <div class="row justify-content-end mb-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-semibold">Tax/Service (%)</label>
+                            <input type="number" name="tax_percentage" id="tax_percentage" class="form-control" value="0" min="0" max="100" step="0.01">
+                        </div>
+                    </div>
+
                     <div class="row justify-content-end mb-4">
                         <div class="col-12 col-md-4">
-                            <label class="form-label fw-semibold">Total Pesanan</label>
-                            <input type="number" name="total_pesanan" id="total_pesanan" class="form-control fw-bold text-primary" readonly>
+                            <label class="form-label fw-semibold">Total Pesanan (Nett)</label>
+                            <input type="number" name="total_pesanan" id="total_pesanan" class="form-control fw-bold text-primary" readonly value="0">
                         </div>
                     </div>
 
@@ -142,12 +156,20 @@
          * Menghitung total keseluruhan pesanan
          */
         function hitungTotal() {
-            let total = 0;
+            let subtotal = 0;
             document.querySelectorAll('.subtotal').forEach(function(item) {
-                total += parseFloat(item.value) || 0;
+                subtotal += parseFloat(item.value) || 0;
             });
-            document.getElementById('total_pesanan').value = total;
+            document.getElementById('subtotal_pesanan').value = subtotal;
+
+            let taxPercentage = parseFloat(document.getElementById('tax_percentage').value) || 0;
+            let taxAmount = subtotal * (taxPercentage / 100);
+            let total = subtotal + taxAmount;
+
+            document.getElementById('total_pesanan').value = total.toFixed(2);
         }
+
+        document.getElementById('tax_percentage').addEventListener('input', hitungTotal);
 
         /**
          * Mereset input harga saat produk dipilih

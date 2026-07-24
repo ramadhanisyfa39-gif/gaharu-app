@@ -199,19 +199,25 @@
 
                 </div>
 
-                <div class="mb-4 mt-4">
+                <div class="row justify-content-end mb-2 mt-4">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold text-secondary">Subtotal (DPP)</label>
+                        <input type="number" id="subtotal_pesanan" class="form-control fw-semibold" readonly value="0">
+                    </div>
+                </div>
 
-                    <label class="form-label fw-semibold">
-                        Total Pesanan
-                    </label>
+                <div class="row justify-content-end mb-2">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold">Tax/Service (%)</label>
+                        <input type="number" name="tax_percentage" id="tax_percentage" class="form-control" value="{{ $pesanan->tax_percentage ?? 0 }}" min="0" max="100" step="0.01">
+                    </div>
+                </div>
 
-                    <input type="number"
-                           name="total_pesanan"
-                           id="total_pesanan"
-                           class="form-control"
-                           value="{{ $pesanan->total_pesanan }}"
-                           readonly>
-
+                <div class="row justify-content-end mb-4">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label fw-semibold">Total Pesanan (Nett)</label>
+                        <input type="number" name="total_pesanan" id="total_pesanan" class="form-control fw-bold text-primary" value="{{ $pesanan->total_pesanan }}" readonly>
+                    </div>
                 </div>
 
                 <div class="d-flex flex-column flex-sm-row gap-2">
@@ -247,16 +253,25 @@ function hitungSubtotal(row)
 
 function hitungTotal()
 {
-    let total = 0;
+    let subtotal = 0;
 
     document.querySelectorAll('.subtotal')
     .forEach(function(item) {
-
-        total += parseFloat(item.value) || 0;
+        subtotal += parseFloat(item.value) || 0;
     });
 
-    document.getElementById('total_pesanan').value = total;
+    document.getElementById('subtotal_pesanan').value = subtotal;
+
+    let taxPercentage = parseFloat(document.getElementById('tax_percentage').value) || 0;
+    let taxAmount = subtotal * (taxPercentage / 100);
+    let total = subtotal + taxAmount;
+
+    document.getElementById('total_pesanan').value = total.toFixed(2);
 }
+
+document.getElementById('tax_percentage').addEventListener('input', hitungTotal);
+
+// Trigger initial calculation
 
 // Perubahan QTY atau HARGA secara manual menggunakan input event
 document.addEventListener('input', function(e) {

@@ -120,9 +120,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/pesanan/{id}/batal', [PesananController::class, 'batal'])->name('pesanan.batal');
     });
 
-    // Supplier (diakses oleh Gaharu & Kepala Gudang)
+    // Supplier, Pembelian, Material Purchase (diakses oleh Gaharu & Kepala Gudang)
     Route::middleware(['role:Kepala Outlet Gaharu,Kepala Gudang'])->group(function () {
         Route::resource('suppliers', SupplierController::class)->names('suppliers');
+
+        Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
+        Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
+
+        Route::get('pembelian/{id}/cetak-pdf', [PembelianController::class, 'cetakPoPdf'])->name('pembelian.cetak-pdf');
+        Route::post('pembelian/{pembelian}/terima', [PembelianController::class, 'terima'])->name('pembelian.terima');
+        Route::post('pembelian/{pembelian}/lunasi', [PembelianController::class, 'lunasi'])->name('pembelian.lunasi');
+        Route::post('pembelian/{pembelian}/catat-pembayaran', [PembelianController::class, 'catatPembayaran'])->name('pembelian.catat-pembayaran');
+        Route::resource('pembelian', PembelianController::class)->only([
+            'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
+        ]);
     });
 
 
@@ -250,17 +261,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu,Kepala Outlet Kejingga'])->group(function () {
         Route::resource('gudangs', GudangController::class)->names('gudangs');
 
-        Route::get('pengeluaran-bahan-baku/{id}/approve', [PengeluaranBahanBakuController::class, 'approve'])->name('pengeluaran-bahan-baku.approve');
-        Route::resource('pengeluaran-bahan-baku', PengeluaranBahanBakuController::class);
-
-        Route::get('pembelian/{id}/cetak-pdf', [PembelianController::class, 'cetakPoPdf'])->name('pembelian.cetak-pdf');
-        Route::post('pembelian/{pembelian}/terima', [PembelianController::class, 'terima'])->name('pembelian.terima');
-        Route::post('pembelian/{pembelian}/lunasi', [PembelianController::class, 'lunasi'])->name('pembelian.lunasi');
-        Route::post('pembelian/{pembelian}/catat-pembayaran', [PembelianController::class, 'catatPembayaran'])->name('pembelian.catat-pembayaran');
-        Route::resource('pembelian', PembelianController::class)->only([
-            'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
-        ]);
-
         Route::get('/stok-gudang', [StokGudangController::class, 'index'])->name('stok-gudang.index');
         Route::get('stok-gudang/{id}/detail', [StokGudangController::class, 'detail'])->name('stok-gudang.detail');
         Route::resource('stok-gudang-batch', StokGudangBatchController::class);
@@ -279,6 +279,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/inventory', [ReportInventoryController::class, 'index'])->name('reports.inventory');
         Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/pembelian', [LaporanPersediaanController::class, 'pembelian'])->name('pembelian');
+        });
+    });
+
+    Route::middleware(['role:Kepala Gudang,Kepala Outlet Gaharu,Direktur Keuangan,Kepala Outlet Kejingga'])->group(function () {
+        Route::prefix('laporan')->name('laporan.')->group(function () {
             Route::get('/stok-gudang', [LaporanPersediaanController::class, 'stokGudang'])->name('stok-gudang');
             Route::get('/pengeluaran-bahan-baku', [LaporanPersediaanController::class, 'pengeluaranBahanBaku'])->name('pengeluaran-bahan-baku');
             Route::get('/stock-opname', [LaporanPersediaanController::class, 'stockOpname'])->name('stock-opname');

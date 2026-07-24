@@ -14,7 +14,7 @@ class HargaBarangPosController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $queryBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->orderBy('nama');
+        $queryBarang = \App\Models\MasterBarang::where('is_barang_jadi', 1)->where('is_active', true)->orderBy('nama');
 
         if ($user && $user->gudang_id) {
             if ($user->gudang_id == 2) {

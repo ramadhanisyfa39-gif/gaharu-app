@@ -78,17 +78,26 @@
 
         <div class="col-md-3">
 
-            <div class="card border-0 shadow-sm rounded-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
 
                 <div class="card-body">
 
-                    <small class="text-muted">
-                        Tanggal
+                    <small class="text-muted d-block mb-1">
+                        Tanggal Opname
                     </small>
 
-                    <h6 class="fw-bold mt-2">
-                        {{ date('d M Y H:i', strtotime($stockOpname->tanggal)) }}
-                    </h6>
+                    @if($stockOpname->status === 'draft')
+                        <form action="{{ route('stock-opname.update', $stockOpname->id) }}" method="POST" class="d-flex align-items-center gap-1">
+                            @csrf
+                            @method('PUT')
+                            <input type="date" name="tanggal" class="form-control form-control-sm fw-bold" value="{{ date('Y-m-d', strtotime($stockOpname->tanggal)) }}" required>
+                            <button type="submit" class="btn btn-sm btn-primary" title="Simpan Tanggal"><i class="bi bi-check-lg"></i> Ubah</button>
+                        </form>
+                    @else
+                        <h6 class="fw-bold m-0 mt-1">
+                            {{ date('d M Y H:i', strtotime($stockOpname->tanggal)) }}
+                        </h6>
+                    @endif
 
                 </div>
 

@@ -21,9 +21,10 @@ class StorePembelianRequest extends FormRequest
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'gudang_id' => ['required', 'exists:master_gudang,id'],
             'tanggal' => ['required', 'date'],
+            'tax_service' => ['nullable', 'string'],
 
             'items' => ['required', 'array', 'min:1'],
-            'items.*.barang_id' => ['required', 'exists:master_barang,id'],
+            'items.*.barang_id' => ['required', \Illuminate\Validation\Rule::exists('master_barang', 'id')->where('is_active', true)],
             'items.*.qty' => ['required', 'numeric', 'min:0.01'],
             'items.*.harga' => ['required', 'numeric', 'min:0'],
             'items.*.batch_number' => ['nullable', 'string', 'max:100'],
